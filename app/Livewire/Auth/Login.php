@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Auth;
 
+use App\Support\PasswordPolicy;
 use App\Support\Recaptcha;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -87,6 +89,17 @@ class Login extends Component
             ]);
         }
 
+        // Kata sandi hanya dapat diperiksa kekuatannya saat masih berupa teks
+        // biasa, yaitu tepat pada saat login. Akun lama dengan kata sandi mudah
+        // ditebak langsung ditandai wajib ganti.
+        if (! $this->passwordMeetsPolicy($this->password)) {
+            $user->requirePasswordChange();
+        }
+
+        if ($user->must_change_password) {
+            return redirect()->route('password.change');
+        }
+
         // Determine redirect by role/permission (FR-15)
         $redirect = $this->resolveRedirectByRole($user);
 
@@ -115,6 +128,17 @@ class Login extends Component
         $host = parse_url($url, PHP_URL_HOST);
 
         return $host === null || $host === request()->getHost();
+    }
+
+    /**
+     * Apakah kata sandi yang baru saja dipakai memenuhi syarat kekuatan.
+     */
+    private function passwordMeetsPolicy(string $password): bool
+    {
+        return Validator::make(
+            ['password' => $password],
+            ['password' => [PasswordPolicy::rule()]]
+        )->passes();
     }
 
     /**

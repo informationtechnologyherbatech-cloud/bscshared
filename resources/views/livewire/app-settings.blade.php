@@ -302,6 +302,10 @@
                                             <td class="text-muted">{{ \App\Support\PasswordPolicy::hint() }} Di-hash bcrypt.</td>
                                         </tr>
                                         <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Kata sandi lemah</td>
+                                            <td class="text-muted">Terdeteksi saat login; akun dikunci pada halaman ganti kata sandi sampai diperbarui.</td>
+                                        </tr>
+                                        <tr>
                                             <td><i class="fas fa-check-circle text-success mr-1"></i> Otorisasi aksi</td>
                                             <td class="text-muted">Setiap aksi yang menulis data memeriksa izin perannya sendiri, bukan hanya akses halaman.</td>
                                         </tr>

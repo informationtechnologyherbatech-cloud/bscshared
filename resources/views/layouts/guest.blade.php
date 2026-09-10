@@ -33,6 +33,7 @@
             --r:0.25rem; --r-lg:0.5rem; --r-xl:0.75rem; --r-full:9999px;
             --s-md:16px; --s-lg:24px; --s-xl:40px;
         }
+        [x-cloak]{ display:none !important; }
         *{ font-family:'Hanken Grotesk',system-ui,sans-serif; }
         h1,h2,h3,h4{ font-family:'Manrope',sans-serif; }
         html,body{ height:100%; }

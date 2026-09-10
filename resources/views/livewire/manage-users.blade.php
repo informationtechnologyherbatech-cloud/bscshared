@@ -195,9 +195,21 @@
                     </div>
                     <div class="form-group">
                         <div class="custom-control custom-switch">
-                            <input type="checkbox" wire:model="is_active" class="custom-control-input" id="isActiveSwitch">
+                            <input type="checkbox" wire:model.live="is_active" class="custom-control-input" id="isActiveSwitch">
                             <label class="custom-control-label" for="isActiveSwitch">{{ $is_active ? 'Aktif' : 'Nonaktif' }}</label>
                         </div>
+                    </div>
+                    <div class="form-group mb-0">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" wire:model="must_change_password" class="custom-control-input" id="mustChangePasswordSwitch">
+                            <label class="custom-control-label" for="mustChangePasswordSwitch">
+                                Wajib ganti password saat login berikutnya
+                            </label>
+                        </div>
+                        <small class="text-muted">
+                            Disarankan menyala bila kata sandi di atas Anda tentukan sendiri, sehingga hanya
+                            pemilik akun yang mengetahui kata sandi sebenarnya.
+                        </small>
                     </div>
                 </div>
                 <div class="modal-footer">

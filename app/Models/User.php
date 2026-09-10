@@ -12,7 +12,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -25,6 +25,8 @@ class User extends Authenticatable
         'password',
         'is_active',
         'dept_code',
+        'must_change_password',
+        'password_changed_at',
     ];
 
     /**
@@ -48,6 +50,20 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'must_change_password' => 'boolean',
+            'password_changed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Tandai bahwa kata sandi pengguna harus diganti pada akses berikutnya.
+     */
+    public function requirePasswordChange(bool $wajib = true): void
+    {
+        if ($this->must_change_password === $wajib) {
+            return;
+        }
+
+        $this->forceFill(['must_change_password' => $wajib])->save();
     }
 }

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use App\Livewire\Auth\ChangePassword;
 use App\Livewire\Auth\Login;
 use App\Livewire\BscDashboard;
 use App\Livewire\FinancialRatios;
@@ -26,8 +27,14 @@ Route::post('/logout', function (\Illuminate\Http\Request $request) {
     return redirect()->route('login')->with('status', 'Anda telah berhasil logout.');
 })->middleware('auth')->name('logout');
 
-// Protected App Routes — 13 Menu PRD §4 Tabel 4 (permission enforced server-side §9)
+// Ganti kata sandi — satu-satunya halaman yang tetap terbuka bagi pengguna
+// yang kata sandinya ditandai wajib diganti.
 Route::middleware(['auth', 'active'])->group(function () {
+    Route::get('/ubah-password', ChangePassword::class)->name('password.change');
+});
+
+// Protected App Routes — 13 Menu PRD §4 Tabel 4 (permission enforced server-side §9)
+Route::middleware(['auth', 'active', 'password.change'])->group(function () {
     // 1 Piramida — view dashboard (semua peran punya)
     Route::get('/', BscDashboard::class)->middleware('permission:view dashboard')->name('dashboard');
     // 2 Rasio — view ratios (read), manage ratios (write)

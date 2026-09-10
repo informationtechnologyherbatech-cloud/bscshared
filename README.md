@@ -154,10 +154,33 @@ pernah bisa turun di bawah 8 karakter, sekalipun konfigurasinya diisi lebih
 kecil. Aktifkan `PASSWORD_CHECK_LEAKED=true` bila server punya akses internet —
 kata sandi akan diperiksa ke basis data kebocoran publik (haveibeenpwned).
 
-Kata sandi lama tidak dipaksa berubah; aturan baru hanya berlaku ketika kata
-sandi diisi. Pada formulir pengguna, syarat tampil sebagai daftar periksa yang
-tercentang saat terpenuhi, dan tersedia tombol **tampilkan/sembunyikan** kata
-sandi — juga pada halaman login.
+Pada formulir pengguna, syarat tampil sebagai daftar periksa yang tercentang
+saat terpenuhi, dan tersedia tombol **tampilkan/sembunyikan** kata sandi — juga
+pada halaman login dan halaman ganti kata sandi.
+
+### Pemaksaan ganti kata sandi
+
+Syarat di atas hanya dapat diperiksa ketika kata sandi masih berupa teks biasa,
+yaitu **tepat pada saat login**. Karena itu akun lama tidak dibiarkan lolos:
+
+1. Setiap login berhasil, kata sandi yang dipakai diuji terhadap kebijakan.
+2. Bila tidak memenuhi syarat, akun ditandai `must_change_password` dan
+   langsung diarahkan ke halaman **Ganti Password**.
+3. Selama penanda itu menyala, middleware
+   [`RequirePasswordChange`](app/Http/Middleware/RequirePasswordChange.php)
+   mengembalikan setiap permintaan ke halaman tersebut — tidak ada satu menu pun
+   yang dapat dibuka. Yang tetap bisa dilakukan hanyalah mengganti kata sandi
+   atau keluar.
+4. Penanda hilang begitu kata sandi baru yang memenuhi syarat disimpan.
+
+Halaman ganti kata sandi meminta kata sandi saat ini, kata sandi baru, dan
+konfirmasinya; kata sandi baru harus berbeda dari yang sekarang, dan ID sesi
+diperbarui setelah penggantian.
+
+Super Admin juga dapat menyalakan penanda ini secara manual lewat sakelar
+**"Wajib ganti password saat login berikutnya"** pada formulir pengguna —
+menyala secara bawaan ketika membuat pengguna baru, sehingga kata sandi awal
+yang ditentukan admin hanya berlaku sekali.
 
 ### Perlindungan bawaan
 
@@ -169,6 +192,7 @@ sandi — juga pada halaman login.
 | Unggahan berkas | Hanya PNG/JPG/WEBP (logo) dan PNG/WEBP/ICO (favicon), divalidasi ekstensi **dan** MIME. **SVG ditolak** karena dapat memuat `<script>` dan menjadi stored XSS saat dibuka dari `/storage` |
 | URL dari pengguna | `company_website` divalidasi `url:http,https`, menutup `javascript:` yang lolos validasi URL biasa |
 | Kata sandi | Minimal 10 karakter dengan huruf besar, huruf kecil, angka, dan karakter khusus; di-hash bcrypt (12 putaran) |
+| Kata sandi lemah | Terdeteksi saat login, akun dikunci pada halaman ganti kata sandi sampai diperbarui |
 | Brute force | 5 percobaan gagal per kombinasi email + IP, jeda 60 detik (`RateLimiter`) |
 | Open redirect | Tujuan setelah login ditolak bila host-nya bukan host aplikasi |
 | Sesi | ID sesi diperbarui setiap login, cookie `HttpOnly`, `SameSite=lax`, serialisasi JSON; akun non-aktif langsung dikeluarkan |

@@ -37,7 +37,7 @@ class SecurityTest extends TestCase
         RateLimiter::clear('login:pengguna@contoh.test|127.0.0.1');
     }
 
-    private function activeUser(string $password = 'rahasia123'): User
+    private function activeUser(string $password = 'Herbatech#2026aman'): User
     {
         return User::create([
             'name' => 'Pengguna Uji',
@@ -112,7 +112,7 @@ class SecurityTest extends TestCase
 
         Livewire::test(Login::class)
             ->set('email', 'pengguna@contoh.test')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Herbatech#2026aman')
             ->call('login')
             ->assertHasNoErrors();
 
@@ -128,7 +128,7 @@ class SecurityTest extends TestCase
 
         Livewire::test(Login::class)
             ->set('email', 'pengguna@contoh.test')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Herbatech#2026aman')
             ->call('login')
             ->assertHasErrors('recaptchaToken');
 
@@ -145,7 +145,7 @@ class SecurityTest extends TestCase
 
         Livewire::test(Login::class)
             ->set('email', 'pengguna@contoh.test')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Herbatech#2026aman')
             ->set('recaptchaToken', 'token-palsu')
             ->call('login')
             ->assertHasErrors('recaptchaToken');
@@ -161,7 +161,7 @@ class SecurityTest extends TestCase
 
         Livewire::test(Login::class)
             ->set('email', 'pengguna@contoh.test')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Herbatech#2026aman')
             ->set('recaptchaToken', 'token-sah')
             ->call('login')
             ->assertHasNoErrors();
@@ -257,7 +257,7 @@ class SecurityTest extends TestCase
 
         Livewire::test(Login::class)
             ->set('email', 'pengguna@contoh.test')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Herbatech#2026aman')
             ->call('login')
             ->assertRedirect(route('dashboard'));
 
@@ -303,7 +303,7 @@ class SecurityTest extends TestCase
 
         Livewire::test(Login::class)
             ->set('email', 'pengguna@contoh.test')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Herbatech#2026aman')
             ->call('login')
             ->assertHasErrors('email');
 
