@@ -187,7 +187,6 @@ class AppSettings extends Component
     {
         $apiKeys = ApiKey::latest()->get();
         $logoPath = AppSetting::getValue('app_logo', '');
-        $faviconPath = AppSetting::getValue('app_favicon', '');
 
         // System info
         $systemInfo = [
@@ -209,7 +208,6 @@ class AppSettings extends Component
         return view('livewire.app-settings', [
             'apiKeys' => $apiKeys,
             'logoPath' => $logoPath,
-            'faviconPath' => $faviconPath,
             'systemInfo' => $systemInfo,
         ])->layout('layouts.app', ['title' => 'Setting Sistem']);
     }

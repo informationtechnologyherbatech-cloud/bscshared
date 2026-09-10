@@ -60,10 +60,7 @@
                                 @endif
                                 <div>
                                     <h5 class="mb-0" style="color: {{ $app_primary_color }}">{{ $app_name }} <small class="text-muted">{{ app_version() }}</small></h5>
-                                    <p class="mb-0 text-muted">{{ $company_name }}{{ $app_tagline ? ' · '.$app_tagline : '' }}</p>
-                                    @if($faviconPath)
-                                        <small>Favicon: <img src="{{ asset('storage/'.$faviconPath) }}" style="height:16px"> {{ $faviconPath }}</small>
-                                    @endif
+                                    <p class="mb-0 text-muted">{{ $company_name }}@if($app_tagline && $app_tagline !== $company_name) · {{ $app_tagline }}@endif</p>
                                 </div>
                                 <div class="ml-auto d-flex align-items-center">
                                     <span class="mr-2 small">Warna Primary:</span>
