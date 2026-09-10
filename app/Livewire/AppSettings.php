@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\AuthorizesWrites;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\Url;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Artisan;
 
 class AppSettings extends Component
 {
+    use AuthorizesWrites;
     use WithFileUploads;
 
     #[Url]
@@ -52,6 +54,43 @@ class AppSettings extends Component
     {
         $this->loadIdentity();
         $this->loadSecurity();
+        $this->activeTab = $this->firstAllowedTab($this->activeTab);
+    }
+
+    /** Izin yang dibutuhkan untuk membuka tiap tab. */
+    private function tabPermissions(): array
+    {
+        return [
+            'identity' => 'manage settings',
+            'security' => 'manage settings',
+            'api' => 'manage apikey',
+            'system' => 'view systeminfo',
+        ];
+    }
+
+    public function canOpenTab(string $tab): bool
+    {
+        $permission = $this->tabPermissions()[$tab] ?? null;
+
+        return $permission !== null && auth()->user()?->can($permission);
+    }
+
+    /**
+     * Tab yang diminta bila boleh dibuka; bila tidak, tab pertama yang boleh.
+     */
+    private function firstAllowedTab(string $requested): string
+    {
+        if ($this->canOpenTab($requested)) {
+            return $requested;
+        }
+
+        foreach (array_keys($this->tabPermissions()) as $tab) {
+            if ($this->canOpenTab($tab)) {
+                return $tab;
+            }
+        }
+
+        return $requested;
     }
 
     private function loadSecurity(): void
@@ -69,6 +108,10 @@ class AppSettings extends Component
      */
     public function saveSecurity()
     {
+        if ($this->lacksPermission('manage settings')) {
+            return;
+        }
+
         $recaptcha = app(Recaptcha::class);
         $secretTersimpan = $recaptcha->secretKey() !== null;
 
@@ -102,6 +145,10 @@ class AppSettings extends Component
     /** Hapus secret key yang tersimpan sekaligus mematikan reCAPTCHA. */
     public function clearRecaptchaSecret()
     {
+        if ($this->lacksPermission('manage settings')) {
+            return;
+        }
+
         AppSetting::setSecret(Recaptcha::SECRET_KEY, null);
         AppSetting::setValue(Recaptcha::ENABLED_KEY, '0');
 
@@ -136,11 +183,15 @@ class AppSettings extends Component
 
     public function switchTab($tab)
     {
-        $this->activeTab = $tab;
+        $this->activeTab = $this->firstAllowedTab((string) $tab);
     }
 
     public function saveIdentity()
     {
+        if ($this->lacksPermission('manage settings')) {
+            return;
+        }
+
         $this->validate([
             'app_name' => 'required|string|min:3|max:100',
             'app_tagline' => 'nullable|string|max:255',
@@ -207,6 +258,10 @@ class AppSettings extends Component
 
     public function resetIdentity()
     {
+        if ($this->lacksPermission('manage settings')) {
+            return;
+        }
+
         $defaults = [];
         foreach ($this->identityKeys() as $key) {
             $defaults[$key] = (string) config('entity.defaults.'.$key, '');
@@ -221,6 +276,10 @@ class AppSettings extends Component
 
     public function generateApiKey()
     {
+        if ($this->lacksPermission('manage apikey')) {
+            return;
+        }
+
         $this->validate(['newKeyName' => 'required|string|min:3|max:100']);
         $raw = 'bsc_live_' . Str::random(32);
         ApiKey::create([
@@ -238,6 +297,10 @@ class AppSettings extends Component
 
     public function toggleKey($id)
     {
+        if ($this->lacksPermission('manage apikey')) {
+            return;
+        }
+
         $k = ApiKey::findOrFail($id);
         $k->update(['is_active' => !$k->is_active]);
         session()->flash('message', 'Status kunci ' . $k->name . ' diubah!');
@@ -245,6 +308,10 @@ class AppSettings extends Component
 
     public function deleteKey($id)
     {
+        if ($this->lacksPermission('manage apikey')) {
+            return;
+        }
+
         $k = ApiKey::findOrFail($id);
         // Guard: at least one active key must remain
         if ($k->is_active && ApiKey::where('is_active', true)->count() <= 1) {

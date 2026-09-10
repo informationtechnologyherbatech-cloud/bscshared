@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Livewire\AppSettings;
 use App\Models\AppSetting;
+use App\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -12,6 +14,16 @@ use Tests\TestCase;
 class EntityIdentityTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** Halaman Setting Sistem kini menuntut izin, jadi tesnya harus login. */
+    private function actingAsSuperAdmin(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $this->actingAs(
+            User::where('email', 'superadmin@herbatech.co.id')->firstOrFail()
+        );
+    }
 
     public function test_app_version_helper_reads_application_config(): void
     {
@@ -54,6 +66,8 @@ class EntityIdentityTest extends TestCase
 
     public function test_settings_page_persists_the_entity_identity(): void
     {
+        $this->actingAsSuperAdmin();
+
         Livewire::test(AppSettings::class)
             ->set('entity_name', 'Nusantara Farma')
             ->set('company_name', 'PT Nusantara Farma Sejahtera')
@@ -74,6 +88,8 @@ class EntityIdentityTest extends TestCase
 
     public function test_settings_page_rejects_an_empty_company_name_and_an_invalid_contact(): void
     {
+        $this->actingAsSuperAdmin();
+
         Livewire::test(AppSettings::class)
             ->set('company_name', '')
             ->set('company_email', 'bukan-email')
@@ -83,6 +99,8 @@ class EntityIdentityTest extends TestCase
 
     public function test_settings_page_restores_the_configured_defaults(): void
     {
+        $this->actingAsSuperAdmin();
+
         AppSetting::setValue('company_name', 'PT Entitas Lain');
 
         Livewire::test(AppSettings::class)

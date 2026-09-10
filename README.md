@@ -121,11 +121,19 @@ Ketentuannya:
   *fail closed* — bila server Google tak terjangkau, login ditolak.
 - Token bersifat sekali pakai; widget digambar ulang otomatis setiap kegagalan.
 
-Bila terlanjur salah kunci dan tidak bisa masuk, matikan langsung dari basis data:
+Bila terlanjur salah kunci dan tidak seorang pun bisa masuk, matikan dari baris
+perintah:
 
-```sql
-UPDATE app_settings SET value = '0' WHERE `key` = 'recaptcha_enabled';
+```bash
+php artisan recaptcha status    # lihat kondisi saat ini
+php artisan recaptcha disable   # matikan reCAPTCHA
+php artisan recaptcha enable    # nyalakan lagi (butuh kedua kunci terisi)
 ```
+
+> Jangan mengubah tabel `app_settings` langsung lewat SQL: pengaturan dibaca
+> dari cache, sehingga perubahan tidak akan terlihat sampai cache dibersihkan.
+> Perintah di atas sudah membersihkan cache-nya. Bila terpaksa lewat SQL,
+> jalankan `php artisan cache:clear` sesudahnya.
 
 ### Perlindungan bawaan
 
@@ -152,8 +160,20 @@ Sebelum ke produksi: setel `APP_DEBUG=false`, `APP_ENV=production`,
 Enam peran (`Super Admin`, `Admin FAT`, `Admin HRIS`, `Kepala Departemen`,
 `Operator`, `Viewer`) didefinisikan di
 [`database/seeders/RolesAndPermissionsSeeder.php`](database/seeders/RolesAndPermissionsSeeder.php).
-Setiap rute dijaga middleware `permission:` dan menu sidebar hanya muncul sesuai
-izin peran. Pengguna non-aktif otomatis dikeluarkan oleh middleware `active`.
+Pengguna non-aktif otomatis dikeluarkan oleh middleware `active`.
+
+Pemeriksaan izin berlapis tiga:
+
+1. **Rute** — middleware `permission:` menentukan siapa boleh membuka halaman.
+2. **Aksi** — middleware rute hanya menjaga akses halaman, sedangkan aksi
+   Livewire dapat dipanggil siapa pun yang berhasil membuka halamannya. Karena
+   itu setiap aksi yang menulis data memeriksa izinnya sendiri lewat trait
+   [`AuthorizesWrites`](app/Livewire/Concerns/AuthorizesWrites.php) — mis.
+   `manage settings` untuk identitas & keamanan, `manage apikey` untuk kunci
+   API, `manage integration` untuk gerbang integrasi, dan `can_override` untuk
+   membuka/mengunci periode.
+3. **Tampilan** — tombol dan tab yang tidak berwenang disembunyikan dengan
+   `@can`, sehingga pengguna tidak menemukan tombol yang selalu ditolak.
 
 ---
 
@@ -170,10 +190,13 @@ pengaturan identitas entitas.
 
 ## Dokumen Terkait
 
-- `BUKU_PANDUAN_LENGKAP_SUPER_APPS_BSC_DAN_EKOSISTEM.md` — arsitektur & 12 modul
-- `DOKUMENTASI_INTEGRASI_HRIS_FINANCE_BSC.md` — blueprint integrasi HRIS/Finance
-- `PANDUAN_DOKUMENTASI_API_POSTMAN.md` — standar dokumentasi API
+Seluruh dokumen blueprint dikumpulkan di folder [`docs/`](docs/README.md):
+
+- [Buku Panduan Lengkap](docs/buku-panduan-lengkap.md) — arsitektur & 12 modul
+- [Dokumentasi Integrasi HRIS & Finance](docs/dokumentasi-integrasi-hris-finance.md) — blueprint integrasi
+- [Panduan Dokumentasi API & Postman](docs/panduan-dokumentasi-api-postman.md) — standar dokumentasi API
 
 > Catatan: ketiga dokumen di atas menjelaskan API Gateway 4-hop
 > (`/api/bsc/sync/*`) yang **belum diimplementasikan** pada basis kode ini.
 > Menu *Integrasi Sistem* dan *Staging Log* saat ini masih berupa simulasi lokal.
+> Rincian selisih rancangan vs kode ada di [docs/README.md](docs/README.md).

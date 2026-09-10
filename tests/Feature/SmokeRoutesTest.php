@@ -54,6 +54,111 @@ class SmokeRoutesTest extends TestCase
         $response->assertOk();
     }
 
+    /**
+     * Halaman yang boleh dibuka tiap peran non-Super-Admin. Menjaga agar blok
+     * izin yang menyembunyikan tombol tidak merusak tampilan bagi peran itu.
+     *
+     * @return array<string, array{0: string, 1: array<int, string>}>
+     */
+    public static function roleProvider(): array
+    {
+        return [
+            'Admin FAT' => ['Admin FAT', [
+                'dashboard', 'financial-ratios', 'department-objectives', 'bsc-wiring',
+                'action-plans', 'system-integration', 'staging-logs', 'settings',
+            ]],
+            'Admin HRIS' => ['Admin HRIS', [
+                'dashboard', 'department-objectives', 'bsc-wiring', 'action-plans',
+                'system-integration', 'staging-logs',
+            ]],
+            'Kepala Departemen' => ['Kepala Departemen', [
+                'dashboard', 'financial-ratios', 'department-objectives', 'bsc-wiring',
+                'action-plans', 'staging-logs',
+            ]],
+            'Operator' => ['Operator', [
+                'dashboard', 'department-objectives', 'bsc-wiring', 'action-plans',
+            ]],
+            'Viewer' => ['Viewer', [
+                'dashboard', 'financial-ratios', 'department-objectives', 'bsc-wiring',
+                'staging-logs',
+            ]],
+        ];
+    }
+
+    /**
+     * @param  array<int, string>  $routeNames
+     */
+    #[DataProvider('roleProvider')]
+    public function test_each_role_can_open_its_own_menus(string $role, array $routeNames): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $user = User::create([
+            'name' => 'Pengguna '.$role,
+            'email' => str($role)->slug().'@contoh.test',
+            'password' => bcrypt('rahasia123'),
+            'is_active' => true,
+        ]);
+        $user->assignRole($role);
+
+        foreach ($routeNames as $routeName) {
+            $this->actingAs($user)
+                ->get(route($routeName))
+                ->assertOk("Peran {$role} seharusnya dapat membuka rute {$routeName}.");
+        }
+    }
+
+    public function test_a_viewer_is_blocked_from_pages_outside_its_role(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $viewer = User::create([
+            'name' => 'Pengguna Viewer',
+            'email' => 'viewer-terbatas@contoh.test',
+            'password' => bcrypt('rahasia123'),
+            'is_active' => true,
+        ]);
+        $viewer->assignRole('Viewer');
+
+        foreach (['manage-users', 'settings'] as $routeName) {
+            $this->actingAs($viewer)
+                ->get(route($routeName))
+                ->assertForbidden();
+        }
+
+        // Viewer memegang "view gateway", jadi halaman integrasi memang boleh
+        // dibuka — tetapi hanya untuk dipantau, tanpa tombol yang menulis data.
+        $this->actingAs($viewer)
+            ->get(route('system-integration'))
+            ->assertOk()
+            ->assertDontSee('Terima &amp; Sinkronkan Data Finance ERP', false)
+            ->assertDontSee('Uji Coba Kirim API Payload Inbound', false);
+
+        $this->actingAs($viewer)
+            ->get(route('staging-logs'))
+            ->assertOk()
+            ->assertDontSee('Kirim Payload Simulasi', false);
+    }
+
+    public function test_a_viewer_does_not_see_period_controls_on_the_dashboard(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $viewer = User::create([
+            'name' => 'Pengguna Viewer',
+            'email' => 'viewer-dashboard@contoh.test',
+            'password' => bcrypt('rahasia123'),
+            'is_active' => true,
+        ]);
+        $viewer->assignRole('Viewer');
+
+        $this->actingAs($viewer)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('Periode Baru', false)
+            ->assertDontSee('Kunci Periode', false);
+    }
+
     public function test_the_sidebar_shows_the_uploaded_entity_logo(): void
     {
         $user = $this->superAdmin();

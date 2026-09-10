@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AppSetting;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -46,6 +47,10 @@ return new class extends Migration
                 'updated_at' => $now,
             ]);
         }
+
+        // Baris disisipkan lewat query builder, jadi model tidak sempat
+        // membersihkan cache pengaturan sendiri.
+        AppSetting::flushCache();
     }
 
     public function down(): void
@@ -60,5 +65,7 @@ return new class extends Migration
                 'company_website',
             ])
             ->delete();
+
+        AppSetting::flushCache();
     }
 };

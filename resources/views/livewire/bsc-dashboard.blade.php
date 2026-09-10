@@ -133,18 +133,22 @@
                         <span class="mr-2 badge {{ $isClosed ? 'badge-secondary' : 'badge-success' }} p-2">
                             <i class="fas {{ $isClosed ? 'fa-lock' : 'fa-lock-open' }} mr-1"></i> {{ $isClosed ? 'CLOSED (Terkunci)' : 'OPEN (Aktif)' }}
                         </span>
+                        @can('can_override')
                         <button wire:click="togglePeriodStatus" class="btn btn-xs {{ $isClosed ? 'btn-outline-success' : 'btn-outline-secondary' }} mr-3" title="Kunci / Buka Periode">
                             {{ $isClosed ? 'Buka Periode' : 'Kunci Periode' }}
                         </button>
+                        @endcan
                         <label for="periodSelect" class="mr-2 font-weight-bold">Periode:</label>
                         <select wire:model.live="selectedPeriod" id="periodSelect" class="form-control form-control-sm border-teal mr-2">
                             @foreach($periods as $p)
                                 <option value="{{ $p }}">{{ $p }}</option>
                             @endforeach
                         </select>
+                        @can('can_override')
                         <button wire:click="$set('showCreatePeriodModal', true)" class="btn btn-teal btn-sm">
                             <i class="fas fa-plus-circle mr-1"></i> Periode Baru
                         </button>
+                        @endcan
                     </div>
                 </div>
             </div>

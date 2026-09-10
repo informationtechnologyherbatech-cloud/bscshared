@@ -40,6 +40,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view integration',     // 12 Gateway
             'view staging',         // 12 Staging
             'view gateway',         // 12 alias umbrella
+            'manage integration',   // 12 write: terima payload, simulasi inbound, unggah CSV
             // FR-13 Admin
             'manage users',         // can_manage_users
             'manage settings',
@@ -68,7 +69,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'view actionplans','manage actionplans',
                 'view ibp','view sensitivity','view skenario','manage skenario',
                 'view dokumentasi',
-                'view integration','view staging','view gateway','manage apikey',
+                'view integration','view staging','view gateway','manage integration','manage apikey',
             ],
             // 9/13 — Kelola Sasaran Mutu, pantau capaian, tindak lanjut program kerja (HRIS & Mutu)
             'Admin HRIS' => [
@@ -76,7 +77,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'view objectives','manage objectives','can_write_kpi',
                 'view wiring',
                 'view actionplans','manage actionplans',
-                'view staging','view gateway','view integration',
+                'view staging','view gateway','view integration','manage integration',
                 'view dokumentasi','view ibp',
             ],
             // 8/13 — Pantau skor unitnya, input realisasi KPI timnya, uji dampak

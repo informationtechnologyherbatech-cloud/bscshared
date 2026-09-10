@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\AuthorizesWrites;
 use Livewire\Component;
 use Livewire\Attributes\Url;
 use App\Models\Period;
@@ -12,6 +13,8 @@ use Carbon\Carbon;
 
 class BscDashboard extends Component
 {
+    use AuthorizesWrites;
+
     #[Url]
     public $selectedPeriod = '2026-08';
 
@@ -55,6 +58,10 @@ class BscDashboard extends Component
 
     public function togglePeriodStatus()
     {
+        if ($this->lacksPermission('can_override')) {
+            return;
+        }
+
         $period = Period::where('period', $this->selectedPeriod)->first();
         if ($period) {
             $newStatus = $period->status === 'OPEN' ? 'CLOSED' : 'OPEN';
@@ -65,6 +72,10 @@ class BscDashboard extends Component
 
     public function createNewPeriod()
     {
+        if ($this->lacksPermission('can_override')) {
+            return;
+        }
+
         $this->validate([
             'newPeriodInput' => 'required|regex:/^\d{4}-\d{2}$/',
         ], [

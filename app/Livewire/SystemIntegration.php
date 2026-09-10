@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\AuthorizesWrites;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\StagingLog;
@@ -11,6 +12,7 @@ use Illuminate\Support\Str;
 
 class SystemIntegration extends Component
 {
+    use AuthorizesWrites;
     use WithFileUploads;
 
     public $apiKey = 'bsc_live_secret_key_2026_hop4';
@@ -37,12 +39,20 @@ class SystemIntegration extends Component
 
     public function generateApiKey()
     {
+        if ($this->lacksPermission('manage apikey')) {
+            return;
+        }
+
         $this->apiKey = 'bsc_live_' . Str::random(24);
         session()->flash('message', 'Kunci API Gateway baru berhasil diderivasi!');
     }
 
     public function processManualPayload()
     {
+        if ($this->lacksPermission('manage integration')) {
+            return;
+        }
+
         $idempotencyKey = 'IDEMP-' . strtoupper($this->deptPayload) . '-' . date('Ymd-His');
 
         // Update or Create Department Objective
@@ -78,6 +88,10 @@ class SystemIntegration extends Component
 
     public function processFinancePayload()
     {
+        if ($this->lacksPermission('manage integration')) {
+            return;
+        }
+
         $idempotencyKey = 'IDEMP-FIN-COA-' . date('Ymd-His');
 
         // Hitung Kinerja Finance dari Transaksi CoA yang Diterima
@@ -130,6 +144,10 @@ class SystemIntegration extends Component
 
     public function uploadCsv()
     {
+        if ($this->lacksPermission('manage integration')) {
+            return;
+        }
+
         $this->validate([
             'csvFile' => 'required|file|mimes:csv,txt,xlsx|max:2048',
         ]);

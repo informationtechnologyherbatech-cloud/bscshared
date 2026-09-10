@@ -31,26 +31,34 @@
             <div class="card card-primary card-outline card-tabs">
                 <div class="card-header p-0 pt-1 border-bottom-0">
                     <ul class="nav nav-tabs" role="tablist">
+                        @can('manage settings')
                         <li class="nav-item">
                             <a wire:click="switchTab('identity')" class="nav-link {{ $activeTab==='identity' ? 'active' : '' }}" href="#" role="tab">
                                 <i class="fas fa-id-card mr-1"></i> Identitas Aplikasi
                             </a>
                         </li>
+                        @endcan
+                        @can('manage settings')
                         <li class="nav-item">
                             <a wire:click="switchTab('security')" class="nav-link {{ $activeTab==='security' ? 'active' : '' }}" href="#" role="tab">
                                 <i class="fas fa-shield-alt mr-1"></i> Keamanan
                             </a>
                         </li>
+                        @endcan
+                        @can('manage apikey')
                         <li class="nav-item">
                             <a wire:click="switchTab('api')" class="nav-link {{ $activeTab==='api' ? 'active' : '' }}" href="#" role="tab">
                                 <i class="fas fa-key mr-1"></i> Kunci API Gateway
                             </a>
                         </li>
+                        @endcan
+                        @can('view systeminfo')
                         <li class="nav-item">
                             <a wire:click="switchTab('system')" class="nav-link {{ $activeTab==='system' ? 'active' : '' }}" href="#" role="tab">
                                 <i class="fas fa-server mr-1"></i> Informasi Sistem
                             </a>
                         </li>
+                        @endcan
                     </ul>
                 </div>
                 <div class="card-body">
@@ -183,8 +191,10 @@
                         </div>
 
                         <div class="text-right">
+                            @can('manage settings')
                             <button wire:click="resetIdentity" class="btn btn-secondary mr-2"><i class="fas fa-undo mr-1"></i> Reset Default</button>
                             <button wire:click="saveIdentity" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
+                            @endcan
                         </div>
 
                     @elseif($activeTab === 'security')
@@ -212,8 +222,8 @@
                                     <div class="alert alert-warning py-2">
                                         <i class="fas fa-exclamation-triangle mr-1"></i>
                                         Pastikan kedua kunci benar sebelum keluar dari sesi ini. Kunci yang salah membuat
-                                        semua orang gagal login. Bila itu terjadi, matikan lewat baris
-                                        <code>{{ "UPDATE app_settings SET value='0' WHERE `key`='recaptcha_enabled';" }}</code>
+                                        semua orang gagal login. Bila itu terjadi, matikan lewat baris perintah di server:
+                                        <code>php artisan recaptcha disable</code>
                                     </div>
                                 @endif
 

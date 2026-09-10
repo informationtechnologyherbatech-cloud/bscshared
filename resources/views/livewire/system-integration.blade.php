@@ -166,9 +166,11 @@
                                 </div>
                             </div>
                             <div class="text-right">
+                                @can('manage integration')
                                 <button type="submit" class="btn btn-success btn-sm font-weight-bold px-4">
                                     <i class="fas fa-sync-alt mr-1"></i> Terima & Sinkronkan Data Finance ERP
                                 </button>
+                                @endcan
                             </div>
                         </div>
                     </form>
@@ -237,9 +239,11 @@
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control font-weight-bold bg-light" value="{{ $apiKey }}" readonly>
                                     <div class="input-group-append">
+                                        @can('manage apikey')
                                         <button wire:click="generateApiKey" class="btn btn-warning">
                                             <i class="fas fa-sync-alt"></i> Regenerate
                                         </button>
+                                        @endcan
                                     </div>
                                 </div>
                             </div>
@@ -269,9 +273,11 @@
                                     <input type="file" wire:model="csvFile" class="form-control-file border p-1 rounded">
                                     @error('csvFile') <small class="text-danger d-block mt-1">{{ $message }}</small> @enderror
                                 </div>
+                                @can('manage integration')
                                 <button type="submit" class="btn btn-success btn-sm btn-block">
                                     <i class="fas fa-upload mr-1"></i> Unggah & Proses Data Project
                                 </button>
+                                @endcan
                             </form>
                         </div>
                     </div>
@@ -311,9 +317,11 @@
                                     <label>Tautan URL Bukti Evidensi (S3 / Cloud PDF)</label>
                                     <input type="url" wire:model="evidenceUrlPayload" class="form-control form-control-sm">
                                 </div>
+                                @can('manage integration')
                                 <button type="submit" class="btn btn-primary btn-sm btn-block">
                                     <i class="fas fa-paper-plane mr-1"></i> Uji Coba Kirim API Payload Inbound
                                 </button>
+                                @endcan
                             </form>
                         </div>
                     </div>

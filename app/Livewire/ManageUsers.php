@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\AuthorizesWrites;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\User;
@@ -11,6 +12,7 @@ use Illuminate\Validation\Rule;
 
 class ManageUsers extends Component
 {
+    use AuthorizesWrites;
     use WithPagination;
 
     public $search = '';
@@ -90,6 +92,10 @@ class ManageUsers extends Component
 
     public function saveUser()
     {
+        if ($this->lacksPermission('manage users', 'can_manage_users')) {
+            return;
+        }
+
         $this->validate();
 
         // Guard: last Super Admin cannot be deactivated via edit
@@ -153,6 +159,10 @@ class ManageUsers extends Component
 
     public function deleteUser()
     {
+        if ($this->lacksPermission('manage users', 'can_manage_users')) {
+            return;
+        }
+
         if (!$this->confirmDeleteId) return;
         $user = User::findOrFail($this->confirmDeleteId);
 
@@ -170,6 +180,10 @@ class ManageUsers extends Component
 
     public function toggleActive($id)
     {
+        if ($this->lacksPermission('manage users', 'can_manage_users')) {
+            return;
+        }
+
         $user = User::findOrFail($id);
         if (!$user->is_active) {
             $user->update(['is_active' => true]);

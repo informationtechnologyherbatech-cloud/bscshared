@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AppSetting;
+use App\Support\Recaptcha;
 use Illuminate\Support\Facades\Storage;
 
 if (! function_exists('app_version')) {
@@ -115,9 +116,9 @@ if (! function_exists('entity_favicon')) {
 
 if (! function_exists('recaptcha')) {
     /** Layanan Google reCAPTCHA (lihat App\Support\Recaptcha). */
-    function recaptcha(): \App\Support\Recaptcha
+    function recaptcha(): Recaptcha
     {
-        return app(\App\Support\Recaptcha::class);
+        return app(Recaptcha::class);
     }
 }
 

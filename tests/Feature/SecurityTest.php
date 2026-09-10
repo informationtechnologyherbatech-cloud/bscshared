@@ -7,6 +7,7 @@ use App\Livewire\Auth\Login;
 use App\Models\AppSetting;
 use App\Models\User;
 use App\Support\Recaptcha;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -18,6 +19,16 @@ use Tests\TestCase;
 class SecurityTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** Halaman Setting Sistem kini menuntut izin, jadi tesnya harus login. */
+    private function actingAsSuperAdmin(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $this->actingAs(
+            User::where('email', 'superadmin@herbatech.co.id')->firstOrFail()
+        );
+    }
 
     protected function setUp(): void
     {
@@ -174,7 +185,12 @@ class SecurityTest extends TestCase
 
         $this->get(route('login'))
             ->assertSee('recaptcha/api.js', false)
-            ->assertSee('site-key-uji', false);
+            ->assertSee('site-key-uji', false)
+            // Widget dan jembatan ke properti Livewire ikut ter-render.
+            ->assertSee('class="g-recaptcha"', false)
+            ->assertSee('data-callback="bscRecaptchaSolved"', false)
+            ->assertSee('bscRecaptchaSolved = (token)', false)
+            ->assertSee('recaptcha-reset', false);
     }
 
     public function test_the_secret_key_is_encrypted_at_rest_and_never_rendered(): void
@@ -191,6 +207,8 @@ class SecurityTest extends TestCase
 
     public function test_settings_page_keeps_the_stored_secret_when_the_field_is_left_blank(): void
     {
+        $this->actingAsSuperAdmin();
+
         $this->enableRecaptcha();
 
         Livewire::test(AppSettings::class)
@@ -206,6 +224,8 @@ class SecurityTest extends TestCase
 
     public function test_settings_page_requires_both_keys_before_recaptcha_can_be_switched_on(): void
     {
+        $this->actingAsSuperAdmin();
+
         Livewire::test(AppSettings::class)
             ->set('recaptcha_enabled', true)
             ->set('recaptcha_site_key', '')
@@ -218,6 +238,8 @@ class SecurityTest extends TestCase
 
     public function test_an_svg_logo_is_rejected_because_it_can_carry_a_script(): void
     {
+        $this->actingAsSuperAdmin();
+
         Storage::fake('public');
 
         Livewire::test(AppSettings::class)
@@ -244,6 +266,8 @@ class SecurityTest extends TestCase
 
     public function test_a_javascript_url_is_rejected_for_the_company_website(): void
     {
+        $this->actingAsSuperAdmin();
+
         Livewire::test(AppSettings::class)
             ->set('company_website', 'javascript://kosong%0aalert(document.cookie)')
             ->call('saveIdentity')
