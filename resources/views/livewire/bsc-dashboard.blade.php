@@ -148,69 +148,80 @@
 
         /*
          * PIRAMIDA DI LAYAR SEMPIT
-         * Segitiga clip-path ikut menyempit mengikuti lebar layar, sedangkan teksnya tidak —
-         * di ponsel label tingkat 2 sampai 4 terpotong. Di bawah 768px bentuk segitiga dilepas
-         * dan tiap tingkat menjadi balok bertumpuk: warna, urutan, skor, dan sifat
-         * klik-untuk-telusur tetap sama, tetapi seluruh teksnya terbaca utuh.
+         * Bentuk piramida dipertahankan pada semua ukuran layar. Yang menyesuaikan diri adalah
+         * isinya, karena ruang di dalam segitiga menyempit sebanding dengan lebar layar.
+         *
+         * Pada piramida selebar 420px, lebar yang tersedia di baris judul tiap tingkat adalah:
+         * T1 24px · T2 129px · T3 234px · T4 339px. Karena itu di bawah 768px:
+         *   - judul memakai label pendek (lihat markup: span .d-md-none),
+         *   - subjudul disembunyikan — keterangannya diulang pada tabel telusur di bawah piramida,
+         *   - tingkat 1 hanya menampilkan skornya; judulnya mustahil muat pada 24px.
+         *
+         * Lebar piramida ditahan minimal 420px di dalam wadah yang dapat digeser mendatar,
+         * sehingga pada layar yang lebih sempit isinya tergeser, bukan terpotong.
          */
         @media (max-width: 767.98px) {
+            /* Hanya di lebar ini; di desktop wadah dibiarkan apa adanya supaya bayangan
+               dan efek perbesar saat hover tidak terpotong. */
+            .pyramid-scroll {
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+            }
+
             .pyramid-wrapper {
-                height: auto;
-                max-width: 100%;
-                padding: 0;
+                min-width: 420px;
+                height: 360px;
+                padding: 4px 0;
+                margin-bottom: 8px;
             }
 
             .pyramid-tier {
-                clip-path: none;
-                height: auto;
-                min-height: 62px;
-                padding: 12px 14px;
-                margin-bottom: 8px;
-                border-radius: 10px;
+                height: 84px;
+                margin-bottom: 2px;
             }
 
-            /* Efek perbesar menimbulkan geseran mendatar pada layar sempit. */
+            /* Efek perbesar memicu geseran mendatar yang tidak diinginkan. */
             .pyramid-tier:hover,
             .pyramid-tier.active-tier {
                 transform: none;
             }
 
-            .tier-content,
-            .tier-1 .tier-content {
-                padding: 0;
-                margin-top: 0;
-                max-width: none;
-                width: 100%;
+            .tier-content {
+                padding: 2px 6px;
             }
 
-            .tier-title,
-            .tier-1 .tier-title {
-                font-size: 12px;
-                letter-spacing: 0.3px;
+            .tier-title {
+                font-size: 9px;
+                letter-spacing: 0;
+                line-height: 1.25;
             }
 
-            .tier-score,
-            .tier-1 .tier-score {
-                font-size: 22px;
+            .tier-score {
+                font-size: 17px;
             }
 
+            /* Terlalu panjang untuk lebar segitiga di sini; sudah ada di tabel telusur. */
             .tier-subtitle {
-                font-size: 10px;
-                line-height: 1.35;
+                display: none;
+            }
+
+            .tier-1 .tier-content {
+                margin-top: 20px;
+                max-width: 80px;
+            }
+
+            .tier-1 .tier-title {
+                display: none;
+            }
+
+            .tier-1 .tier-score {
+                font-size: 15px;
             }
 
             .click-hint-badge {
-                position: static;
-                transform: none;
-                display: inline-flex;
-                margin-top: 8px;
-            }
-        }
-
-        @media (max-width: 400px) {
-            .tier-score,
-            .tier-1 .tier-score {
-                font-size: 20px;
+                font-size: 8px;
+                padding: 2px 6px;
             }
         }
     </style>
@@ -332,6 +343,7 @@
                 </div>
                 <div class="card-body bg-light position-relative p-4">
 
+                    <div class="pyramid-scroll">
                     <div class="pyramid-wrapper">
 
                         <!-- TINGKAT 1: APEX KEUANGAN (PUNCAK SEGITIGA SEMPURNA 50% 0%) -->
@@ -348,7 +360,10 @@
                         <!-- TINGKAT 2: RASIO KEUANGAN (MID-TOP TRAPEZOID 37.5% - 62.5% TO 25% - 75%) -->
                         <div class="pyramid-tier tier-2 {{ $activeLevel === 2 ? 'active-tier' : '' }}" wire:click="selectLevel(2)">
                             <div class="tier-content">
-                                <div class="tier-title"><i class="fas fa-chart-line text-white mr-1"></i> Tingkat 2: Rasio Keuangan</div>
+                                <div class="tier-title"><i class="fas fa-chart-line text-white mr-1"></i>
+                                    <span class="d-none d-md-inline">Tingkat 2: Rasio Keuangan</span>
+                                    <span class="d-md-none">T2: Rasio Keuangan</span>
+                                </div>
                                 <div class="tier-score">{{ number_format($avgRatioScore, 1) }}%</div>
                                 <div class="tier-subtitle">{{ $ratioCount }} Rasio Keuangan <br> (Likuiditas, Solvabilitas, Aktivitas, Profitabilitas, Produktivitas)</div>
                             </div>
@@ -360,7 +375,10 @@
                         <!-- TINGKAT 3: OBJECTIVE DEPARTEMEN (MID-BOTTOM TRAPEZOID 25% - 75% TO 12.5% - 87.5%) -->
                         <div class="pyramid-tier tier-3 {{ $activeLevel === 3 ? 'active-tier' : '' }}" wire:click="selectLevel(3)">
                             <div class="tier-content">
-                                <div class="tier-title"><i class="fas fa-bullseye text-white mr-1"></i> Tingkat 3: Objective Dept</div>
+                                <div class="tier-title"><i class="fas fa-bullseye text-white mr-1"></i>
+                                    <span class="d-none d-md-inline">Tingkat 3: Objective Dept</span>
+                                    <span class="d-md-none">T3: Objective</span>
+                                </div>
                                 <div class="tier-score">{{ number_format($avgObjScore, 1) }}%</div>
                                 <div class="tier-subtitle">{{ $counts['total_kpi'] }} Sasaran Mutu Operasional Departemen</div>
                             </div>
@@ -372,7 +390,10 @@
                         <!-- TINGKAT 4: PROGRAM KERJA / ACTION PLANS (BASE TRAPEZOID 12.5% - 87.5% TO 0% - 100%) -->
                         <div class="pyramid-tier tier-4 {{ $activeLevel === 4 ? 'active-tier' : '' }}" wire:click="selectLevel(4)">
                             <div class="tier-content">
-                                <div class="tier-title"><i class="fas fa-tasks text-white mr-1"></i> Tingkat 4: Program Kerja (Action Plans)</div>
+                                <div class="tier-title"><i class="fas fa-tasks text-white mr-1"></i>
+                                    <span class="d-none d-md-inline">Tingkat 4: Program Kerja (Action Plans)</span>
+                                    <span class="d-md-none">T4: Program Kerja</span>
+                                </div>
                                 <div class="tier-score">{{ number_format($avgActionProgress, 1) }}%</div>
                                 <div class="tier-subtitle">Inisiatif Mitigasi Perbaikan & Program Eksekusi</div>
                             </div>
@@ -382,6 +403,7 @@
                         </div>
 
                     </div>
+                    </div>{{-- /.pyramid-scroll --}}
 
                     <!-- Visual Arrow Pointer for Active Drill-Down -->
                     <div class="text-center mt-2">

@@ -123,6 +123,26 @@ class BscDashboardScoringTest extends TestCase
         $this->assertStringContainsString('44% Sasaran Mutu', $html);
     }
 
+    public function test_the_pyramid_keeps_its_shape_and_offers_short_labels_for_narrow_screens(): void
+    {
+        $this->period();
+        $this->ratio('2026-08', 90);
+
+        $html = Livewire::test(BscDashboard::class)->html();
+
+        // Bentuk segitiga dipertahankan di semua ukuran layar.
+        $this->assertStringContainsString('clip-path: polygon(50% 0%, 62.5% 100%, 37.5% 100%)', $html);
+        $this->assertStringNotContainsString('clip-path: none', $html);
+
+        // Label panjang untuk layar lebar, label pendek untuk layar sempit.
+        $this->assertStringContainsString('Tingkat 2: Rasio Keuangan', $html);
+        $this->assertStringContainsString('T2: Rasio Keuangan', $html);
+        $this->assertStringContainsString('T4: Program Kerja', $html);
+
+        // Piramida dibungkus wadah yang dapat digeser, supaya tidak terpotong.
+        $this->assertStringContainsString('pyramid-scroll', $html);
+    }
+
     public function test_the_pyramid_labels_are_not_hardcoded_numbers(): void
     {
         $this->period();
