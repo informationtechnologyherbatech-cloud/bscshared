@@ -6,6 +6,7 @@ use App\Livewire\Concerns\AuthorizesWrites;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\User;
+use App\Support\PasswordPolicy;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -43,11 +44,15 @@ class ManageUsers extends Component
             'dept_code' => 'nullable|string|max:30',
             'is_active' => 'boolean',
         ];
-        if (!$this->isEdit) {
-            $rules['password'] = 'required|string|min:6|max:255';
-        } else {
-            $rules['password'] = 'nullable|string|min:6|max:255';
-        }
+        // Kata sandi lama tidak dipaksa berubah, tetapi setiap kali diisi harus
+        // memenuhi syarat kekuatan pada config/security.php.
+        $rules['password'] = [
+            $this->isEdit ? 'nullable' : 'required',
+            'string',
+            'max:255',
+            PasswordPolicy::rule(),
+        ];
+
         return $rules;
     }
 
@@ -236,6 +241,8 @@ class ManageUsers extends Component
         $roles = Role::pluck('name')->toArray();
 
         return view('livewire.manage-users', [
+            'passwordChecklist' => PasswordPolicy::checklist(),
+            'passwordHint' => PasswordPolicy::hint(),
             'users' => $users,
             'roles' => $roles,
         ])->layout('layouts.app', ['title' => 'Manage User']);

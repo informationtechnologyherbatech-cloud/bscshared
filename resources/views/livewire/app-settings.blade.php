@@ -298,6 +298,14 @@
                                             <td class="text-muted">Hanya PNG/JPG/WEBP/ICO. SVG ditolak karena dapat memuat skrip.</td>
                                         </tr>
                                         <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Kata sandi</td>
+                                            <td class="text-muted">{{ \App\Support\PasswordPolicy::hint() }} Di-hash bcrypt.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Otorisasi aksi</td>
+                                            <td class="text-muted">Setiap aksi yang menulis data memeriksa izin perannya sendiri, bukan hanya akses halaman.</td>
+                                        </tr>
+                                        <tr>
                                             <td><i class="fas fa-check-circle text-success mr-1"></i> Sesi</td>
                                             <td class="text-muted">
                                                 ID sesi diperbarui setiap login, cookie HttpOnly,

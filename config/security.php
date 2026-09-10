@@ -35,6 +35,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Syarat Kata Sandi
+    |--------------------------------------------------------------------------
+    |
+    | Berlaku saat membuat pengguna baru atau mengganti kata sandi pengguna
+    | yang sudah ada (lihat App\Support\PasswordPolicy). Kata sandi lama tidak
+    | dipaksa berubah, tetapi setiap kali diubah harus memenuhi syarat ini.
+    |
+    | 'uncompromised' memeriksa kata sandi ke basis data kebocoran publik
+    | (haveibeenpwned) lewat jaringan; matikan bila server tidak punya akses
+    | internet.
+    |
+    */
+
+    'password' => [
+        'min_length' => (int) env('PASSWORD_MIN_LENGTH', 10),
+        'mixed_case' => true,
+        'numbers' => true,
+        'symbols' => true,
+        'uncompromised' => (bool) env('PASSWORD_CHECK_LEAKED', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | HTTP Strict Transport Security
     |--------------------------------------------------------------------------
     |

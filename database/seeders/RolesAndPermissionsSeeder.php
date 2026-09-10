@@ -108,12 +108,15 @@ class RolesAndPermissionsSeeder extends Seeder
             $role->syncPermissions($perms);
         }
 
-        // Ensure Super Admin user exists
+        // Ensure Super Admin user exists.
+        // Kata sandi awal diambil dari SUPERADMIN_PASSWORD agar instalasi baru
+        // tidak memakai kata sandi yang mudah ditebak. Akun yang sudah ada
+        // tidak diubah (firstOrCreate).
         $superAdmin = User::firstOrCreate(
-            ['email' => 'superadmin@herbatech.co.id'],
+            ['email' => env('SUPERADMIN_EMAIL') ?: 'superadmin@herbatech.co.id'],
             [
                 'name' => 'Super Admin',
-                'password' => bcrypt('password'),
+                'password' => bcrypt(env('SUPERADMIN_PASSWORD') ?: 'Bsc#Admin2026'),
                 'is_active' => true,
             ]
         );

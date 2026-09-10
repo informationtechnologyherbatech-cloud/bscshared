@@ -43,11 +43,21 @@
                     @error('email') <span class="invalid-feedback d-block" style="font-size:12px;">{{ $message }}</span> @enderror
                 </div>
 
-                <div class="form-group mb-3">
+                <div class="form-group mb-3" x-data="{ show: false }">
                     <label class="form-label-premium">Password <span style="color:var(--c-error)">*</span></label>
                     <div class="input-group">
                         <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-lock"></i></span></div>
-                        <input type="password" wire:model="password" class="form-control @error('password') is-invalid @enderror" placeholder="••••••••" autocomplete="current-password">
+                        <input :type="show ? 'text' : 'password'" wire:model="password" class="form-control @error('password') is-invalid @enderror" placeholder="••••••••" autocomplete="current-password">
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-outline-secondary"
+                                    @click="show = ! show"
+                                    :title="show ? 'Sembunyikan password' : 'Tampilkan password'"
+                                    :aria-label="show ? 'Sembunyikan password' : 'Tampilkan password'"
+                                    :aria-pressed="show ? 'true' : 'false'"
+                                    tabindex="-1">
+                                <i class="fas" :class="show ? 'fa-eye-slash' : 'fa-eye'"></i>
+                            </button>
+                        </div>
                     </div>
                     @error('password') <span class="invalid-feedback d-block" style="font-size:12px;">{{ $message }}</span> @enderror
                 </div>

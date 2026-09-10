@@ -42,8 +42,10 @@ npm install && npm run build
 php artisan serve
 ```
 
-Akun awal hasil seeder: `superadmin@herbatech.co.id` / `password`
-(segera ganti pada menu *Manajemen Pengguna*).
+Akun awal hasil seeder: `superadmin@herbatech.co.id` / `Bsc#Admin2026`
+— **segera ganti** pada menu *Manajemen Pengguna*. Keduanya dapat ditentukan
+sendiri lewat `SUPERADMIN_EMAIL` dan `SUPERADMIN_PASSWORD` di `.env` sebelum
+seeder dijalankan. Instalasi yang sudah ada tidak diubah oleh seeder.
 
 ---
 
@@ -135,6 +137,28 @@ php artisan recaptcha enable    # nyalakan lagi (butuh kedua kunci terisi)
 > Perintah di atas sudah membersihkan cache-nya. Bila terpaksa lewat SQL,
 > jalankan `php artisan cache:clear` sesudahnya.
 
+### Kata sandi
+
+Setiap kata sandi baru — saat menambah pengguna maupun menggantinya pada
+pengguna yang sudah ada — wajib memenuhi syarat berikut:
+
+- minimal **10 karakter** (`PASSWORD_MIN_LENGTH`),
+- mengandung **huruf besar** dan **huruf kecil**,
+- mengandung **angka**,
+- mengandung **karakter khusus** (`!@#$%` dan sejenisnya).
+
+Syaratnya terpusat di [`App\Support\PasswordPolicy`](app/Support/PasswordPolicy.php)
+dan diatur lewat `config/security.php`, sehingga aturan yang divalidasi selalu
+sama dengan daftar syarat yang ditampilkan di layar. Panjang minimum tidak
+pernah bisa turun di bawah 8 karakter, sekalipun konfigurasinya diisi lebih
+kecil. Aktifkan `PASSWORD_CHECK_LEAKED=true` bila server punya akses internet —
+kata sandi akan diperiksa ke basis data kebocoran publik (haveibeenpwned).
+
+Kata sandi lama tidak dipaksa berubah; aturan baru hanya berlaku ketika kata
+sandi diisi. Pada formulir pengguna, syarat tampil sebagai daftar periksa yang
+tercentang saat terpenuhi, dan tersedia tombol **tampilkan/sembunyikan** kata
+sandi — juga pada halaman login.
+
 ### Perlindungan bawaan
 
 | Lapisan | Penerapan |
@@ -144,6 +168,7 @@ php artisan recaptcha enable    # nyalakan lagi (butuh kedua kunci terisi)
 | XSS | Seluruh keluaran Blade memakai `{{ }}` yang otomatis di-escape; tidak ada `{!! !!}` di seluruh tampilan |
 | Unggahan berkas | Hanya PNG/JPG/WEBP (logo) dan PNG/WEBP/ICO (favicon), divalidasi ekstensi **dan** MIME. **SVG ditolak** karena dapat memuat `<script>` dan menjadi stored XSS saat dibuka dari `/storage` |
 | URL dari pengguna | `company_website` divalidasi `url:http,https`, menutup `javascript:` yang lolos validasi URL biasa |
+| Kata sandi | Minimal 10 karakter dengan huruf besar, huruf kecil, angka, dan karakter khusus; di-hash bcrypt (12 putaran) |
 | Brute force | 5 percobaan gagal per kombinasi email + IP, jeda 60 detik (`RateLimiter`) |
 | Open redirect | Tujuan setelah login ditolak bila host-nya bukan host aplikasi |
 | Sesi | ID sesi diperbarui setiap login, cookie `HttpOnly`, `SameSite=lax`, serialisasi JSON; akun non-aktif langsung dikeluarkan |

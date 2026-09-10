@@ -142,10 +142,41 @@
                         <input type="email" wire:model="email" class="form-control @error('email') is-invalid @enderror">
                         @error('email') <span class="invalid-feedback">{{ $message }}</span> @enderror
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" x-data="{ show: false, nilai: '' }">
                         <label>Password {{ $isEdit ? '(kosongkan jika tidak diubah)' : '*' }}</label>
-                        <input type="password" wire:model="password" class="form-control @error('password') is-invalid @enderror">
-                        @error('password') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                        <div class="input-group">
+                            {{-- wire:model tetap dipakai agar pengikatan Livewire tidak berubah;
+                                 Alpine hanya mengatur tampil/sembunyi dan daftar syarat. --}}
+                            <input :type="show ? 'text' : 'password'"
+                                   wire:model="password"
+                                   x-on:input="nilai = $event.target.value"
+                                   class="form-control @error('password') is-invalid @enderror"
+                                   autocomplete="new-password"
+                                   placeholder="{{ $isEdit ? 'Biarkan kosong bila tidak diganti' : 'Password baru' }}">
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-secondary"
+                                        @click="show = ! show"
+                                        :title="show ? 'Sembunyikan password' : 'Tampilkan password'"
+                                        :aria-label="show ? 'Sembunyikan password' : 'Tampilkan password'"
+                                        :aria-pressed="show ? 'true' : 'false'">
+                                    <i class="fas" :class="show ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                </button>
+                            </div>
+                        </div>
+                        @error('password') <span class="text-danger small d-block mt-1">{{ $message }}</span> @enderror
+
+                        {{-- Daftar syarat, tercentang saat terpenuhi. --}}
+                        <ul class="list-unstyled small mt-2 mb-0" x-show="nilai.length > 0" x-cloak>
+                            @foreach($passwordChecklist as $syarat)
+                                <li x-data="{ lolos: false }"
+                                    x-effect="lolos = new RegExp(@js($syarat['regex'])).test(nilai)"
+                                    :class="lolos ? 'text-success' : 'text-muted'">
+                                    <i class="fas" :class="lolos ? 'fa-check-circle' : 'fa-circle-notch'"></i>
+                                    {{ $syarat['label'] }}
+                                </li>
+                            @endforeach
+                        </ul>
+                        <small class="text-muted d-block mt-1" x-show="nilai.length === 0">{{ $passwordHint }}</small>
                     </div>
                     <div class="row">
                         <div class="col-md-6 form-group">
