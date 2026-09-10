@@ -39,9 +39,9 @@ class BscDashboardScoringTest extends TestCase
         ]);
     }
 
-    private function objective(string $period, float $achievement): void
+    private function objective(string $period, float $achievement): DepartmentObjective
     {
-        DepartmentObjective::create([
+        return DepartmentObjective::create([
             'period' => $period,
             'dept_code' => 'QC',
             'kpi_code' => 'KPI-'.$achievement,
@@ -58,8 +58,11 @@ class BscDashboardScoringTest extends TestCase
     {
         $this->period();
         $this->ratio('2026-08', 80);
-        $this->objective('2026-08', 60);
+        $objective = $this->objective('2026-08', 60);
+        // Ditautkan ke sasaran mutu periode ini; program kerja tanpa tautan tidak
+        // berperiode sehingga tidak ikut diskor.
         ActionPlan::create([
+            'department_objective_id' => $objective->id,
             'title' => 'Perbaikan lini produksi',
             'owner_dept' => 'PRO',
             'progress_pct' => 50,
@@ -142,6 +145,87 @@ class BscDashboardScoringTest extends TestCase
 
         // Piramida dibungkus wadah yang dapat digeser, supaya tidak terpotong.
         $this->assertStringContainsString('pyramid-scroll', $html);
+    }
+
+    /**
+     * Program kerja tidak punya kolom periode; keterkaitannya lewat sasaran mutu
+     * yang dimitigasinya. Tanpa penyaringan, periode lain ikut terhitung.
+     */
+    private function actionPlanFor(string $period, int $progress): ActionPlan
+    {
+        $objective = DepartmentObjective::create([
+            'period' => $period,
+            'dept_code' => 'PRO',
+            'kpi_code' => 'KPI-'.$period.'-'.$progress,
+            'kpi_name' => 'Sasaran mutu '.$period,
+            'polarity' => 'Naik',
+            'target' => 100,
+            'actual' => 100,
+            'achievement_pct' => 100,
+            'status' => 'Tercapai',
+        ]);
+
+        return ActionPlan::create([
+            'department_objective_id' => $objective->id,
+            'title' => 'Program kerja '.$period,
+            'owner_dept' => 'PRO',
+            'progress_pct' => $progress,
+            'status' => 'On Progress',
+        ]);
+    }
+
+    public function test_tier_four_ignores_action_plans_from_other_periods(): void
+    {
+        $this->period('2026-08');
+        $this->period('2026-07');
+        $this->ratio('2026-08', 90);
+
+        // Program kerja hanya ada pada periode lain.
+        $this->actionPlanFor('2026-07', 60);
+
+        $html = Livewire::test(BscDashboard::class)
+            ->set('selectedPeriod', '2026-08')
+            ->html();
+
+        // Periode terpilih memang belum punya program kerja.
+        $this->assertStringContainsString('data belum lengkap', $html);
+        $this->assertStringNotContainsString('60.0%', $html);
+    }
+
+    public function test_tier_four_counts_only_the_selected_period(): void
+    {
+        $this->period('2026-08');
+        $this->period('2026-07');
+
+        $this->actionPlanFor('2026-08', 40);
+        $this->actionPlanFor('2026-07', 100);
+
+        $viewData = Livewire::test(BscDashboard::class)
+            ->set('selectedPeriod', '2026-08')
+            ->viewData('avgActionProgress');
+
+        // Tanpa penyaringan, rata-ratanya menjadi 70 karena periode lain ikut.
+        $this->assertSame(40.0, (float) $viewData);
+    }
+
+    public function test_an_action_plan_without_an_objective_is_not_attributed_to_any_period(): void
+    {
+        $this->period('2026-08');
+        $this->ratio('2026-08', 90);
+
+        ActionPlan::create([
+            'department_objective_id' => null,
+            'title' => 'Program kerja lepas',
+            'owner_dept' => 'PRO',
+            'progress_pct' => 100,
+            'status' => 'On Progress',
+        ]);
+
+        $html = Livewire::test(BscDashboard::class)
+            ->set('selectedPeriod', '2026-08')
+            ->html();
+
+        $this->assertStringContainsString('data belum lengkap', $html);
     }
 
     public function test_each_tier_carries_a_status_dot_matching_its_score(): void

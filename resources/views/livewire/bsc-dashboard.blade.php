@@ -886,24 +886,38 @@
          * terpusat di dalam kotaknya justru tampak bergeser ke kanan. Posisi awal guliran
          * dipusatkan supaya puncaknya berada di tengah layar.
          */
-        const pusatkanPiramida = () => {
-            const wadah = document.querySelector('.pyramid-scroll');
+        /*
+         * Dibungkus IIFE supaya tidak ada nama yang bocor ke lingkup global: komponen ini
+         * dapat dipasang ulang (navigasi Livewire, penyegaran sebagian), dan deklarasi
+         * const global yang sama akan melempar galat pada pemasangan kedua.
+         */
+        (() => {
+            const pusatkanPiramida = () => {
+                const wadah = document.querySelector('.pyramid-scroll');
 
-            if (! wadah) {
+                if (! wadah) {
+                    return;
+                }
+
+                const kelebihan = wadah.scrollWidth - wadah.clientWidth;
+
+                if (kelebihan > 0) {
+                    wadah.scrollLeft = kelebihan / 2;
+                }
+            };
+
+            // Dijalankan setiap kali komponen dipasang, setelah tata letak selesai dihitung.
+            requestAnimationFrame(pusatkanPiramida);
+
+            // Pendengar peristiwa hanya dipasang sekali, agar tidak menumpuk.
+            if (window.__bscPusatPiramidaTerpasang) {
                 return;
             }
 
-            const kelebihan = wadah.scrollWidth - wadah.clientWidth;
-
-            if (kelebihan > 0) {
-                wadah.scrollLeft = kelebihan / 2;
-            }
-        };
-
-        // Dijalankan setelah tata letak selesai dihitung, termasuk saat font baru dimuat.
-        requestAnimationFrame(pusatkanPiramida);
-        window.addEventListener('load', pusatkanPiramida);
-        window.addEventListener('resize', pusatkanPiramida);
+            window.__bscPusatPiramidaTerpasang = true;
+            window.addEventListener('load', pusatkanPiramida, { once: true });
+            window.addEventListener('resize', pusatkanPiramida);
+        })();
     </script>
     @endscript
 

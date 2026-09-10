@@ -205,15 +205,6 @@ class BscDashboard extends Component
     }
 
     /**
-     * Rata-rata terbobot skor tiap tingkat piramida.
-     *
-     * Tingkat yang belum punya data (nilai null) dikeluarkan dari perhitungan
-     * dan bobotnya dibagikan ke tingkat yang tersedia, sehingga periode yang
-     * baru terisi sebagian tidak menghasilkan Apex Score yang menyesatkan.
-     *
-     * @param  array<string, float|null>  $tierScores
-     */
-    /**
      * Rincian bobot yang benar-benar dipakai menghitung Apex Score, untuk
      * ditampilkan sebagai keterangan formula. Tingkat tanpa data dikeluarkan
      * dan bobotnya dinormalisasi, persis seperti pada calculateApexScore().
@@ -255,6 +246,15 @@ class BscDashboard extends Component
         );
     }
 
+    /**
+     * Rata-rata terbobot skor tiap tingkat piramida.
+     *
+     * Tingkat yang belum punya data (nilai null) dikeluarkan dari perhitungan
+     * dan bobotnya dibagikan ke tingkat yang tersedia, sehingga periode yang
+     * baru terisi sebagian tidak menghasilkan Apex Score yang menyesatkan.
+     *
+     * @param  array<string, float|null>  $tierScores
+     */
     private function calculateApexScore(array $tierScores): float
     {
         $weights = config('bsc.apex_weights', []);
@@ -293,7 +293,16 @@ class BscDashboard extends Component
         $objectives = $objectivesQuery->get();
         $avgObjScore = $objectives->count() > 0 ? round($objectives->avg('achievement_pct'), 2) : 0;
 
-        $actionPlans = ActionPlan::with('objective')->get();
+        // Program kerja tidak punya kolom periode; keterkaitannya lewat sasaran mutu
+        // yang dimitigasinya. Tanpa penyaringan ini, Tingkat 4 dan Apex Score memakai
+        // program kerja dari seluruh periode, dan penanda "data belum lengkap" ikut
+        // salah pada periode yang sebenarnya memang belum punya program kerja.
+        // Program kerja tanpa sasaran mutu tidak dapat diatribusikan ke periode mana
+        // pun, sehingga tidak ikut diskor — daftar lengkapnya tetap ada di menu
+        // Program Kerja.
+        $actionPlans = ActionPlan::with('objective')
+            ->whereHas('objective', fn ($query) => $query->where('period', $this->selectedPeriod))
+            ->get();
         // PRD G-03 Requirement: Tier 4 Apex score MUST strictly represent average progress_pct of action plans
         $avgActionProgress = $actionPlans->count() > 0 ? round($actionPlans->avg('progress_pct'), 2) : 0;
 
