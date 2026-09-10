@@ -1,59 +1,132 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Super Apps Balanced Scorecard (BSC)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Platform manajemen kinerja strategis berbasis metodologi Kaplan–Norton: piramida
+4 level (Apex korporat → 4 perspektif → sasaran mutu departemen → action plan),
+analisis rasio keuangan, wiring sebab-akibat, serta gerbang penerimaan data dari
+sistem HRIS/Finance.
 
-## About Laravel
+Aplikasi bersifat **multi-entitas**: satu basis kode dapat dipakai perusahaan mana
+pun. Identitas entitas diatur lewat menu *Setting Sistem*, bukan lewat kode.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Teknologi
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Komponen | Versi |
+|---|---|
+| PHP | 8.4 |
+| Laravel | 13.x |
+| Livewire | 4.x |
+| Database | MySQL 8.0+ / MariaDB 10.5+ |
+| UI | Bootstrap 4.6 + AdminLTE 3.2 + jQuery |
+| RBAC | spatie/laravel-permission 8.x |
+| Build asset | Vite 7 |
 
-## Learning Laravel
+Berkas Bootstrap, AdminLTE, jQuery dan Font Awesome dilayani **offline** dari
+`public/vendor/` (dengan fallback CDN otomatis bila berkasnya tidak ada), sehingga
+aplikasi tetap tampil normal tanpa koneksi internet. Vite hanya membundel CSS/JS
+kustom di `resources/`.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Instalasi
 
-## Laravel Sponsors
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+# sesuaikan DB_DATABASE / DB_USERNAME / DB_PASSWORD di .env
+php artisan migrate --seed
+php artisan storage:link
+npm install && npm run build
+php artisan serve
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Akun awal hasil seeder: `superadmin@herbatech.co.id` / `password`
+(segera ganti pada menu *Manajemen Pengguna*).
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Identitas Entitas
 
-## Contributing
+Seluruh identitas perusahaan disimpan di tabel `app_settings` dan dikelola pada
+menu **Setting Sistem → Identitas Aplikasi**:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Pengaturan | Kunci | Dipakai di |
+|---|---|---|
+| Nama entitas | `entity_name` | sidebar, atribut gambar |
+| Nama perusahaan | `company_name` | judul halaman, footer, halaman login |
+| Alamat perusahaan | `company_address` | footer |
+| Nomor kontak | `company_phone` | footer |
+| Email kontak | `company_email` | footer, halaman login |
+| Situs web | `company_website` | footer |
+| Logo | `app_logo` | sidebar, halaman login |
+| Favicon | `app_favicon` | tab peramban |
+| Nama & tagline aplikasi, tahun, warna primary | `app_name`, `app_tagline`, `app_year`, `app_primary_color` | seluruh antarmuka |
 
-## Code of Conduct
+Nilai cadangan (dipakai bila pengaturan kosong) berada di `config/entity.php`.
+Pembacaannya lewat helper, bukan query langsung:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```php
+entity_name();                 // Herbatech Innopharma
+company_name();                // PT Herbatech Innopharma Industry
+entity('company_email');       // email kontak, fallback ke config
+entity_logo();                 // URL logo, null bila belum diunggah
+entity_favicon();              // URL favicon, fallback favicon.ico
+entity_copyright();            // "PT ... © 2026"
+```
 
-## Security Vulnerabilities
+Pengaturan dibaca lewat cache (`AppSetting::map()`) sehingga satu halaman hanya
+menghasilkan satu query; cache otomatis dibersihkan setiap pengaturan disimpan.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Versi Aplikasi
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Versi aplikasi diambil dari helper `app_version()` pada
+[`app/Helpers/helper.php`](app/Helpers/helper.php) — sesuai pola yang dipakai
+proyek *official-website*:
+
+```php
+app_version();       // "v1.0.0"
+app_version(false);  // "1.0.0"
+```
+
+Sumber nilainya `config('app.version')`, yang membaca `APP_VERSION` pada `.env`,
+sehingga versi dapat dinaikkan tanpa mengubah kode. Versi ditampilkan pada footer,
+halaman login, dan menu *Setting Sistem → Informasi Sistem*.
+
+Helper dimuat otomatis lewat `autoload.files` di `composer.json`.
+
+---
+
+## Hak Akses
+
+Enam peran (`Super Admin`, `Admin FAT`, `Admin HRIS`, `Kepala Departemen`,
+`Operator`, `Viewer`) didefinisikan di
+[`database/seeders/RolesAndPermissionsSeeder.php`](database/seeders/RolesAndPermissionsSeeder.php).
+Setiap rute dijaga middleware `permission:` dan menu sidebar hanya muncul sesuai
+izin peran. Pengguna non-aktif otomatis dikeluarkan oleh middleware `active`.
+
+---
+
+## Pengujian
+
+```bash
+php artisan test
+```
+
+Mencakup smoke test seluruh menu, middleware akun non-aktif, helper versi, dan
+pengaturan identitas entitas.
+
+---
+
+## Dokumen Terkait
+
+- `BUKU_PANDUAN_LENGKAP_SUPER_APPS_BSC_DAN_EKOSISTEM.md` — arsitektur & 12 modul
+- `DOKUMENTASI_INTEGRASI_HRIS_FINANCE_BSC.md` — blueprint integrasi HRIS/Finance
+- `PANDUAN_DOKUMENTASI_API_POSTMAN.md` — standar dokumentasi API
+
+> Catatan: ketiga dokumen di atas menjelaskan API Gateway 4-hop
+> (`/api/bsc/sync/*`) yang **belum diimplementasikan** pada basis kode ini.
+> Menu *Integrasi Sistem* dan *Staging Log* saat ini masih berupa simulasi lokal.

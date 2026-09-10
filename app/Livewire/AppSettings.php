@@ -9,6 +9,7 @@ use App\Models\AppSetting;
 use App\Models\ApiKey;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
 
 class AppSettings extends Component
@@ -18,13 +19,21 @@ class AppSettings extends Component
     #[Url]
     public $activeTab = 'identity'; // identity, api, system
 
-    // Identity fields
+    // Identitas aplikasi
     public $app_name = '';
     public $app_tagline = '';
     public $app_year = '';
     public $app_primary_color = '#17a2b8';
     public $logoUpload;
     public $faviconUpload;
+
+    // Identitas entitas pengguna aplikasi
+    public $entity_name = '';
+    public $company_name = '';
+    public $company_address = '';
+    public $company_phone = '';
+    public $company_email = '';
+    public $company_website = '';
 
     // API Key fields
     public $showKeyId = null; // for reveal
@@ -35,12 +44,28 @@ class AppSettings extends Component
         $this->loadIdentity();
     }
 
+    /** Daftar kunci pengaturan identitas yang dikelola halaman ini. */
+    private function identityKeys(): array
+    {
+        return [
+            'app_name',
+            'app_tagline',
+            'app_year',
+            'app_primary_color',
+            'entity_name',
+            'company_name',
+            'company_address',
+            'company_phone',
+            'company_email',
+            'company_website',
+        ];
+    }
+
     private function loadIdentity()
     {
-        $this->app_name = AppSetting::getValue('app_name', 'Super Apps BSC');
-        $this->app_tagline = AppSetting::getValue('app_tagline', 'PT Herbatech Innopharma');
-        $this->app_year = AppSetting::getValue('app_year', '2026');
-        $this->app_primary_color = AppSetting::getValue('app_primary_color', '#17a2b8');
+        foreach ($this->identityKeys() as $key) {
+            $this->{$key} = (string) entity($key, config('entity.defaults.'.$key, ''));
+        }
     }
 
     public function switchTab($tab)
@@ -55,38 +80,66 @@ class AppSettings extends Component
             'app_tagline' => 'nullable|string|max:255',
             'app_year' => 'required|digits:4',
             'app_primary_color' => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
+            'entity_name' => 'required|string|min:2|max:150',
+            'company_name' => 'required|string|min:2|max:200',
+            'company_address' => 'nullable|string|max:500',
+            'company_phone' => 'nullable|string|max:50',
+            'company_email' => 'nullable|email|max:150',
+            'company_website' => 'nullable|url|max:200',
             'logoUpload' => 'nullable|image|mimes:png,jpg,jpeg,svg|max:2048',
             'faviconUpload' => 'nullable|image|mimes:png,jpg,jpeg,ico,svg|max:1024',
+        ], [], [
+            'entity_name' => 'nama entitas',
+            'company_name' => 'nama perusahaan',
+            'company_address' => 'alamat perusahaan',
+            'company_phone' => 'nomor kontak',
+            'company_email' => 'email kontak',
+            'company_website' => 'situs web',
         ]);
 
-        AppSetting::setValue('app_name', $this->app_name);
-        AppSetting::setValue('app_tagline', $this->app_tagline);
-        AppSetting::setValue('app_year', $this->app_year);
-        AppSetting::setValue('app_primary_color', $this->app_primary_color);
+        $values = [];
+        foreach ($this->identityKeys() as $key) {
+            $values[$key] = trim((string) $this->{$key});
+        }
+        AppSetting::setMany($values);
 
         if ($this->logoUpload) {
-            $path = $this->logoUpload->store('branding', 'public');
-            AppSetting::setValue('app_logo', $path);
+            $this->replaceBrandingFile('app_logo', $this->logoUpload->store('branding', 'public'));
         }
         if ($this->faviconUpload) {
-            $path = $this->faviconUpload->store('branding', 'public');
-            AppSetting::setValue('app_favicon', $path);
+            $this->replaceBrandingFile('app_favicon', $this->faviconUpload->store('branding', 'public'));
         }
 
         $this->logoUpload = null;
         $this->faviconUpload = null;
 
-        session()->flash('message', 'Identitas aplikasi berhasil diperbarui!');
+        session()->flash('message', 'Identitas entitas & aplikasi berhasil diperbarui!');
+    }
+
+    /** Simpan berkas branding baru dan hapus berkas lama agar disk tidak menumpuk. */
+    private function replaceBrandingFile(string $key, string $newPath): void
+    {
+        $oldPath = AppSetting::getValue($key);
+
+        if (is_string($oldPath) && $oldPath !== '' && $oldPath !== $newPath) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        AppSetting::setValue($key, $newPath);
     }
 
     public function resetIdentity()
     {
-        AppSetting::setValue('app_name', 'Super Apps BSC');
-        AppSetting::setValue('app_tagline', 'PT Herbatech Innopharma');
-        AppSetting::setValue('app_year', '2026');
-        AppSetting::setValue('app_primary_color', '#17a2b8');
+        $defaults = [];
+        foreach ($this->identityKeys() as $key) {
+            $defaults[$key] = (string) config('entity.defaults.'.$key, '');
+        }
+
+        AppSetting::setMany($defaults);
         $this->loadIdentity();
-        session()->flash('message', 'Identitas direset ke default!');
+        $this->resetValidation();
+
+        session()->flash('message', 'Identitas dikembalikan ke nilai default!');
     }
 
     public function generateApiKey()
@@ -138,6 +191,7 @@ class AppSettings extends Component
 
         // System info
         $systemInfo = [
+            'Versi Aplikasi' => app_version(),
             'PHP Version' => PHP_VERSION,
             'Laravel Version' => app()->version(),
             'App Env' => config('app.env'),

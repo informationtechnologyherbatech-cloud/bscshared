@@ -3,7 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? 'Super Apps BSC' }} - PT Herbatech Innopharma</title>
+    <title>{{ $title ?? app_display_name() }} - {{ company_name() }}</title>
+
+    <!-- Favicon entitas (dapat diganti di menu Setting Sistem) -->
+    <link rel="icon" href="{{ entity_favicon() }}">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,7 +43,7 @@
                 <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
             </li>
             <li class="nav-item d-none d-sm-inline-block">
-                <a href="{{ route('dashboard') }}" class="nav-link active">Super Apps BSC Hop 4</a>
+                <a href="{{ route('dashboard') }}" class="nav-link active">{{ app_display_name() }}</a>
             </li>
         </ul>
 
@@ -67,9 +70,13 @@
     <!-- Main Sidebar Container -->
     <aside class="main-sidebar sidebar-dark-teal elevation-4">
         <!-- Brand Logo -->
-        <a href="{{ route('dashboard') }}" class="brand-link bg-teal">
-            <i class="fas fa-chart-line brand-image img-circle elevation-3 p-2 bg-white text-teal"></i>
-            <span class="brand-text brand-text-custom">SuperApps BSC</span>
+        <a href="{{ route('dashboard') }}" class="brand-link bg-teal" title="{{ company_name() }}">
+            @if(entity_logo())
+                <img src="{{ entity_logo() }}" alt="{{ entity_name() }}" class="brand-image img-circle elevation-3 bg-white" style="object-fit:contain;">
+            @else
+                <i class="fas fa-chart-line brand-image img-circle elevation-3 p-2 bg-white text-teal"></i>
+            @endif
+            <span class="brand-text brand-text-custom">{{ app_display_name() }}</span>
         </a>
 
         <!-- Sidebar -->
@@ -263,9 +270,17 @@
     <!-- Main Footer -->
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline">
-            Version 1.0 (Basic Livewire)
+            <span class="badge badge-secondary">{{ app_version() }}</span>
         </div>
-        <strong>PT Herbatech Innopharma &copy; 2026 <a href="#">Super Apps BSC Hop 4</a>.</strong> All rights reserved.
+        <strong>{{ entity_copyright() }} · {{ app_display_name() }}.</strong> Hak cipta dilindungi.
+        @if(entity('company_address') || entity('company_phone') || entity('company_email'))
+            <div class="text-muted small">
+                @if(entity('company_address')) {{ entity('company_address') }} @endif
+                @if(entity('company_phone')) <span class="mx-1">·</span> <i class="fas fa-phone-alt mr-1"></i>{{ entity('company_phone') }} @endif
+                @if(entity('company_email')) <span class="mx-1">·</span> <i class="fas fa-envelope mr-1"></i><a href="mailto:{{ entity('company_email') }}">{{ entity('company_email') }}</a> @endif
+                @if(entity('company_website')) <span class="mx-1">·</span> <i class="fas fa-globe mr-1"></i><a href="{{ entity('company_website') }}" target="_blank" rel="noopener">{{ entity('company_website') }}</a> @endif
+            </div>
+        @endif
     </footer>
 </div>
 <!-- ./wrapper -->

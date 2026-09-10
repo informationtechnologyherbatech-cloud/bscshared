@@ -126,18 +126,15 @@ class RolesAndPermissionsSeeder extends Seeder
             $testUser->assignRole('Viewer');
         }
 
-        // Default App Settings
-        $defaults = [
-            'app_name' => 'Super Apps BSC',
-            'app_tagline' => 'PT Herbatech Innopharma',
-            'app_year' => '2026',
-            'app_primary_color' => '#17a2b8',
+        // Pengaturan identitas entitas & aplikasi (default dari config/entity.php)
+        $defaults = config('entity.defaults', []) + [
             'app_logo' => '',
             'app_favicon' => '',
         ];
         foreach ($defaults as $k => $v) {
             AppSetting::firstOrCreate(['key' => $k], ['value' => $v]);
         }
+        AppSetting::flushCache();
 
         // Default API Key if none
         if (ApiKey::count() === 0) {

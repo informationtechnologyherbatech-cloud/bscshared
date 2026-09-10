@@ -3,10 +3,14 @@
         {{-- Brand Zone — fullscreen left 42% --}}
         <div class="login-brand">
             <div class="text-center mb-4">
-                <div class="icon-circle"><i class="fas fa-chart-line"></i></div>
+                @if(entity_logo())
+                    <img src="{{ entity_logo() }}" alt="{{ entity_name() }}" style="max-height:72px; max-width:180px; object-fit:contain;">
+                @else
+                    <div class="icon-circle"><i class="fas fa-chart-line"></i></div>
+                @endif
             </div>
-            <h3 class="text-center mb-1">Super Apps BSC</h3>
-            <p class="text-center brand-subtitle mb-4">PT Herbatech Innopharma</p>
+            <h3 class="text-center mb-1">{{ app_display_name() }}</h3>
+            <p class="text-center brand-subtitle mb-4">{{ company_name() }}</p>
             <div class="brand-quote">
                 <p>Satu sumber kebenaran skor kinerja — dari revenue puncak hingga action plan mitigasi, dapat ditelusuri dalam ≤3 klik.</p>
             </div>
@@ -60,7 +64,12 @@
             </form>
 
             <div class="divider-hairline my-4"></div>
-            <div class="text-center" style="font-size:12px; color:var(--c-on-variant);">&copy; 2026 PT Herbatech Innopharma · Super Apps BSC Hop 4</div>
+            <div class="text-center" style="font-size:12px; color:var(--c-on-variant);">
+                {{ entity_copyright() }} · {{ app_display_name() }} {{ app_version() }}
+                @if(entity('company_email'))
+                    <br><a href="mailto:{{ entity('company_email') }}">{{ entity('company_email') }}</a>
+                @endif
+            </div>
         </div>
     </div>
 </div>

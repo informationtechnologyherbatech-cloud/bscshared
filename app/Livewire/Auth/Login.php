@@ -139,6 +139,6 @@ class Login extends Component
 
     public function render()
     {
-        return view('livewire.auth.login')->layout('layouts.guest', ['title' => 'Login - Super Apps BSC']);
+        return view('livewire.auth.login')->layout('layouts.guest', ['title' => 'Login']);
     }
 }

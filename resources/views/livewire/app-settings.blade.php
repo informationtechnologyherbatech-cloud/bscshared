@@ -59,8 +59,8 @@
                                     <div class="bg-teal text-white rounded p-2 mr-3" style="width:50px;height:50px;line-height:38px;text-align:center;"><i class="fas fa-chart-line"></i></div>
                                 @endif
                                 <div>
-                                    <h5 class="mb-0" style="color: {{ $app_primary_color }}">{{ $app_name }} <small class="text-muted">{{ $app_year }}</small></h5>
-                                    <p class="mb-0 text-muted">{{ $app_tagline }}</p>
+                                    <h5 class="mb-0" style="color: {{ $app_primary_color }}">{{ $app_name }} <small class="text-muted">{{ app_version() }}</small></h5>
+                                    <p class="mb-0 text-muted">{{ $company_name }}{{ $app_tagline ? ' · '.$app_tagline : '' }}</p>
                                     @if($faviconPath)
                                         <small>Favicon: <img src="{{ asset('storage/'.$faviconPath) }}" style="height:16px"> {{ $faviconPath }}</small>
                                     @endif
@@ -72,48 +72,114 @@
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Nama Aplikasi *</label>
-                                    <input type="text" wire:model="app_name" class="form-control @error('app_name') is-invalid @enderror">
-                                    @error('app_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                </div>
-                                <div class="form-group">
-                                    <label>Tagline</label>
-                                    <input type="text" wire:model="app_tagline" class="form-control" placeholder="PT Herbatech Innopharma">
-                                </div>
-                                <div class="row">
-                                    <div class="col-6 form-group">
-                                        <label>Tahun *</label>
-                                        <input type="text" wire:model="app_year" class="form-control @error('app_year') is-invalid @enderror">
-                                        @error('app_year') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div class="col-6 form-group">
-                                        <label>Warna Primary *</label>
-                                        <input type="color" wire:model.live="app_primary_color" class="form-control" style="height:38px;padding:2px">
-                                    </div>
-                                </div>
+                        {{-- Identitas entitas pengguna aplikasi --}}
+                        <div class="card card-outline card-teal">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-building mr-1"></i> Identitas Entitas</h6>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Logo (PNG/JPG/SVG max 2MB)</label>
-                                    <div class="custom-file">
-                                        <input type="file" wire:model="logoUpload" class="custom-file-input @error('logoUpload') is-invalid @enderror" accept="image/*">
-                                        <label class="custom-file-label">{{ $logoUpload ? $logoUpload->getClientOriginalName() : 'Pilih file logo' }}</label>
+                            <div class="card-body">
+                                <p class="text-muted small">
+                                    Aplikasi ini dapat dipakai entitas mana pun. Isi identitas di bawah untuk menentukan
+                                    perusahaan pemilik data — nilai ini dipakai pada judul halaman, sidebar, halaman login
+                                    dan footer.
+                                </p>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nama Entitas *</label>
+                                            <input type="text" wire:model="entity_name" class="form-control @error('entity_name') is-invalid @enderror" placeholder="mis. Herbatech Innopharma">
+                                            <small class="text-muted">Nama pendek entitas, dipakai pada sidebar &amp; judul.</small>
+                                            @error('entity_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Nama Perusahaan *</label>
+                                            <input type="text" wire:model="company_name" class="form-control @error('company_name') is-invalid @enderror" placeholder="mis. PT Herbatech Innopharma Industry">
+                                            <small class="text-muted">Nama resmi/legal, dipakai pada footer &amp; hak cipta.</small>
+                                            @error('company_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Alamat Perusahaan</label>
+                                            <textarea wire:model="company_address" rows="3" class="form-control @error('company_address') is-invalid @enderror" placeholder="Jalan, kota, provinsi, kode pos"></textarea>
+                                            @error('company_address') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
                                     </div>
-                                    @error('logoUpload') <span class="text-danger small">{{ $message }}</span> @enderror
-                                </div>
-                                <div class="form-group">
-                                    <label>Favicon (PNG/ICO max 1MB)</label>
-                                    <div class="custom-file">
-                                        <input type="file" wire:model="faviconUpload" class="custom-file-input @error('faviconUpload') is-invalid @enderror">
-                                        <label class="custom-file-label">{{ $faviconUpload ? $faviconUpload->getClientOriginalName() : 'Pilih file favicon' }}</label>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nomor Kontak</label>
+                                            <input type="text" wire:model="company_phone" class="form-control @error('company_phone') is-invalid @enderror" placeholder="mis. (021) 1234567 / 0812-3456-7890">
+                                            @error('company_phone') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Email Kontak</label>
+                                            <input type="email" wire:model="company_email" class="form-control @error('company_email') is-invalid @enderror" placeholder="mis. info@perusahaan.co.id">
+                                            @error('company_email') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Situs Web</label>
+                                            <input type="url" wire:model="company_website" class="form-control @error('company_website') is-invalid @enderror" placeholder="https://perusahaan.co.id">
+                                            @error('company_website') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
                                     </div>
-                                    @error('faviconUpload') <span class="text-danger small">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Identitas aplikasi & branding --}}
+                        <div class="card card-outline card-info">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-id-card mr-1"></i> Identitas Aplikasi &amp; Branding</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nama Aplikasi *</label>
+                                            <input type="text" wire:model="app_name" class="form-control @error('app_name') is-invalid @enderror">
+                                            @error('app_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Tagline</label>
+                                            <input type="text" wire:model="app_tagline" class="form-control" placeholder="mis. Balanced Scorecard Enterprise">
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6 form-group">
+                                                <label>Tahun *</label>
+                                                <input type="text" wire:model="app_year" class="form-control @error('app_year') is-invalid @enderror">
+                                                @error('app_year') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                            </div>
+                                            <div class="col-6 form-group">
+                                                <label>Warna Primary *</label>
+                                                <input type="color" wire:model.live="app_primary_color" class="form-control" style="height:38px;padding:2px">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Logo (PNG/JPG/SVG max 2MB)</label>
+                                            <div class="custom-file">
+                                                <input type="file" wire:model="logoUpload" class="custom-file-input @error('logoUpload') is-invalid @enderror" accept="image/*">
+                                                <label class="custom-file-label">{{ $logoUpload ? $logoUpload->getClientOriginalName() : 'Pilih file logo' }}</label>
+                                            </div>
+                                            @error('logoUpload') <span class="text-danger small">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Favicon (PNG/ICO max 1MB)</label>
+                                            <div class="custom-file">
+                                                <input type="file" wire:model="faviconUpload" class="custom-file-input @error('faviconUpload') is-invalid @enderror">
+                                                <label class="custom-file-label">{{ $faviconUpload ? $faviconUpload->getClientOriginalName() : 'Pilih file favicon' }}</label>
+                                            </div>
+                                            @error('faviconUpload') <span class="text-danger small">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group mb-0">
+                                            <label>Versi Aplikasi</label>
+                                            <input type="text" class="form-control" value="{{ app_version() }}" readonly>
+                                            <small class="text-muted">Diambil dari <code>app_version()</code> pada <code>app/Helpers/helper.php</code> (ubah lewat <code>APP_VERSION</code> di berkas .env).</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="text-right">
                             <button wire:click="resetIdentity" class="btn btn-secondary mr-2"><i class="fas fa-undo mr-1"></i> Reset Default</button>
                             <button wire:click="saveIdentity" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
