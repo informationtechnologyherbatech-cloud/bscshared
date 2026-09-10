@@ -23,6 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
             }
             return route('login');
         });
+        // Header keamanan (nosniff, anti-clickjacking, CSP) untuk seluruh halaman web.
+        $middleware->web(append: [
+            \App\Http\Middleware\SecurityHeaders::class,
+        ]);
+
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,

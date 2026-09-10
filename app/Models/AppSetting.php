@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 
 /**
  * Pengaturan aplikasi & identitas entitas (key-value).
@@ -63,6 +65,35 @@ class AppSetting extends Model
     {
         foreach ($values as $key => $value) {
             static::setValue($key, $value);
+        }
+    }
+
+    /**
+     * Simpan nilai rahasia (mis. secret key) dalam bentuk terenkripsi.
+     *
+     * Nilai kosong menghapus rahasia, bukan menyimpan string kosong terenkripsi.
+     */
+    public static function setSecret(string $key, ?string $value): void
+    {
+        static::setValue($key, $value === null || $value === '' ? '' : Crypt::encryptString($value));
+    }
+
+    /**
+     * Baca nilai rahasia. Mengembalikan null bila belum diisi atau bila
+     * nilainya tidak dapat didekripsi (mis. APP_KEY berganti).
+     */
+    public static function getSecret(string $key): ?string
+    {
+        $value = static::getValue($key);
+
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($value);
+        } catch (DecryptException) {
+            return null;
         }
     }
 

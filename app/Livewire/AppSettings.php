@@ -7,6 +7,7 @@ use Livewire\WithFileUploads;
 use Livewire\Attributes\Url;
 use App\Models\AppSetting;
 use App\Models\ApiKey;
+use App\Support\Recaptcha;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +18,15 @@ class AppSettings extends Component
     use WithFileUploads;
 
     #[Url]
-    public $activeTab = 'identity'; // identity, api, system
+    public $activeTab = 'identity'; // identity, security, api, system
+
+    // Keamanan — Google reCAPTCHA v2 (kotak centang)
+    public $recaptcha_enabled = false;
+
+    public $recaptcha_site_key = '';
+
+    /** Dibiarkan kosong berarti "jangan ubah secret key yang tersimpan". */
+    public $recaptcha_secret_key = '';
 
     // Identitas aplikasi
     public $app_name = '';
@@ -42,6 +51,63 @@ class AppSettings extends Component
     public function mount()
     {
         $this->loadIdentity();
+        $this->loadSecurity();
+    }
+
+    private function loadSecurity(): void
+    {
+        $recaptcha = app(Recaptcha::class);
+
+        $this->recaptcha_enabled = $recaptcha->toggledOn();
+        $this->recaptcha_site_key = (string) $recaptcha->siteKey();
+        $this->recaptcha_secret_key = '';
+    }
+
+    /**
+     * Simpan pengaturan reCAPTCHA. Secret key hanya ditimpa bila kolomnya diisi,
+     * dan disimpan terenkripsi — nilainya tidak pernah dikirim balik ke peramban.
+     */
+    public function saveSecurity()
+    {
+        $recaptcha = app(Recaptcha::class);
+        $secretTersimpan = $recaptcha->secretKey() !== null;
+
+        $this->validate([
+            'recaptcha_enabled' => 'boolean',
+            'recaptcha_site_key' => [$this->recaptcha_enabled ? 'required' : 'nullable', 'string', 'max:255'],
+            'recaptcha_secret_key' => [
+                $this->recaptcha_enabled && ! $secretTersimpan ? 'required' : 'nullable',
+                'string',
+                'max:255',
+            ],
+        ], [], [
+            'recaptcha_site_key' => 'site key',
+            'recaptcha_secret_key' => 'secret key',
+        ]);
+
+        AppSetting::setValue(Recaptcha::ENABLED_KEY, $this->recaptcha_enabled ? '1' : '0');
+        AppSetting::setValue(Recaptcha::SITE_KEY, trim($this->recaptcha_site_key));
+
+        if (trim($this->recaptcha_secret_key) !== '') {
+            AppSetting::setSecret(Recaptcha::SECRET_KEY, trim($this->recaptcha_secret_key));
+        }
+
+        $this->recaptcha_secret_key = '';
+
+        session()->flash('message', $this->recaptcha_enabled
+            ? 'reCAPTCHA diaktifkan pada halaman login.'
+            : 'reCAPTCHA dinonaktifkan.');
+    }
+
+    /** Hapus secret key yang tersimpan sekaligus mematikan reCAPTCHA. */
+    public function clearRecaptchaSecret()
+    {
+        AppSetting::setSecret(Recaptcha::SECRET_KEY, null);
+        AppSetting::setValue(Recaptcha::ENABLED_KEY, '0');
+
+        $this->loadSecurity();
+
+        session()->flash('message', 'Secret key reCAPTCHA dihapus dan reCAPTCHA dimatikan.');
     }
 
     /** Daftar kunci pengaturan identitas yang dikelola halaman ini. */
@@ -85,9 +151,20 @@ class AppSettings extends Component
             'company_address' => 'nullable|string|max:500',
             'company_phone' => 'nullable|string|max:50',
             'company_email' => 'nullable|email|max:150',
-            'company_website' => 'nullable|url|max:200',
-            'logoUpload' => 'nullable|image|mimes:png,jpg,jpeg,svg|max:2048',
-            'faviconUpload' => 'nullable|image|mimes:png,jpg,jpeg,ico,svg|max:1024',
+            // url:http,https menutup URL berskema javascript: yang lolos
+            // validasi url biasa dan menjadi XSS saat dipasang di atribut href.
+            'company_website' => 'nullable|url:http,https|max:200',
+            // SVG sengaja tidak diterima: berkas SVG dapat memuat <script> dan
+            // menjadi stored XSS ketika dibuka langsung dari /storage.
+            'logoUpload' => [
+                'nullable', 'image', 'mimes:png,jpg,jpeg,webp',
+                'mimetypes:image/png,image/jpeg,image/webp', 'max:2048',
+            ],
+            'faviconUpload' => [
+                'nullable', 'file', 'mimes:png,webp,ico',
+                'mimetypes:image/png,image/webp,image/x-icon,image/vnd.microsoft.icon',
+                'max:1024',
+            ],
         ], [], [
             'entity_name' => 'nama entitas',
             'company_name' => 'nama perusahaan',
@@ -186,6 +263,7 @@ class AppSettings extends Component
     public function render()
     {
         $apiKeys = ApiKey::latest()->get();
+        $recaptchaSecretTersimpan = app(Recaptcha::class)->secretKey() !== null;
         $logoPath = AppSetting::getValue('app_logo', '');
 
         // System info
@@ -207,6 +285,7 @@ class AppSettings extends Component
 
         return view('livewire.app-settings', [
             'apiKeys' => $apiKeys,
+            'recaptchaSecretTersimpan' => $recaptchaSecretTersimpan,
             'logoPath' => $logoPath,
             'systemInfo' => $systemInfo,
         ])->layout('layouts.app', ['title' => 'Setting Sistem']);

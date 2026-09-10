@@ -129,5 +129,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 @endif
 @livewireScripts
+
+@if(recaptcha()->enabled())
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+@endif
 </body>
 </html>

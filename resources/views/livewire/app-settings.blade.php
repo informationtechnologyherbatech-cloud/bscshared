@@ -37,6 +37,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a wire:click="switchTab('security')" class="nav-link {{ $activeTab==='security' ? 'active' : '' }}" href="#" role="tab">
+                                <i class="fas fa-shield-alt mr-1"></i> Keamanan
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a wire:click="switchTab('api')" class="nav-link {{ $activeTab==='api' ? 'active' : '' }}" href="#" role="tab">
                                 <i class="fas fa-key mr-1"></i> Kunci API Gateway
                             </a>
@@ -180,6 +185,123 @@
                         <div class="text-right">
                             <button wire:click="resetIdentity" class="btn btn-secondary mr-2"><i class="fas fa-undo mr-1"></i> Reset Default</button>
                             <button wire:click="saveIdentity" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
+                        </div>
+
+                    @elseif($activeTab === 'security')
+
+                        <div class="card card-outline card-danger">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fab fa-google mr-1"></i> Google reCAPTCHA v2 pada Halaman Login</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">
+                                    Bila diaktifkan, pengguna wajib mencentang kotak <em>"I'm not a robot"</em> sebelum
+                                    login. Verifikasi dilakukan di sisi server sehingga tidak dapat dilewati dari peramban.
+                                    Dapatkan kedua kunci di
+                                    <strong>google.com/recaptcha/admin</strong> dengan tipe <strong>reCAPTCHA v2 &rarr; "I'm not a robot" Checkbox</strong>.
+                                </p>
+
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="recaptchaToggle" wire:model.live="recaptcha_enabled">
+                                    <label class="custom-control-label" for="recaptchaToggle">
+                                        Aktifkan reCAPTCHA pada halaman login
+                                    </label>
+                                </div>
+
+                                @if($recaptcha_enabled)
+                                    <div class="alert alert-warning py-2">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                        Pastikan kedua kunci benar sebelum keluar dari sesi ini. Kunci yang salah membuat
+                                        semua orang gagal login. Bila itu terjadi, matikan lewat baris
+                                        <code>{{ "UPDATE app_settings SET value='0' WHERE `key`='recaptcha_enabled';" }}</code>
+                                    </div>
+                                @endif
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Site Key @if($recaptcha_enabled)<span class="text-danger">*</span>@endif</label>
+                                            <input type="text" wire:model="recaptcha_site_key"
+                                                   class="form-control @error('recaptcha_site_key') is-invalid @enderror"
+                                                   placeholder="6Lc..." autocomplete="off">
+                                            <small class="text-muted">Kunci publik, tampil di halaman login.</small>
+                                            @error('recaptcha_site_key') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Secret Key @if($recaptcha_enabled && ! $recaptchaSecretTersimpan)<span class="text-danger">*</span>@endif</label>
+                                            <input type="password" wire:model="recaptcha_secret_key"
+                                                   class="form-control @error('recaptcha_secret_key') is-invalid @enderror"
+                                                   placeholder="{{ $recaptchaSecretTersimpan ? 'Tersimpan — isi hanya bila ingin mengganti' : 'Belum diatur' }}"
+                                                   autocomplete="new-password">
+                                            <small class="text-muted">
+                                                Disimpan terenkripsi dan tidak pernah ditampilkan kembali.
+                                                @if($recaptchaSecretTersimpan)
+                                                    <span class="badge badge-success ml-1"><i class="fas fa-check mr-1"></i>Tersimpan</span>
+                                                @endif
+                                            </small>
+                                            @error('recaptcha_secret_key') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-right">
+                                    @if($recaptchaSecretTersimpan)
+                                        <button wire:click="clearRecaptchaSecret"
+                                                wire:confirm="Hapus secret key dan matikan reCAPTCHA?"
+                                                class="btn btn-outline-danger mr-2">
+                                            <i class="fas fa-trash mr-1"></i> Hapus Secret Key
+                                        </button>
+                                    @endif
+                                    <button wire:click="saveSecurity" class="btn btn-primary">
+                                        <i class="fas fa-save mr-1"></i> Simpan Pengaturan Keamanan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card card-outline card-secondary">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-lock mr-1"></i> Perlindungan Bawaan</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <td style="width:38%"><i class="fas fa-check-circle text-success mr-1"></i> Pembatasan percobaan login</td>
+                                            <td class="text-muted">5 percobaan gagal per email + alamat IP, jeda 60 detik.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Header keamanan</td>
+                                            <td class="text-muted">
+                                                nosniff, anti-clickjacking, referrer-policy, permissions-policy
+                                                @if(config('security.csp.enabled'))
+                                                    dan Content-Security-Policy{{ config('security.csp.report_only') ? ' (mode laporan)' : '' }}.
+                                                @else
+                                                    (CSP dimatikan lewat config/security.php).
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Unggahan berkas</td>
+                                            <td class="text-muted">Hanya PNG/JPG/WEBP/ICO. SVG ditolak karena dapat memuat skrip.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Sesi</td>
+                                            <td class="text-muted">
+                                                ID sesi diperbarui setiap login, cookie HttpOnly,
+                                                kedaluwarsa {{ config('session.lifetime') }} menit,
+                                                serialisasi {{ config('session.serialization', 'php') }}.
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Akun non-aktif</td>
+                                            <td class="text-muted">Langsung dikeluarkan pada permintaan berikutnya.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                     @elseif($activeTab === 'api')

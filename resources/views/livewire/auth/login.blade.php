@@ -52,8 +52,23 @@
                     @error('password') <span class="invalid-feedback d-block" style="font-size:12px;">{{ $message }}</span> @enderror
                 </div>
 
+                @if($recaptchaEnabled)
+                    <div class="form-group mb-3">
+                        <div wire:ignore>
+                            <div class="g-recaptcha"
+                                 data-sitekey="{{ $recaptchaSiteKey }}"
+                                 data-callback="bscRecaptchaSolved"
+                                 data-expired-callback="bscRecaptchaExpired"
+                                 data-error-callback="bscRecaptchaExpired"></div>
+                        </div>
+                        @error('recaptchaToken')
+                            <span class="invalid-feedback d-block" style="font-size:12px;">{{ $message }}</span>
+                        @enderror
+                    </div>
+                @endif
+
                 <div class="d-flex align-items-center justify-content-between" style="margin-bottom:16px;">
-                    
+
                     <small style="font-size:12px; font-weight:500; color:var(--c-on-variant);">Lupa password? Hubungi Super Admin</small>
                 </div>
 
@@ -72,4 +87,21 @@
             </div>
         </div>
     </div>
+
+    @if($recaptchaEnabled)
+        {{-- Jembatan antara widget reCAPTCHA dan properti komponen Livewire. --}}
+        @script
+        <script>
+            window.bscRecaptchaSolved = (token) => $wire.set('recaptchaToken', token, false);
+            window.bscRecaptchaExpired = () => $wire.set('recaptchaToken', '', false);
+
+            // Token hanya sekali pakai: gambar ulang widget setiap login gagal.
+            $wire.on('recaptcha-reset', () => {
+                if (window.grecaptcha) {
+                    window.grecaptcha.reset();
+                }
+            });
+        </script>
+        @endscript
+    @endif
 </div>

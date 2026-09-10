@@ -113,6 +113,14 @@ if (! function_exists('entity_favicon')) {
     }
 }
 
+if (! function_exists('recaptcha')) {
+    /** Layanan Google reCAPTCHA (lihat App\Support\Recaptcha). */
+    function recaptcha(): \App\Support\Recaptcha
+    {
+        return app(\App\Support\Recaptcha::class);
+    }
+}
+
 if (! function_exists('entity_copyright')) {
     /** Baris hak cipta, mis. "PT Herbatech Innopharma Industry © 2026". */
     function entity_copyright(): string

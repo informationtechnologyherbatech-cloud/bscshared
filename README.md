@@ -100,6 +100,53 @@ Helper dimuat otomatis lewat `autoload.files` di `composer.json`.
 
 ---
 
+## Keamanan
+
+### reCAPTCHA pada halaman login (opsional)
+
+Google reCAPTCHA v2 (kotak centang *"I'm not a robot"*) dapat dinyalakan atau
+dimatikan lewat **Setting Sistem → Keamanan**, tanpa mengubah kode:
+
+1. Buat kunci di `google.com/recaptcha/admin`, pilih tipe
+   **reCAPTCHA v2 → "I'm not a robot" Checkbox**, daftarkan domain aplikasi.
+2. Isi *site key* & *secret key*, lalu nyalakan tombolnya.
+
+Ketentuannya:
+
+- reCAPTCHA hanya aktif bila tombolnya menyala **dan** kedua kunci terisi, jadi
+  salah konfigurasi tidak pernah mengunci semua orang di luar aplikasi.
+- *Secret key* disimpan **terenkripsi** (`AppSetting::setSecret`) dan tidak
+  pernah dikirim kembali ke peramban.
+- Verifikasi dilakukan **di sisi server** sebelum kredensial diperiksa, dan
+  *fail closed* — bila server Google tak terjangkau, login ditolak.
+- Token bersifat sekali pakai; widget digambar ulang otomatis setiap kegagalan.
+
+Bila terlanjur salah kunci dan tidak bisa masuk, matikan langsung dari basis data:
+
+```sql
+UPDATE app_settings SET value = '0' WHERE `key` = 'recaptcha_enabled';
+```
+
+### Perlindungan bawaan
+
+| Lapisan | Penerapan |
+|---|---|
+| Header keamanan | `App\Http\Middleware\SecurityHeaders` memasang `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, `X-Robots-Tag`, dan HSTS (hanya pada HTTPS) |
+| Content-Security-Policy | Daftar sumber di `config/security.php`; membatasi skrip/gaya/font hanya ke aset sendiri, Google Fonts, cdnjs, jsdelivr dan reCAPTCHA. Dapat dimatikan (`CSP_ENABLED=false`) atau dijadikan mode laporan (`CSP_REPORT_ONLY=true`) |
+| XSS | Seluruh keluaran Blade memakai `{{ }}` yang otomatis di-escape; tidak ada `{!! !!}` di seluruh tampilan |
+| Unggahan berkas | Hanya PNG/JPG/WEBP (logo) dan PNG/WEBP/ICO (favicon), divalidasi ekstensi **dan** MIME. **SVG ditolak** karena dapat memuat `<script>` dan menjadi stored XSS saat dibuka dari `/storage` |
+| URL dari pengguna | `company_website` divalidasi `url:http,https`, menutup `javascript:` yang lolos validasi URL biasa |
+| Brute force | 5 percobaan gagal per kombinasi email + IP, jeda 60 detik (`RateLimiter`) |
+| Open redirect | Tujuan setelah login ditolak bila host-nya bukan host aplikasi |
+| Sesi | ID sesi diperbarui setiap login, cookie `HttpOnly`, `SameSite=lax`, serialisasi JSON; akun non-aktif langsung dikeluarkan |
+| CSRF | Bawaan Laravel pada seluruh form dan permintaan Livewire |
+| SQL injection | Seluruh akses data lewat Eloquent; tidak ada query mentah |
+
+Sebelum ke produksi: setel `APP_DEBUG=false`, `APP_ENV=production`,
+`SESSION_SECURE_COOKIE=true`, dan pertimbangkan `SESSION_ENCRYPT=true`.
+
+---
+
 ## Hak Akses
 
 Enam peran (`Super Admin`, `Admin FAT`, `Admin HRIS`, `Kepala Departemen`,
