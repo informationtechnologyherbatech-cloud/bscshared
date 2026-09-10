@@ -40,6 +40,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view integration',     // 12 Gateway
             'view staging',         // 12 Staging
             'view gateway',         // 12 alias umbrella
+            'manage integration',   // 12 write: terima payload, simulasi inbound, unggah CSV
             // FR-13 Admin
             'manage users',         // can_manage_users
             'manage settings',
@@ -68,7 +69,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'view actionplans','manage actionplans',
                 'view ibp','view sensitivity','view skenario','manage skenario',
                 'view dokumentasi',
-                'view integration','view staging','view gateway','manage apikey',
+                'view integration','view staging','view gateway','manage integration','manage apikey',
             ],
             // 9/13 — Kelola Sasaran Mutu, pantau capaian, tindak lanjut program kerja (HRIS & Mutu)
             'Admin HRIS' => [
@@ -76,7 +77,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'view objectives','manage objectives','can_write_kpi',
                 'view wiring',
                 'view actionplans','manage actionplans',
-                'view staging','view gateway','view integration',
+                'view staging','view gateway','view integration','manage integration',
                 'view dokumentasi','view ibp',
             ],
             // 8/13 — Pantau skor unitnya, input realisasi KPI timnya, uji dampak
@@ -107,12 +108,15 @@ class RolesAndPermissionsSeeder extends Seeder
             $role->syncPermissions($perms);
         }
 
-        // Ensure Super Admin user exists
+        // Ensure Super Admin user exists.
+        // Kata sandi awal diambil dari SUPERADMIN_PASSWORD agar instalasi baru
+        // tidak memakai kata sandi yang mudah ditebak. Akun yang sudah ada
+        // tidak diubah (firstOrCreate).
         $superAdmin = User::firstOrCreate(
-            ['email' => 'superadmin@herbatech.co.id'],
+            ['email' => env('SUPERADMIN_EMAIL') ?: 'superadmin@herbatech.co.id'],
             [
                 'name' => 'Super Admin',
-                'password' => bcrypt('password'),
+                'password' => bcrypt(env('SUPERADMIN_PASSWORD') ?: 'Bsc#Admin2026'),
                 'is_active' => true,
             ]
         );
@@ -126,18 +130,15 @@ class RolesAndPermissionsSeeder extends Seeder
             $testUser->assignRole('Viewer');
         }
 
-        // Default App Settings
-        $defaults = [
-            'app_name' => 'Super Apps BSC',
-            'app_tagline' => 'PT Herbatech Innopharma',
-            'app_year' => '2026',
-            'app_primary_color' => '#17a2b8',
+        // Pengaturan identitas entitas & aplikasi (default dari config/entity.php)
+        $defaults = config('entity.defaults', []) + [
             'app_logo' => '',
             'app_favicon' => '',
         ];
         foreach ($defaults as $k => $v) {
             AppSetting::firstOrCreate(['key' => $k], ['value' => $v]);
         }
+        AppSetting::flushCache();
 
         // Default API Key if none
         if (ApiKey::count() === 0) {

@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\AuthorizesWrites;
 use Livewire\Component;
 use App\Models\StagingLog;
 use App\Models\DepartmentObjective;
@@ -11,10 +12,16 @@ use Carbon\Carbon;
 
 class StagingLogs extends Component
 {
+    use AuthorizesWrites;
+
     public $simulatedDept = 'QC';
 
     public function simulateInbound()
     {
+        if ($this->lacksPermission('manage integration')) {
+            return;
+        }
+
         $idempotencyKey = 'IDEMP-' . strtoupper($this->simulatedDept) . '-' . date('Ymd') . '-' . Str::random(4);
 
         StagingLog::create([

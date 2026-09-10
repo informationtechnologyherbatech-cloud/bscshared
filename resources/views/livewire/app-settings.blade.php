@@ -31,21 +31,34 @@
             <div class="card card-primary card-outline card-tabs">
                 <div class="card-header p-0 pt-1 border-bottom-0">
                     <ul class="nav nav-tabs" role="tablist">
+                        @can('manage settings')
                         <li class="nav-item">
                             <a wire:click="switchTab('identity')" class="nav-link {{ $activeTab==='identity' ? 'active' : '' }}" href="#" role="tab">
                                 <i class="fas fa-id-card mr-1"></i> Identitas Aplikasi
                             </a>
                         </li>
+                        @endcan
+                        @can('manage settings')
+                        <li class="nav-item">
+                            <a wire:click="switchTab('security')" class="nav-link {{ $activeTab==='security' ? 'active' : '' }}" href="#" role="tab">
+                                <i class="fas fa-shield-alt mr-1"></i> Keamanan
+                            </a>
+                        </li>
+                        @endcan
+                        @can('manage apikey')
                         <li class="nav-item">
                             <a wire:click="switchTab('api')" class="nav-link {{ $activeTab==='api' ? 'active' : '' }}" href="#" role="tab">
                                 <i class="fas fa-key mr-1"></i> Kunci API Gateway
                             </a>
                         </li>
+                        @endcan
+                        @can('view systeminfo')
                         <li class="nav-item">
                             <a wire:click="switchTab('system')" class="nav-link {{ $activeTab==='system' ? 'active' : '' }}" href="#" role="tab">
                                 <i class="fas fa-server mr-1"></i> Informasi Sistem
                             </a>
                         </li>
+                        @endcan
                     </ul>
                 </div>
                 <div class="card-body">
@@ -59,11 +72,8 @@
                                     <div class="bg-teal text-white rounded p-2 mr-3" style="width:50px;height:50px;line-height:38px;text-align:center;"><i class="fas fa-chart-line"></i></div>
                                 @endif
                                 <div>
-                                    <h5 class="mb-0" style="color: {{ $app_primary_color }}">{{ $app_name }} <small class="text-muted">{{ $app_year }}</small></h5>
-                                    <p class="mb-0 text-muted">{{ $app_tagline }}</p>
-                                    @if($faviconPath)
-                                        <small>Favicon: <img src="{{ asset('storage/'.$faviconPath) }}" style="height:16px"> {{ $faviconPath }}</small>
-                                    @endif
+                                    <h5 class="mb-0" style="color: {{ $app_primary_color }}">{{ $app_name }} <small class="text-muted">{{ app_version() }}</small></h5>
+                                    <p class="mb-0 text-muted">{{ $company_name }}@if($app_tagline && $app_tagline !== $company_name) · {{ $app_tagline }}@endif</p>
                                 </div>
                                 <div class="ml-auto d-flex align-items-center">
                                     <span class="mr-2 small">Warna Primary:</span>
@@ -72,51 +82,248 @@
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Nama Aplikasi *</label>
-                                    <input type="text" wire:model="app_name" class="form-control @error('app_name') is-invalid @enderror">
-                                    @error('app_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                </div>
-                                <div class="form-group">
-                                    <label>Tagline</label>
-                                    <input type="text" wire:model="app_tagline" class="form-control" placeholder="PT Herbatech Innopharma">
-                                </div>
-                                <div class="row">
-                                    <div class="col-6 form-group">
-                                        <label>Tahun *</label>
-                                        <input type="text" wire:model="app_year" class="form-control @error('app_year') is-invalid @enderror">
-                                        @error('app_year') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div class="col-6 form-group">
-                                        <label>Warna Primary *</label>
-                                        <input type="color" wire:model.live="app_primary_color" class="form-control" style="height:38px;padding:2px">
-                                    </div>
-                                </div>
+                        {{-- Identitas entitas pengguna aplikasi --}}
+                        <div class="card card-outline card-teal">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-building mr-1"></i> Identitas Entitas</h6>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Logo (PNG/JPG/SVG max 2MB)</label>
-                                    <div class="custom-file">
-                                        <input type="file" wire:model="logoUpload" class="custom-file-input @error('logoUpload') is-invalid @enderror" accept="image/*">
-                                        <label class="custom-file-label">{{ $logoUpload ? $logoUpload->getClientOriginalName() : 'Pilih file logo' }}</label>
+                            <div class="card-body">
+                                <p class="text-muted small">
+                                    Aplikasi ini dapat dipakai entitas mana pun. Isi identitas di bawah untuk menentukan
+                                    perusahaan pemilik data — nilai ini dipakai pada judul halaman, sidebar, halaman login
+                                    dan footer.
+                                </p>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nama Entitas *</label>
+                                            <input type="text" wire:model="entity_name" class="form-control @error('entity_name') is-invalid @enderror" placeholder="mis. Herbatech Innopharma">
+                                            <small class="text-muted">Nama pendek entitas, dipakai pada sidebar &amp; judul.</small>
+                                            @error('entity_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Nama Perusahaan *</label>
+                                            <input type="text" wire:model="company_name" class="form-control @error('company_name') is-invalid @enderror" placeholder="mis. PT Herbatech Innopharma Industry">
+                                            <small class="text-muted">Nama resmi/legal, dipakai pada footer &amp; hak cipta.</small>
+                                            @error('company_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Alamat Perusahaan</label>
+                                            <textarea wire:model="company_address" rows="3" class="form-control @error('company_address') is-invalid @enderror" placeholder="Jalan, kota, provinsi, kode pos"></textarea>
+                                            @error('company_address') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
                                     </div>
-                                    @error('logoUpload') <span class="text-danger small">{{ $message }}</span> @enderror
-                                </div>
-                                <div class="form-group">
-                                    <label>Favicon (PNG/ICO max 1MB)</label>
-                                    <div class="custom-file">
-                                        <input type="file" wire:model="faviconUpload" class="custom-file-input @error('faviconUpload') is-invalid @enderror">
-                                        <label class="custom-file-label">{{ $faviconUpload ? $faviconUpload->getClientOriginalName() : 'Pilih file favicon' }}</label>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nomor Kontak</label>
+                                            <input type="text" wire:model="company_phone" class="form-control @error('company_phone') is-invalid @enderror" placeholder="mis. (021) 1234567 / 0812-3456-7890">
+                                            @error('company_phone') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Email Kontak</label>
+                                            <input type="email" wire:model="company_email" class="form-control @error('company_email') is-invalid @enderror" placeholder="mis. info@perusahaan.co.id">
+                                            @error('company_email') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Situs Web</label>
+                                            <input type="url" wire:model="company_website" class="form-control @error('company_website') is-invalid @enderror" placeholder="https://perusahaan.co.id">
+                                            @error('company_website') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
                                     </div>
-                                    @error('faviconUpload') <span class="text-danger small">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Identitas aplikasi & branding --}}
+                        <div class="card card-outline card-info">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-id-card mr-1"></i> Identitas Aplikasi &amp; Branding</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nama Aplikasi *</label>
+                                            <input type="text" wire:model="app_name" class="form-control @error('app_name') is-invalid @enderror">
+                                            @error('app_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Tagline</label>
+                                            <input type="text" wire:model="app_tagline" class="form-control" placeholder="mis. Balanced Scorecard Enterprise">
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6 form-group">
+                                                <label>Tahun *</label>
+                                                <input type="text" wire:model="app_year" class="form-control @error('app_year') is-invalid @enderror">
+                                                @error('app_year') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                            </div>
+                                            <div class="col-6 form-group">
+                                                <label>Warna Primary *</label>
+                                                <input type="color" wire:model.live="app_primary_color" class="form-control" style="height:38px;padding:2px">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Logo (PNG/JPG/SVG max 2MB)</label>
+                                            <div class="custom-file">
+                                                <input type="file" wire:model="logoUpload" class="custom-file-input @error('logoUpload') is-invalid @enderror" accept="image/*">
+                                                <label class="custom-file-label">{{ $logoUpload ? $logoUpload->getClientOriginalName() : 'Pilih file logo' }}</label>
+                                            </div>
+                                            @error('logoUpload') <span class="text-danger small">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Favicon (PNG/ICO max 1MB)</label>
+                                            <div class="custom-file">
+                                                <input type="file" wire:model="faviconUpload" class="custom-file-input @error('faviconUpload') is-invalid @enderror">
+                                                <label class="custom-file-label">{{ $faviconUpload ? $faviconUpload->getClientOriginalName() : 'Pilih file favicon' }}</label>
+                                            </div>
+                                            @error('faviconUpload') <span class="text-danger small">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group mb-0">
+                                            <label>Versi Aplikasi</label>
+                                            <input type="text" class="form-control" value="{{ app_version() }}" readonly>
+                                            <small class="text-muted">Diambil dari <code>app_version()</code> pada <code>app/Helpers/helper.php</code> (ubah lewat <code>APP_VERSION</code> di berkas .env).</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="text-right">
+                            @can('manage settings')
                             <button wire:click="resetIdentity" class="btn btn-secondary mr-2"><i class="fas fa-undo mr-1"></i> Reset Default</button>
                             <button wire:click="saveIdentity" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
+                            @endcan
+                        </div>
+
+                    @elseif($activeTab === 'security')
+
+                        <div class="card card-outline card-danger">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fab fa-google mr-1"></i> Google reCAPTCHA v2 pada Halaman Login</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">
+                                    Bila diaktifkan, pengguna wajib mencentang kotak <em>"I'm not a robot"</em> sebelum
+                                    login. Verifikasi dilakukan di sisi server sehingga tidak dapat dilewati dari peramban.
+                                    Dapatkan kedua kunci di
+                                    <strong>google.com/recaptcha/admin</strong> dengan tipe <strong>reCAPTCHA v2 &rarr; "I'm not a robot" Checkbox</strong>.
+                                </p>
+
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="recaptchaToggle" wire:model.live="recaptcha_enabled">
+                                    <label class="custom-control-label" for="recaptchaToggle">
+                                        Aktifkan reCAPTCHA pada halaman login
+                                    </label>
+                                </div>
+
+                                @if($recaptcha_enabled)
+                                    <div class="alert alert-warning py-2">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                        Pastikan kedua kunci benar sebelum keluar dari sesi ini. Kunci yang salah membuat
+                                        semua orang gagal login. Bila itu terjadi, matikan lewat baris perintah di server:
+                                        <code>php artisan recaptcha disable</code>
+                                    </div>
+                                @endif
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Site Key @if($recaptcha_enabled)<span class="text-danger">*</span>@endif</label>
+                                            <input type="text" wire:model="recaptcha_site_key"
+                                                   class="form-control @error('recaptcha_site_key') is-invalid @enderror"
+                                                   placeholder="6Lc..." autocomplete="off">
+                                            <small class="text-muted">Kunci publik, tampil di halaman login.</small>
+                                            @error('recaptcha_site_key') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Secret Key @if($recaptcha_enabled && ! $recaptchaSecretTersimpan)<span class="text-danger">*</span>@endif</label>
+                                            <input type="password" wire:model="recaptcha_secret_key"
+                                                   class="form-control @error('recaptcha_secret_key') is-invalid @enderror"
+                                                   placeholder="{{ $recaptchaSecretTersimpan ? 'Tersimpan — isi hanya bila ingin mengganti' : 'Belum diatur' }}"
+                                                   autocomplete="new-password">
+                                            <small class="text-muted">
+                                                Disimpan terenkripsi dan tidak pernah ditampilkan kembali.
+                                                @if($recaptchaSecretTersimpan)
+                                                    <span class="badge badge-success ml-1"><i class="fas fa-check mr-1"></i>Tersimpan</span>
+                                                @endif
+                                            </small>
+                                            @error('recaptcha_secret_key') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-right">
+                                    @if($recaptchaSecretTersimpan)
+                                        <button wire:click="clearRecaptchaSecret"
+                                                wire:confirm="Hapus secret key dan matikan reCAPTCHA?"
+                                                class="btn btn-outline-danger mr-2">
+                                            <i class="fas fa-trash mr-1"></i> Hapus Secret Key
+                                        </button>
+                                    @endif
+                                    <button wire:click="saveSecurity" class="btn btn-primary">
+                                        <i class="fas fa-save mr-1"></i> Simpan Pengaturan Keamanan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card card-outline card-secondary">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-lock mr-1"></i> Perlindungan Bawaan</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <td style="width:38%"><i class="fas fa-check-circle text-success mr-1"></i> Pembatasan percobaan login</td>
+                                            <td class="text-muted">5 percobaan gagal per email + alamat IP, jeda 60 detik.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Header keamanan</td>
+                                            <td class="text-muted">
+                                                nosniff, anti-clickjacking, referrer-policy, permissions-policy
+                                                @if(config('security.csp.enabled'))
+                                                    dan Content-Security-Policy{{ config('security.csp.report_only') ? ' (mode laporan)' : '' }}.
+                                                @else
+                                                    (CSP dimatikan lewat config/security.php).
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Unggahan berkas</td>
+                                            <td class="text-muted">Hanya PNG/JPG/WEBP/ICO. SVG ditolak karena dapat memuat skrip.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Kata sandi</td>
+                                            <td class="text-muted">{{ \App\Support\PasswordPolicy::hint() }} Di-hash bcrypt.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Kata sandi lemah</td>
+                                            <td class="text-muted">Terdeteksi saat login; akun dikunci pada halaman ganti kata sandi sampai diperbarui.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Otorisasi aksi</td>
+                                            <td class="text-muted">Setiap aksi yang menulis data memeriksa izin perannya sendiri, bukan hanya akses halaman.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Sesi</td>
+                                            <td class="text-muted">
+                                                ID sesi diperbarui setiap login, cookie HttpOnly,
+                                                kedaluwarsa {{ config('session.lifetime') }} menit,
+                                                serialisasi {{ config('session.serialization', 'php') }}.
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-check-circle text-success mr-1"></i> Akun non-aktif</td>
+                                            <td class="text-muted">Langsung dikeluarkan pada permintaan berikutnya.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                     @elseif($activeTab === 'api')

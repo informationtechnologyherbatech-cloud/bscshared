@@ -2,6 +2,9 @@
 
 namespace App\Livewire\Auth;
 
+use App\Support\PasswordPolicy;
+use App\Support\Recaptcha;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -12,6 +15,9 @@ class Login extends Component
     public $email = '';
     public $password = '';
     public $remember = false;
+
+    /** Token dari widget reCAPTCHA, diisi oleh JavaScript saat kotak dicentang. */
+    public $recaptchaToken = '';
 
     public function login()
     {
@@ -33,6 +39,19 @@ class Login extends Component
             ]);
         }
 
+        // Verifikasi reCAPTCHA sebelum kredensial diperiksa, sehingga bot tidak
+        // dapat memakai halaman login untuk menebak kata sandi.
+        $recaptcha = app(Recaptcha::class);
+
+        if ($recaptcha->enabled() && ! $recaptcha->verify($this->recaptchaToken, request()->ip())) {
+            RateLimiter::hit($throttleKey, 60);
+            $this->resetRecaptcha();
+
+            throw ValidationException::withMessages([
+                'recaptchaToken' => 'Verifikasi reCAPTCHA gagal. Silakan centang kembali kotak verifikasi.',
+            ]);
+        }
+
         $credentials = [
             'email' => strtolower(trim($this->email)),
             'password' => $this->password,
@@ -41,6 +60,7 @@ class Login extends Component
 
         if (! Auth::attempt($credentials, $this->remember)) {
             RateLimiter::hit($throttleKey, 60);
+            $this->resetRecaptcha();
 
             // Check if user exists but inactive
             $user = \App\Models\User::where('email', strtolower(trim($this->email)))->first();
@@ -56,17 +76,28 @@ class Login extends Component
         }
 
         RateLimiter::clear($throttleKey);
-        request()->session()->regenerate();
+        session()->regenerate();
 
         $user = Auth::user();
         // Ensure user still active after login (race)
         if (! $user->is_active) {
             Auth::logout();
-            request()->session()->invalidate();
-            request()->session()->regenerateToken();
+            session()->invalidate();
+            session()->regenerateToken();
             throw ValidationException::withMessages([
                 'email' => 'Akun Anda telah dinonaktifkan.',
             ]);
+        }
+
+        // Kata sandi hanya dapat diperiksa kekuatannya saat masih berupa teks
+        // biasa, yaitu tepat pada saat login. Akun lama dengan kata sandi mudah
+        // ditebak langsung ditandai wajib ganti.
+        if (! $this->passwordMeetsPolicy($this->password)) {
+            $user->requirePasswordChange();
+        }
+
+        if ($user->must_change_password) {
+            return redirect()->route('password.change');
         }
 
         // Determine redirect by role/permission (FR-15)
@@ -74,7 +105,7 @@ class Login extends Component
 
         // Honor intended url if it exists and user has access
         $intended = session()->pull('url.intended', null);
-        if ($intended) {
+        if (is_string($intended) && $intended !== '' && $this->isSafeRedirect($intended)) {
             // Basic check: don't redirect to login itself
             if (! str_contains($intended, '/login')) {
                 return redirect()->to($intended);
@@ -82,6 +113,42 @@ class Login extends Component
         }
 
         return redirect()->to($redirect);
+    }
+
+    /**
+     * Tolak tujuan di luar host aplikasi supaya halaman login tidak bisa
+     * dipakai memantulkan pengguna ke situs lain (open redirect).
+     */
+    private function isSafeRedirect(string $url): bool
+    {
+        if (str_starts_with($url, '//')) {
+            return false;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+
+        return $host === null || $host === request()->getHost();
+    }
+
+    /**
+     * Apakah kata sandi yang baru saja dipakai memenuhi syarat kekuatan.
+     */
+    private function passwordMeetsPolicy(string $password): bool
+    {
+        return Validator::make(
+            ['password' => $password],
+            ['password' => [PasswordPolicy::rule()]]
+        )->passes();
+    }
+
+    /**
+     * Token reCAPTCHA hanya berlaku sekali pakai, jadi widget harus digambar
+     * ulang setiap percobaan login gagal.
+     */
+    private function resetRecaptcha(): void
+    {
+        $this->recaptchaToken = '';
+        $this->dispatch('recaptcha-reset');
     }
 
     private function resolveRedirectByRole($user): string
@@ -139,6 +206,11 @@ class Login extends Component
 
     public function render()
     {
-        return view('livewire.auth.login')->layout('layouts.guest', ['title' => 'Login - Super Apps BSC']);
+        $recaptcha = app(Recaptcha::class);
+
+        return view('livewire.auth.login', [
+            'recaptchaEnabled' => $recaptcha->enabled(),
+            'recaptchaSiteKey' => $recaptcha->siteKey(),
+        ])->layout('layouts.guest', ['title' => 'Login']);
     }
 }

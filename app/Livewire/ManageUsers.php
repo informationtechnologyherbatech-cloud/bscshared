@@ -2,15 +2,18 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\AuthorizesWrites;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\User;
+use App\Support\PasswordPolicy;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class ManageUsers extends Component
 {
+    use AuthorizesWrites;
     use WithPagination;
 
     public $search = '';
@@ -26,6 +29,9 @@ class ManageUsers extends Component
     public $dept_code = '';
     public $is_active = true;
 
+    /** Paksa pengguna mengganti kata sandi pada login berikutnya. */
+    public $must_change_password = true;
+
     public $showModal = false;
     public $isEdit = false;
 
@@ -40,12 +46,17 @@ class ManageUsers extends Component
             'role' => 'required|exists:roles,name',
             'dept_code' => 'nullable|string|max:30',
             'is_active' => 'boolean',
+            'must_change_password' => 'boolean',
         ];
-        if (!$this->isEdit) {
-            $rules['password'] = 'required|string|min:6|max:255';
-        } else {
-            $rules['password'] = 'nullable|string|min:6|max:255';
-        }
+        // Kata sandi lama tidak dipaksa berubah, tetapi setiap kali diisi harus
+        // memenuhi syarat kekuatan pada config/security.php.
+        $rules['password'] = [
+            $this->isEdit ? 'nullable' : 'required',
+            'string',
+            'max:255',
+            PasswordPolicy::rule(),
+        ];
+
         return $rules;
     }
 
@@ -66,6 +77,7 @@ class ManageUsers extends Component
         $this->role = $user->getRoleNames()->first() ?? 'Viewer';
         $this->dept_code = $user->dept_code ?? '';
         $this->is_active = (bool) $user->is_active;
+        $this->must_change_password = (bool) $user->must_change_password;
         $this->isEdit = true;
         $this->showModal = true;
     }
@@ -85,11 +97,16 @@ class ManageUsers extends Component
         $this->role = 'Viewer';
         $this->dept_code = '';
         $this->is_active = true;
+        $this->must_change_password = true;
         $this->resetErrorBag();
     }
 
     public function saveUser()
     {
+        if ($this->lacksPermission('manage users', 'can_manage_users')) {
+            return;
+        }
+
         $this->validate();
 
         // Guard: last Super Admin cannot be deactivated via edit
@@ -117,9 +134,11 @@ class ManageUsers extends Component
                 'email' => $this->email,
                 'dept_code' => $this->dept_code ?: null,
                 'is_active' => $this->is_active,
+                'must_change_password' => $this->must_change_password,
             ];
             if (!empty($this->password)) {
                 $data['password'] = Hash::make($this->password);
+                $data['password_changed_at'] = now();
             }
             $user->update($data);
             $user->syncRoles([$this->role]);
@@ -131,6 +150,8 @@ class ManageUsers extends Component
                 'password' => Hash::make($this->password),
                 'dept_code' => $this->dept_code ?: null,
                 'is_active' => $this->is_active,
+                'must_change_password' => $this->must_change_password,
+                'password_changed_at' => now(),
             ]);
             $user->assignRole($this->role);
             session()->flash('message', 'Pengguna ' . $user->name . ' berhasil ditambahkan!');
@@ -153,6 +174,10 @@ class ManageUsers extends Component
 
     public function deleteUser()
     {
+        if ($this->lacksPermission('manage users', 'can_manage_users')) {
+            return;
+        }
+
         if (!$this->confirmDeleteId) return;
         $user = User::findOrFail($this->confirmDeleteId);
 
@@ -170,6 +195,10 @@ class ManageUsers extends Component
 
     public function toggleActive($id)
     {
+        if ($this->lacksPermission('manage users', 'can_manage_users')) {
+            return;
+        }
+
         $user = User::findOrFail($id);
         if (!$user->is_active) {
             $user->update(['is_active' => true]);
@@ -222,6 +251,8 @@ class ManageUsers extends Component
         $roles = Role::pluck('name')->toArray();
 
         return view('livewire.manage-users', [
+            'passwordChecklist' => PasswordPolicy::checklist(),
+            'passwordHint' => PasswordPolicy::hint(),
             'users' => $users,
             'roles' => $roles,
         ])->layout('layouts.app', ['title' => 'Manage User']);

@@ -4,7 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#003535">
-    <title>{{ $title ?? 'Login' }} - PT Herbatech Innopharma</title>
+    <title>{{ $title ?? 'Login' }} - {{ company_name() }}</title>
+    <link rel="icon" href="{{ entity_favicon() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
@@ -32,6 +33,7 @@
             --r:0.25rem; --r-lg:0.5rem; --r-xl:0.75rem; --r-full:9999px;
             --s-md:16px; --s-lg:24px; --s-xl:40px;
         }
+        [x-cloak]{ display:none !important; }
         *{ font-family:'Hanken Grotesk',system-ui,sans-serif; }
         h1,h2,h3,h4{ font-family:'Manrope',sans-serif; }
         html,body{ height:100%; }
@@ -128,5 +130,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 @endif
 @livewireScripts
+
+@if(recaptcha()->enabled())
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+@endif
 </body>
 </html>

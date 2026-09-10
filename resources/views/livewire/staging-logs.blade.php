@@ -87,9 +87,15 @@
                                     <option value="MKT">MKT - Pemasaran</option>
                                 </select>
                             </div>
+                            @can('manage integration')
                             <button wire:click="simulateInbound" class="btn btn-info btn-sm btn-block">
                                 <i class="fas fa-satellite-dish mr-1"></i> Kirim Payload Simulasi
                             </button>
+                            @else
+                            <div class="alert alert-secondary py-2 mb-0 small">
+                                <i class="fas fa-lock mr-1"></i> Peran Anda hanya dapat memantau log, tidak mengirim payload.
+                            </div>
+                            @endcan
                         </div>
                     </div>
                 </div>
