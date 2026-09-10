@@ -8,6 +8,7 @@ use App\Support\PasswordPolicy;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -192,5 +193,62 @@ class PasswordPolicyTest extends TestCase
         $labelsTanpaSimbol = array_column(PasswordPolicy::checklist(), 'label');
 
         $this->assertNotContains('Ada karakter khusus (!@#$%...)', $labelsTanpaSimbol);
+    }
+
+    public function test_the_hint_follows_the_configuration_instead_of_a_fixed_sentence(): void
+    {
+        $this->assertSame(
+            'Minimal 10 karakter, mengandung huruf besar, huruf kecil, angka, dan karakter khusus.',
+            PasswordPolicy::hint()
+        );
+
+        config()->set('security.password.symbols', false);
+        $this->assertStringNotContainsString('karakter khusus', PasswordPolicy::hint());
+        $this->assertStringContainsString('angka', PasswordPolicy::hint());
+
+        config()->set('security.password.numbers', false);
+        config()->set('security.password.mixed_case', false);
+        $this->assertSame('Minimal 10 karakter.', PasswordPolicy::hint());
+
+        config()->set('security.password.uncompromised', true);
+        $this->assertStringContainsString('kebocoran data publik', PasswordPolicy::hint());
+    }
+
+    public function test_the_password_toggle_stays_reachable_by_keyboard(): void
+    {
+        // tabindex="-1" akan mengeluarkan tombol dari urutan tab keyboard.
+        foreach ([
+            'resources/views/livewire/auth/login.blade.php',
+            'resources/views/livewire/auth/change-password.blade.php',
+            'resources/views/livewire/manage-users.blade.php',
+        ] as $view) {
+            $isi = file_get_contents(base_path($view));
+
+            $this->assertStringContainsString('aria-pressed', $isi, "Tombol sandi hilang dari {$view}.");
+            $this->assertStringNotContainsString(
+                "tabindex=\"-1\">\n                                <i class=\"fas\" :class=\"show",
+                $isi,
+                "Tombol tampil/sembunyi pada {$view} tidak boleh memakai tabindex=\"-1\"."
+            );
+        }
+    }
+
+    public function test_the_daily_log_channel_actually_honours_its_retention_setting(): void
+    {
+        // Laravel 13 membaca max_files lebih dulu, baru days sebagai cadangan.
+        $logger = Log::build([
+            'driver' => 'daily',
+            'path' => storage_path('logs/uji-retensi.log'),
+            'max_files' => config('logging.channels.daily.max_files'),
+        ]);
+
+        $handler = $logger->getLogger()->getHandlers()[0];
+        $maxFiles = (new \ReflectionProperty($handler, 'maxFiles'));
+        $maxFiles->setAccessible(true);
+
+        $this->assertSame(
+            (int) config('logging.channels.daily.max_files'),
+            $maxFiles->getValue($handler)
+        );
     }
 }

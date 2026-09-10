@@ -7,9 +7,10 @@ use Illuminate\Validation\Rules\Password;
 /**
  * Satu sumber kebenaran untuk syarat kata sandi.
  *
- * Dipakai aturan validasi maupun teks bantuan di layar, sehingga yang
- * ditampilkan kepada pengguna selalu sama dengan yang benar-benar diperiksa.
- * Setelan angkanya ada di config/security.php.
+ * Aturan validasi, daftar periksa di layar, dan kalimat bantuan seluruhnya
+ * dibangun dari daftar syarat yang sama, sehingga yang dijanjikan kepada
+ * pengguna tidak pernah berbeda dari yang benar-benar diperiksa — termasuk
+ * ketika sebagian syarat dimatikan lewat config/security.php.
  */
 class PasswordPolicy
 {
@@ -18,19 +19,19 @@ class PasswordPolicy
     {
         $rule = Password::min(self::minLength());
 
-        if (config('security.password.mixed_case', true)) {
+        if (self::requires('mixed_case')) {
             $rule->mixedCase();
         }
 
-        if (config('security.password.numbers', true)) {
+        if (self::requires('numbers')) {
             $rule->numbers();
         }
 
-        if (config('security.password.symbols', true)) {
+        if (self::requires('symbols')) {
             $rule->symbols();
         }
 
-        if (config('security.password.uncompromised', false)) {
+        if (self::requires('uncompromised', false)) {
             $rule->uncompromised();
         }
 
@@ -43,38 +44,106 @@ class PasswordPolicy
     }
 
     /**
-     * Daftar syarat untuk ditampilkan di layar.
+     * Daftar syarat komposisi yang aktif.
      *
-     * @return array<int, array{label: string, regex: string}>
-     *                                                         Regex ditulis dalam sintaks JavaScript agar dapat dipakai
-     *                                                         langsung oleh daftar periksa langsung di formulir.
+     * @return array<int, array{label: string, ringkas: string, regex: string}>
+     *                                                                          Regex ditulis dalam sintaks JavaScript agar dapat dipakai langsung
+     *                                                                          oleh daftar periksa langsung di formulir.
      */
-    public static function checklist(): array
+    private static function requirements(): array
     {
         $items = [[
             'label' => 'Minimal '.self::minLength().' karakter',
+            'ringkas' => 'minimal '.self::minLength().' karakter',
             'regex' => '.{'.self::minLength().',}',
         ]];
 
-        if (config('security.password.mixed_case', true)) {
-            $items[] = ['label' => 'Ada huruf besar (A-Z)', 'regex' => '[A-Z]'];
-            $items[] = ['label' => 'Ada huruf kecil (a-z)', 'regex' => '[a-z]'];
+        if (self::requires('mixed_case')) {
+            $items[] = [
+                'label' => 'Ada huruf besar (A-Z)',
+                'ringkas' => 'huruf besar',
+                'regex' => '[A-Z]',
+            ];
+            $items[] = [
+                'label' => 'Ada huruf kecil (a-z)',
+                'ringkas' => 'huruf kecil',
+                'regex' => '[a-z]',
+            ];
         }
 
-        if (config('security.password.numbers', true)) {
-            $items[] = ['label' => 'Ada angka (0-9)', 'regex' => '[0-9]'];
+        if (self::requires('numbers')) {
+            $items[] = [
+                'label' => 'Ada angka (0-9)',
+                'ringkas' => 'angka',
+                'regex' => '[0-9]',
+            ];
         }
 
-        if (config('security.password.symbols', true)) {
-            $items[] = ['label' => 'Ada karakter khusus (!@#$%...)', 'regex' => '[^A-Za-z0-9]'];
+        if (self::requires('symbols')) {
+            $items[] = [
+                'label' => 'Ada karakter khusus (!@#$%...)',
+                'ringkas' => 'karakter khusus',
+                'regex' => '[^A-Za-z0-9]',
+            ];
         }
 
         return $items;
     }
 
-    /** Ringkasan syarat dalam satu kalimat. */
+    /**
+     * Daftar syarat untuk ditampilkan sebagai daftar periksa di formulir.
+     *
+     * @return array<int, array{label: string, regex: string}>
+     */
+    public static function checklist(): array
+    {
+        return array_map(
+            fn (array $item) => ['label' => $item['label'], 'regex' => $item['regex']],
+            self::requirements()
+        );
+    }
+
+    /**
+     * Ringkasan syarat dalam satu kalimat, mengikuti syarat yang benar-benar
+     * aktif — bukan daftar tetap.
+     */
     public static function hint(): string
     {
-        return 'Minimal '.self::minLength().' karakter, mengandung huruf besar, huruf kecil, angka, dan karakter khusus.';
+        $items = self::requirements();
+        $panjang = array_shift($items);
+
+        $kalimat = ucfirst($panjang['ringkas']);
+
+        if ($items !== []) {
+            $kalimat .= ', mengandung '.self::gabung(array_column($items, 'ringkas'));
+        }
+
+        if (self::requires('uncompromised', false)) {
+            $kalimat .= ', dan belum pernah muncul pada kebocoran data publik';
+        }
+
+        return $kalimat.'.';
+    }
+
+    /** Apakah satu syarat sedang diaktifkan. */
+    private static function requires(string $key, bool $default = true): bool
+    {
+        return (bool) config('security.password.'.$key, $default);
+    }
+
+    /**
+     * Gabungkan daftar menjadi kalimat Indonesia: "a, b, dan c".
+     *
+     * @param  array<int, string>  $bagian
+     */
+    private static function gabung(array $bagian): string
+    {
+        if (count($bagian) === 1) {
+            return $bagian[0];
+        }
+
+        $terakhir = array_pop($bagian);
+
+        return implode(', ', $bagian).', dan '.$terakhir;
     }
 }

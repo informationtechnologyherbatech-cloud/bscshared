@@ -53,8 +53,7 @@
                                     @click="show = ! show"
                                     :title="show ? 'Sembunyikan password' : 'Tampilkan password'"
                                     :aria-label="show ? 'Sembunyikan password' : 'Tampilkan password'"
-                                    :aria-pressed="show ? 'true' : 'false'"
-                                    tabindex="-1">
+                                    :aria-pressed="show ? 'true' : 'false'">
                                 <i class="fas" :class="show ? 'fa-eye-slash' : 'fa-eye'"></i>
                             </button>
                         </div>
