@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\AppSettings;
 use App\Models\AppSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -88,6 +89,27 @@ class EntityIdentityTest extends TestCase
             ->call('resetIdentity');
 
         $this->assertSame(config('entity.defaults.company_name'), AppSetting::getValue('company_name'));
+    }
+
+    public function test_branding_url_follows_the_request_host_not_app_url(): void
+    {
+        // APP_URL kerap tidak menyertakan port yang dipakai saat pengembangan.
+        config()->set('app.url', 'http://localhost');
+        Storage::fake('public');
+        Storage::disk('public')->put('branding/logo.png', 'x');
+        AppSetting::setValue('app_logo', 'branding/logo.png');
+
+        $this->assertSame(asset('storage/branding/logo.png'), entity_logo());
+        $this->assertStringEndsWith('/storage/branding/logo.png', entity_logo());
+    }
+
+    public function test_branding_url_is_null_when_the_file_is_missing(): void
+    {
+        Storage::fake('public');
+        AppSetting::setValue('app_logo', 'branding/hilang.png');
+
+        $this->assertNull(entity_logo());
+        $this->assertSame(asset('favicon.ico'), entity_favicon());
     }
 
     public function test_login_page_shows_the_configured_entity_instead_of_a_hardcoded_one(): void

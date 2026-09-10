@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\AppSetting;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -50,6 +52,19 @@ class SmokeRoutesTest extends TestCase
         $response = $this->actingAs($this->superAdmin())->get(route($routeName));
 
         $response->assertOk();
+    }
+
+    public function test_the_sidebar_shows_the_uploaded_entity_logo(): void
+    {
+        $user = $this->superAdmin();
+        Storage::fake('public');
+        Storage::disk('public')->put('branding/logo.png', 'x');
+        AppSetting::setValue('app_logo', 'branding/logo.png');
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee(asset('storage/branding/logo.png'), false);
     }
 
     public function test_an_inactive_user_is_logged_out_by_the_active_middleware(): void

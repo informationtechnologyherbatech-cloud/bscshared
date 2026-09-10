@@ -192,15 +192,44 @@ class BscDashboard extends Component
         $this->selectedItemDetail = null;
     }
 
+    /**
+     * Rata-rata terbobot skor tiap tingkat piramida.
+     *
+     * Tingkat yang belum punya data (nilai null) dikeluarkan dari perhitungan
+     * dan bobotnya dibagikan ke tingkat yang tersedia, sehingga periode yang
+     * baru terisi sebagian tidak menghasilkan Apex Score yang menyesatkan.
+     *
+     * @param  array<string, float|null>  $tierScores
+     */
+    private function calculateApexScore(array $tierScores): float
+    {
+        $weights = config('bsc.apex_weights', []);
+        $weightedSum = 0.0;
+        $totalWeight = 0.0;
+
+        foreach ($tierScores as $tier => $score) {
+            $weight = (float) ($weights[$tier] ?? 0);
+            if ($score === null || $weight <= 0) {
+                continue;
+            }
+            $weightedSum += $weight * (float) $score;
+            $totalWeight += $weight;
+        }
+
+        return $totalWeight > 0 ? round($weightedSum / $totalWeight, 2) : 0.0;
+    }
+
     public function render()
     {
         $periodObj = Period::where('period', $this->selectedPeriod)->first();
         $isClosed = $periodObj ? $periodObj->isClosed() : false;
 
-        // Freshness check (< 26 hours)
+        // Freshness check. diffInHours() pada Carbon 3 bertanda (negatif bila
+        // pembandingnya di masa lalu), jadi selisih diambil sebagai nilai mutlak
+        // agar peringatan data basi benar-benar menyala.
         $lastSyncTime = $periodObj && $periodObj->updated_at ? $periodObj->updated_at : Carbon::now()->subHours(2);
-        $hoursSinceSync = Carbon::now()->diffInHours($lastSyncTime);
-        $isStale = $hoursSinceSync >= 26;
+        $hoursSinceSync = (int) abs($lastSyncTime->diffInHours(Carbon::now()));
+        $isStale = $hoursSinceSync >= (int) config('bsc.stale_after_hours', 26);
         
         $ratiosQuery = FinancialRatio::where('period', $this->selectedPeriod);
         $ratios = $ratiosQuery->get();
@@ -214,13 +243,23 @@ class BscDashboard extends Component
         // PRD G-03 Requirement: Tier 4 Apex score MUST strictly represent average progress_pct of action plans
         $avgActionProgress = $actionPlans->count() > 0 ? round($actionPlans->avg('progress_pct'), 2) : 0;
 
-        // Apex Score = 45% Revenue (simulated 96.00%) + 55% Rasio Keuangan
-        $revenueScore = 96.00;
-        $apexScore = round((0.45 * $revenueScore) + (0.55 * $avgRatioScore), 2);
+        // Apex Score = rata-rata terbobot Tingkat 2 (rasio), Tingkat 3 (sasaran
+        // mutu) dan Tingkat 4 (program kerja), seluruhnya dari data nyata.
+        // Bobot diatur di config/bsc.php.
+        $apexScore = $this->calculateApexScore([
+            'ratios' => $ratios->count() > 0 ? $avgRatioScore : null,
+            'objectives' => $objectives->count() > 0 ? $avgObjScore : null,
+            'action_plans' => $actionPlans->count() > 0 ? $avgActionProgress : null,
+        ]);
 
-        // Save computed apex score to period model
-        if ($periodObj && !$isClosed) {
+        // Save computed apex score to period model — hanya bila berubah, agar
+        // render ulang Livewire tidak menulis berulang. Timestamp sengaja tidak
+        // disentuh: periods.updated_at menandai sinkronisasi data terakhir,
+        // bukan kalkulasi ulang skor (dipakai penanda data basi di atas).
+        if ($periodObj && !$isClosed && (float) $periodObj->apex_score !== $apexScore) {
+            $periodObj->timestamps = false;
             $periodObj->update(['apex_score' => $apexScore]);
+            $periodObj->timestamps = true;
         }
 
         $counts = [

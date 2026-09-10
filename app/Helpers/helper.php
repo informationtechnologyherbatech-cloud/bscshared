@@ -74,6 +74,12 @@ if (! function_exists('entity_branding_url')) {
     /**
      * URL berkas branding (logo/favicon) yang tersimpan di disk "public".
      * Mengembalikan null bila belum diunggah atau berkasnya hilang.
+     *
+     * URL dibentuk dengan asset() — bukan Storage::url() — supaya mengikuti
+     * host & port permintaan yang sedang berjalan. Storage::url() memakai
+     * APP_URL, sehingga logo gagal dimuat ketika aplikasi diakses lewat
+     * host/port lain (mis. APP_URL=http://localhost tetapi dibuka di
+     * http://localhost:8000).
      */
     function entity_branding_url(string $key): ?string
     {
@@ -87,7 +93,7 @@ if (! function_exists('entity_branding_url')) {
             return null;
         }
 
-        return Storage::disk('public')->url($path);
+        return asset('storage/'.ltrim($path, '/'));
     }
 }
 

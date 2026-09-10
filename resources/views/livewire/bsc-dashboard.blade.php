@@ -228,7 +228,7 @@
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-crown text-warning mr-1"></i> Tingkat 1: Apex Keuangan</div>
                                 <div class="tier-score">{{ number_format($apexScore, 1) }}%</div>
-                                <div class="tier-subtitle">Konsolidasi Hop 4 (Revenue & Rasio)</div>
+                                <div class="tier-subtitle">Konsolidasi Rasio, Sasaran Mutu &amp; Program Kerja</div>
                             </div>
                             @if($activeLevel === 1)
                                 <div class="click-hint-badge"><i class="fas fa-check-circle text-warning"></i> Aktif Telusur</div>

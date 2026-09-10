@@ -72,7 +72,8 @@
         <!-- Brand Logo -->
         <a href="{{ route('dashboard') }}" class="brand-link bg-teal" title="{{ company_name() }}">
             @if(entity_logo())
-                <img src="{{ entity_logo() }}" alt="{{ entity_name() }}" class="brand-image img-circle elevation-3 bg-white" style="object-fit:contain;">
+                <img src="{{ entity_logo() }}" alt="{{ entity_name() }}" class="brand-image elevation-3 bg-white p-1"
+                     style="max-height:33px; width:auto; max-width:120px; object-fit:contain; border-radius:6px;">
             @else
                 <i class="fas fa-chart-line brand-image img-circle elevation-3 p-2 bg-white text-teal"></i>
             @endif
