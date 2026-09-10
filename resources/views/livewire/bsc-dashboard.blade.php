@@ -97,12 +97,11 @@
             display: none;
         }
 
-        /* Piramida ikut mengecil pada layar sempit — sisakan skornya saja. */
-        @media (max-width: 767.98px) {
-            .tier-1 .tier-title {
-                display: none;
-            }
-        }
+        /*
+         * Di bawah 768px bentuk segitiga dilepas dan tiap tingkat menjadi balok
+         * bertumpuk (lihat blok responsif pada public/css/custom-app.css), sehingga
+         * pembatasan di atas tidak lagi diperlukan dan judulnya kembali tampil utuh.
+         */
 
         .tier-title {
             font-size: 14px;
@@ -145,6 +144,74 @@
             border-radius: 10px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
+        }
+
+        /*
+         * PIRAMIDA DI LAYAR SEMPIT
+         * Segitiga clip-path ikut menyempit mengikuti lebar layar, sedangkan teksnya tidak —
+         * di ponsel label tingkat 2 sampai 4 terpotong. Di bawah 768px bentuk segitiga dilepas
+         * dan tiap tingkat menjadi balok bertumpuk: warna, urutan, skor, dan sifat
+         * klik-untuk-telusur tetap sama, tetapi seluruh teksnya terbaca utuh.
+         */
+        @media (max-width: 767.98px) {
+            .pyramid-wrapper {
+                height: auto;
+                max-width: 100%;
+                padding: 0;
+            }
+
+            .pyramid-tier {
+                clip-path: none;
+                height: auto;
+                min-height: 62px;
+                padding: 12px 14px;
+                margin-bottom: 8px;
+                border-radius: 10px;
+            }
+
+            /* Efek perbesar menimbulkan geseran mendatar pada layar sempit. */
+            .pyramid-tier:hover,
+            .pyramid-tier.active-tier {
+                transform: none;
+            }
+
+            .tier-content,
+            .tier-1 .tier-content {
+                padding: 0;
+                margin-top: 0;
+                max-width: none;
+                width: 100%;
+            }
+
+            .tier-title,
+            .tier-1 .tier-title {
+                font-size: 12px;
+                letter-spacing: 0.3px;
+            }
+
+            .tier-score,
+            .tier-1 .tier-score {
+                font-size: 22px;
+            }
+
+            .tier-subtitle {
+                font-size: 10px;
+                line-height: 1.35;
+            }
+
+            .click-hint-badge {
+                position: static;
+                transform: none;
+                display: inline-flex;
+                margin-top: 8px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .tier-score,
+            .tier-1 .tier-score {
+                font-size: 20px;
+            }
         }
     </style>
 
@@ -209,18 +276,18 @@
 
             @if($isStale)
                 <div class="alert alert-warning alert-dismissible fade show border-warning" role="alert">
-                    <i class="fas fa-clock mr-2 text-dark"></i> 
+                    <i class="fas fa-clock mr-2 text-dark"></i>
                     <strong>Peringatan Kesegaran Data:</strong> Data belum disinkronkan lebih dari 26 jam (Terakhir: {{ $lastSyncTime ? $lastSyncTime->diffForHumans() : 'N/A' }}).
                 </div>
             @endif
 
             @if($isClosed)
                 <div class="alert alert-secondary fade show border-dark" role="alert">
-                    <i class="fas fa-lock mr-2"></i> 
+                    <i class="fas fa-lock mr-2"></i>
                     <strong>Periode Terkunci (CLOSED):</strong> Periode {{ $selectedPeriod }} telah ditutup secara operasional. Seluruh perubahan nilai KPI/Rasio dibekukan.
                 </div>
             @endif
-            
+
             <!-- APEX SCORE SUMMARY BAR -->
             <div class="card bg-gradient-navy text-white shadow-sm mb-4">
                 <div class="card-body py-3">
@@ -264,7 +331,7 @@
                     </span>
                 </div>
                 <div class="card-body bg-light position-relative p-4">
-                    
+
                     <div class="pyramid-wrapper">
 
                         <!-- TINGKAT 1: APEX KEUANGAN (PUNCAK SEGITIGA SEMPURNA 50% 0%) -->
@@ -283,7 +350,7 @@
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-chart-line text-white mr-1"></i> Tingkat 2: Rasio Keuangan</div>
                                 <div class="tier-score">{{ number_format($avgRatioScore, 1) }}%</div>
-                                <div class="tier-subtitle">{{ $ratioCount }} Rasio Keuangan (Likuiditas, Solvabilitas, Aktivitas, Profitabilitas, Produktivitas)</div>
+                                <div class="tier-subtitle">{{ $ratioCount }} Rasio Keuangan <br> (Likuiditas, Solvabilitas, Aktivitas, Profitabilitas, Produktivitas)</div>
                             </div>
                             @if($activeLevel === 2)
                                 <div class="click-hint-badge"><i class="fas fa-check-circle text-warning"></i> Aktif Telusur</div>
@@ -340,7 +407,7 @@
                             <i class="fas fa-tasks mr-2"></i> Telusur Detail Tingkat 4: Program Kerja & Action Plans
                         @endif
                     </h4>
-                    
+
                     <div>
                         @if($activeLevel === 2)
                             <a href="{{ route('financial-ratios', ['status' => $statusFilter, 'period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
@@ -363,7 +430,7 @@
                 </div>
 
                 <div class="card-body">
-                    
+
                     <!-- BARIS FILTER & SEARCH TELUSUR -->
                     @if($activeLevel > 1)
                         <div class="row mb-3 align-items-center">
@@ -553,10 +620,10 @@
                                             </div>
                                             <h6 class="font-weight-bold text-dark mb-2">{{ $ap->title }}</h6>
                                             <small class="text-muted d-block mb-2">
-                                                <i class="fas fa-link text-purple mr-1"></i> KPI Terkait: 
+                                                <i class="fas fa-link text-purple mr-1"></i> KPI Terkait:
                                                 <strong>{{ $ap->objective ? $ap->objective->kpi_code . ' - ' . $ap->objective->kpi_name : 'Umum' }}</strong>
                                             </small>
-                                            
+
                                             <div class="d-flex justify-content-between align-items-center small mb-1">
                                                 <span>Progress Pelaksanaan:</span>
                                                 <strong class="text-danger">{{ $ap->progress_pct }}%</strong>

@@ -308,3 +308,135 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Alpine.js: sembunyikan elemen sampai Alpine siap. */
 [x-cloak] { display: none !important; }
+
+/* ================================================================================================
+ * TAMPILAN LAYAR SEMPIT (PONSEL)
+ * ================================================================================================
+ * Tata letak aplikasi disusun untuk layar lebar: judul halaman dan kendalinya berbagi satu baris,
+ * penyaring memakai lebar piksel tetap, dan piramida BSC memakai clip-path segitiga. Ketiganya
+ * berantakan di ponsel — kendali saling berdesakan dan label piramida terpotong.
+ *
+ * Aturan di bawah hanya berlaku di bawah 768px dan tidak menyentuh tampilan desktop sama sekali.
+ * ================================================================================================ */
+
+@media (max-width: 767.98px) {
+
+    /* ---- Judul halaman & kendalinya ---- */
+    .content-header h1 {
+        font-size: 1.35rem;
+        line-height: 1.3;
+    }
+
+    .content-header h1 small {
+        font-size: 12px !important;
+    }
+
+    /* Kolom kendali berhenti rata kanan; ia kini menumpuk di bawah judul. */
+    .content-header .text-right,
+    .content-header .text-sm-right {
+        text-align: left !important;
+    }
+
+    .content-header .float-right,
+    .content-header .float-sm-right,
+    .content-header .float-md-right {
+        float: none !important;
+    }
+
+    /* form-inline Bootstrap tetap satu baris di segala lebar; di ponsel dibuat menumpuk. */
+    .content-header .form-inline {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch !important;
+        width: 100%;
+    }
+
+    .content-header .form-inline > * {
+        margin-right: 0 !important;
+        margin-bottom: 8px;
+        width: 100%;
+    }
+
+    .content-header .form-inline .badge {
+        text-align: center;
+    }
+
+    .content-header .form-inline label {
+        margin-bottom: 4px;
+        font-size: 12px;
+    }
+
+    /* ---- Penyaring pada kepala kartu ---- */
+    .card-header {
+        flex-wrap: wrap;
+    }
+
+    .card-header .card-title {
+        font-size: 15px;
+        line-height: 1.35;
+    }
+
+    /* Lebar piksel tetap pada select penyaring dipaksa mengikuti lebar layar.
+       !important diperlukan karena lebarnya ditulis sebagai gaya sebaris. */
+    .card-header .card-tools {
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .card-header .card-tools .form-control,
+    .card-header .card-tools .custom-select,
+    .card-header .card-tools select,
+    .card-header .card-tools .input-group {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-right: 0 !important;
+        margin-bottom: 6px;
+    }
+
+    .card-header .card-tools .btn {
+        width: 100%;
+        margin-bottom: 6px;
+    }
+
+    /* Aturan piramida BSC berada pada <style> di resources/views/livewire/bsc-dashboard.blade.php,
+       karena blok itu diuraikan setelah berkas ini dan akan menimpa aturan di sini. */
+
+    /* ---- Tabel ---- */
+    .table {
+        font-size: 12px;
+    }
+
+    .table td,
+    .table th {
+        padding: 6px 8px;
+    }
+
+    /* ---- Kotak berlebar minimum tetap ---- */
+    .revenue-node-box {
+        min-width: 0 !important;
+        width: 100%;
+    }
+
+    /* ---- Navbar ---- */
+    .main-header .navbar-nav .nav-link {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    /* ---- Tombol aksi berjajar pada kepala kartu ---- */
+    .card-header .btn-group {
+        width: 100%;
+    }
+}
+
+/* Layar sangat sempit (±360px): rapatkan lagi jarak dalam kartu. */
+@media (max-width: 400px) {
+    .card-body {
+        padding: 0.75rem;
+    }
+
+    .content-header {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+}

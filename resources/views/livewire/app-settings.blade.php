@@ -275,7 +275,7 @@
                             <div class="card-header">
                                 <h6 class="card-title mb-0"><i class="fas fa-lock mr-1"></i> Perlindungan Bawaan</h6>
                             </div>
-                            <div class="card-body p-0">
+                            <div class="card-body p-0 table-responsive">
                                 <table class="table table-sm mb-0">
                                     <tbody>
                                         <tr>
