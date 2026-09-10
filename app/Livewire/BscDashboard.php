@@ -212,6 +212,48 @@ class BscDashboard extends Component
      *
      * @param  array<string, float|null>  $tierScores
      */
+    /**
+     * Rincian bobot yang benar-benar dipakai menghitung Apex Score, untuk
+     * ditampilkan sebagai keterangan formula. Tingkat tanpa data dikeluarkan
+     * dan bobotnya dinormalisasi, persis seperti pada calculateApexScore().
+     *
+     * @param  array<string, float|null>  $tierScores
+     * @return array<int, array{label: string, weight: float}>
+     */
+    private function apexBreakdown(array $tierScores): array
+    {
+        $weights = config('bsc.apex_weights', []);
+        $label = [
+            'ratios' => 'Rasio Keuangan',
+            'objectives' => 'Sasaran Mutu',
+            'action_plans' => 'Program Kerja',
+        ];
+
+        $aktif = [];
+        $totalWeight = 0.0;
+
+        foreach ($tierScores as $tier => $score) {
+            $weight = (float) ($weights[$tier] ?? 0);
+            if ($score === null || $weight <= 0) {
+                continue;
+            }
+            $aktif[] = ['label' => $label[$tier] ?? $tier, 'weight' => $weight];
+            $totalWeight += $weight;
+        }
+
+        if ($totalWeight <= 0) {
+            return [];
+        }
+
+        return array_map(
+            fn (array $item) => [
+                'label' => $item['label'],
+                'weight' => round($item['weight'] / $totalWeight * 100),
+            ],
+            $aktif
+        );
+    }
+
     private function calculateApexScore(array $tierScores): float
     {
         $weights = config('bsc.apex_weights', []);
@@ -257,11 +299,13 @@ class BscDashboard extends Component
         // Apex Score = rata-rata terbobot Tingkat 2 (rasio), Tingkat 3 (sasaran
         // mutu) dan Tingkat 4 (program kerja), seluruhnya dari data nyata.
         // Bobot diatur di config/bsc.php.
-        $apexScore = $this->calculateApexScore([
+        $tierScores = [
             'ratios' => $ratios->count() > 0 ? $avgRatioScore : null,
             'objectives' => $objectives->count() > 0 ? $avgObjScore : null,
             'action_plans' => $actionPlans->count() > 0 ? $avgActionProgress : null,
-        ]);
+        ];
+        $apexScore = $this->calculateApexScore($tierScores);
+        $apexBreakdown = $this->apexBreakdown($tierScores);
 
         // Save computed apex score to period model — hanya bila berubah, agar
         // render ulang Livewire tidak menulis berulang. Timestamp sengaja tidak
@@ -325,6 +369,8 @@ class BscDashboard extends Component
             'hoursSinceSync' => $hoursSinceSync,
             'lastSyncTime' => $lastSyncTime,
             'apexScore' => $apexScore,
+            'apexBreakdown' => $apexBreakdown,
+            'ratioCount' => $ratios->count(),
             'avgRatioScore' => $avgRatioScore,
             'avgObjScore' => $avgObjScore,
             'avgActionProgress' => $avgActionProgress,

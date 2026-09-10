@@ -70,8 +70,38 @@
             text-shadow: 0 1px 3px rgba(0,0,0,0.4);
         }
 
+        /*
+         * Puncak segitiga sangat sempit: pada 800px, lebar yang terlihat hanya
+         * 200px di dasar tingkat 1 dan menyempit ke titik di atas. Teks karena
+         * itu didorong turun ke bagian yang lebar, diperkecil, dan dibatasi
+         * lebarnya — kalau tidak, ia terpotong oleh clip-path.
+         */
         .tier-1 .tier-content {
-            margin-top: 15px; /* Offset for sharp peak */
+            margin-top: 28px;
+            max-width: 120px;
+            padding: 0 2px;
+        }
+
+        .tier-1 .tier-title {
+            font-size: 9px;
+            letter-spacing: 0;
+            line-height: 1.2;
+        }
+
+        .tier-1 .tier-score {
+            font-size: 20px;
+        }
+
+        /* Keterangan panjangnya sudah ada pada kartu Apex Score di atas piramida. */
+        .tier-1 .tier-subtitle {
+            display: none;
+        }
+
+        /* Piramida ikut mengecil pada layar sempit — sisakan skornya saja. */
+        @media (max-width: 767.98px) {
+            .tier-1 .tier-title {
+                display: none;
+            }
         }
 
         .tier-title {
@@ -200,7 +230,17 @@
                                 <i class="fas fa-crown mr-2"></i> Apex Score Hop 4 (Konsolidasi)
                             </h5>
                             <small class="text-white-50">
-                                Bobot Formula: <strong>45% Revenue (Realisasi IDR 115.2M)</strong> + <strong>55% Rasio Keuangan</strong>
+                                @if(count($apexBreakdown) > 0)
+                                    Rata-rata terbobot:
+                                    @foreach($apexBreakdown as $bagian)
+                                        <strong>{{ $bagian['weight'] }}% {{ $bagian['label'] }}</strong>{{ ! $loop->last ? ' + ' : '' }}
+                                    @endforeach
+                                    @if(count($apexBreakdown) < 3)
+                                        <span class="d-block">Tingkat tanpa data pada periode ini dikeluarkan, bobotnya dibagi ke tingkat yang tersedia.</span>
+                                    @endif
+                                @else
+                                    Belum ada data pada periode ini, sehingga skor belum dapat dihitung.
+                                @endif
                             </small>
                         </div>
                         <div class="col-md-5 text-md-right text-center mt-2 mt-md-0">
@@ -230,9 +270,8 @@
                         <!-- TINGKAT 1: APEX KEUANGAN (PUNCAK SEGITIGA SEMPURNA 50% 0%) -->
                         <div class="pyramid-tier tier-1 {{ $activeLevel === 1 ? 'active-tier' : '' }}" wire:click="selectLevel(1)">
                             <div class="tier-content">
-                                <div class="tier-title"><i class="fas fa-crown text-warning mr-1"></i> Tingkat 1: Apex Keuangan</div>
+                                <div class="tier-title">Tingkat 1: Apex</div>
                                 <div class="tier-score">{{ number_format($apexScore, 1) }}%</div>
-                                <div class="tier-subtitle">Konsolidasi Rasio, Sasaran Mutu &amp; Program Kerja</div>
                             </div>
                             @if($activeLevel === 1)
                                 <div class="click-hint-badge"><i class="fas fa-check-circle text-warning"></i> Aktif Telusur</div>
@@ -244,7 +283,7 @@
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-chart-line text-white mr-1"></i> Tingkat 2: Rasio Keuangan</div>
                                 <div class="tier-score">{{ number_format($avgRatioScore, 1) }}%</div>
-                                <div class="tier-subtitle">7 Rasio Utama (Profitabilitas, Likuiditas, Solvabilitas, Growth)</div>
+                                <div class="tier-subtitle">{{ $ratioCount }} Rasio Keuangan (Likuiditas, Solvabilitas, Aktivitas, Profitabilitas, Produktivitas)</div>
                             </div>
                             @if($activeLevel === 2)
                                 <div class="click-hint-badge"><i class="fas fa-check-circle text-warning"></i> Aktif Telusur</div>

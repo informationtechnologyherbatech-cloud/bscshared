@@ -107,6 +107,34 @@ class BscDashboardScoringTest extends TestCase
         $this->assertSame(0.0, (float) $period->fresh()->apex_score);
     }
 
+    public function test_the_apex_formula_label_reflects_the_weights_actually_used(): void
+    {
+        $this->period();
+        $this->ratio('2026-08', 90);
+        $this->objective('2026-08', 70);
+
+        $html = Livewire::test(BscDashboard::class)->html();
+
+        // Label lama menyebut rumus yang sudah tidak dipakai lagi.
+        $this->assertStringNotContainsString('45% Revenue', $html);
+        $this->assertStringContainsString('Rata-rata terbobot', $html);
+        // Tanpa program kerja, bobot 45/35 dinormalisasi menjadi 56/44.
+        $this->assertStringContainsString('56% Rasio Keuangan', $html);
+        $this->assertStringContainsString('44% Sasaran Mutu', $html);
+    }
+
+    public function test_the_pyramid_labels_are_not_hardcoded_numbers(): void
+    {
+        $this->period();
+        $this->ratio('2026-08', 90);
+        $this->ratio('2026-08', 80);
+
+        $html = Livewire::test(BscDashboard::class)->html();
+
+        $this->assertStringNotContainsString('7 Rasio Utama', $html);
+        $this->assertStringContainsString('2 Rasio Keuangan', $html);
+    }
+
     public function test_stale_data_warning_lights_up_after_the_configured_threshold(): void
     {
         $period = $this->period();

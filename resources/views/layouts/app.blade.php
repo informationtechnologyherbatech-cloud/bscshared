@@ -42,9 +42,7 @@
             <li class="nav-item">
                 <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
             </li>
-            <li class="nav-item d-none d-sm-inline-block">
-                <a href="{{ route('dashboard') }}" class="nav-link active">{{ app_display_name() }}</a>
-            </li>
+            {{-- Nama aplikasi tidak diulang di sini: sudah tampil pada brand sidebar. --}}
         </ul>
 
         <!-- Right navbar links -->
@@ -56,10 +54,13 @@
             </li>
             @auth
             <li class="nav-item">
-                <a id="navLogoutTrigger" class="nav-link d-flex align-items-center" href="javascript:void(0)" onclick="event.preventDefault(); if(window.jQuery){ jQuery('#logoutModal').modal('show'); } return false;" title="Klik untuk logout — {{ auth()->user()->name }} ({{ auth()->user()->getRoleNames()->first() ?? 'User' }})" style="cursor:pointer;">
+                @php($peran = auth()->user()->getRoleNames()->first() ?? 'User')
+                @php($dept = auth()->user()->dept_code)
+                <a id="navLogoutTrigger" class="nav-link d-flex align-items-center" href="javascript:void(0)" onclick="event.preventDefault(); if(window.jQuery){ jQuery('#logoutModal').modal('show'); } return false;" title="Klik untuk logout — {{ auth()->user()->name }} ({{ $peran }}{{ $dept ? ' · '.$dept : '' }})" style="cursor:pointer;">
                     <i class="fas fa-user-circle mr-1"></i>
                     <span class="d-none d-md-inline">{{ Str::limit(auth()->user()->name, 18) }}</span>
-                    <small class="badge badge-light ml-2 d-none d-lg-inline">{{ auth()->user()->getRoleNames()->first() ?? 'User' }}</small>
+                    {{-- Peran &amp; departemen: satu-satunya info yang dulu hanya ada di panel sidebar. --}}
+                    <small class="badge badge-light ml-2 d-none d-lg-inline">{{ $peran }}{{ $dept ? ' · '.$dept : '' }}</small>
                 </a>
             </li>
             @endauth
@@ -82,20 +83,8 @@
 
         <!-- Sidebar -->
         <div class="sidebar">
-            <!-- Sidebar user panel -->
-            <div class="user-panel mt-3 pb-3 mb-3 d-flex">
-                <div class="image">
-                    <div class="img-circle elevation-2 bg-info text-center text-white" style="width: 34px; height: 34px; line-height: 34px; font-weight: bold;">
-                        {{ auth()->check() ? strtoupper(substr(auth()->user()->name,0,2)) : 'SA' }}
-                    </div>
-                </div>
-                <div class="info">
-                    <a href="#" class="d-block">{{ auth()->check() ? Str::limit(auth()->user()->name,20) : 'Administrator BSC' }}</a>
-                    @auth
-                    <small class="text-white-50 d-block" style="font-size:11px; opacity:.7;">{{ auth()->user()->getRoleNames()->first() ?? '-' }} {{ auth()->user()->dept_code ? '· '.auth()->user()->dept_code : '' }}</small>
-                    @endauth
-                </div>
-            </div>
+            {{-- Panel pengguna tidak ditampilkan di sini: nama, peran, dan departemen sudah
+                 tampil pada sudut kanan navbar, sehingga sidebar tidak mengulanginya. --}}
 
             <!-- Sidebar Menu — RBAC 13 Menu PRD Tabel 4 (hanya tampil sesuai permission) -->
             <nav class="mt-2">
