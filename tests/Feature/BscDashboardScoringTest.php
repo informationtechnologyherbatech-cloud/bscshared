@@ -7,6 +7,7 @@ use App\Models\ActionPlan;
 use App\Models\DepartmentObjective;
 use App\Models\FinancialRatio;
 use App\Models\Period;
+use App\Support\ScoreStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -141,6 +142,50 @@ class BscDashboardScoringTest extends TestCase
 
         // Piramida dibungkus wadah yang dapat digeser, supaya tidak terpotong.
         $this->assertStringContainsString('pyramid-scroll', $html);
+    }
+
+    public function test_each_tier_carries_a_status_dot_matching_its_score(): void
+    {
+        $this->period();
+        $this->ratio('2026-08', 100);   // tercapai  -> hijau
+        $this->objective('2026-08', 90); // waspada  -> oranye
+        // Program kerja sengaja dikosongkan -> abu-abu.
+
+        $html = Livewire::test(BscDashboard::class)->html();
+
+        $this->assertStringContainsString(ScoreStatus::color(ScoreStatus::TERCAPAI), $html);
+        $this->assertStringContainsString(ScoreStatus::color(ScoreStatus::WASPADA), $html);
+        $this->assertStringContainsString(ScoreStatus::color(ScoreStatus::BELUM_LENGKAP), $html);
+        $this->assertSame(4, substr_count($html, 'class="tier-status-dot"'));
+    }
+
+    public function test_a_tier_without_data_says_so_instead_of_showing_zero(): void
+    {
+        $this->period();
+        $this->ratio('2026-08', 90);
+
+        $html = Livewire::test(BscDashboard::class)->html();
+
+        // Tanpa program kerja, "0,0%" akan terbaca sebagai capaian nol.
+        $this->assertStringContainsString('data belum lengkap', $html);
+    }
+
+    public function test_the_legend_lists_every_status_exactly_once(): void
+    {
+        $this->period();
+        $this->ratio('2026-08', 90);
+
+        $html = Livewire::test(BscDashboard::class)->html();
+
+        foreach (ScoreStatus::legend() as $status) {
+            // Label memuat "<80%" yang di-escape Blade menjadi "&lt;80%".
+            $this->assertStringContainsString(e($status['label']), $html);
+        }
+
+        $this->assertSame(
+            count(ScoreStatus::legend()),
+            substr_count($html, 'class="pyramid-legend-dot"')
+        );
     }
 
     public function test_the_pyramid_labels_are_not_hardcoded_numbers(): void

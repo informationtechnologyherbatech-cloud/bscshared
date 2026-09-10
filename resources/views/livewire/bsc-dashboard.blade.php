@@ -140,6 +140,77 @@
             transition: all 0.3s ease;
         }
 
+        /*
+         * TITIK STATUS TIAP TINGKAT
+         * Ditempatkan tepat di dalam sisi miring kanan setiap tingkat. Titik x sisi kanan
+         * pada pertengahan tinggi tiap tingkat: T1 56,25% · T2 68,75% · T3 81,25% · T4 93,75%,
+         * jadi posisinya diambil sedikit di dalam angka itu agar tidak terpotong clip-path.
+         */
+        .tier-status-dot {
+            position: absolute;
+            top: 50%;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+            transform: translate(-50%, -50%);
+            z-index: 3;
+        }
+
+        /* Puncaknya terlalu sempit di sisi kanan — titiknya diletakkan di tengah atas. */
+        .tier-1 .tier-status-dot {
+            left: 50%;
+            top: 34%;
+        }
+
+        .tier-2 .tier-status-dot {
+            left: 66%;
+        }
+
+        .tier-3 .tier-status-dot {
+            left: 78.5%;
+        }
+
+        .tier-4 .tier-status-dot {
+            left: 91%;
+        }
+
+        /* Pengganti angka pada tingkat yang belum punya data. */
+        .tier-empty {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            opacity: 0.92;
+        }
+
+        /* Keterangan warna titik. */
+        .pyramid-legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px 18px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+            margin-top: 4px;
+        }
+
+        .pyramid-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #475569;
+        }
+
+        .pyramid-legend-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 3px;
+            flex: 0 0 auto;
+        }
+
         /* Penunjuk telusur: lebar mengikuti isinya, tidak melebar sepenuh kartu. */
         .drill-down-pointer {
             font-size: 13px;
@@ -223,6 +294,30 @@
             .click-hint-badge {
                 font-size: 8px;
                 padding: 2px 6px;
+            }
+
+            .tier-status-dot {
+                width: 10px;
+                height: 10px;
+                border-width: 1.5px;
+            }
+
+            .tier-empty {
+                font-size: 9px;
+            }
+
+            .pyramid-legend {
+                gap: 4px 12px;
+                padding-top: 10px;
+            }
+
+            .pyramid-legend-item {
+                font-size: 10px;
+            }
+
+            .pyramid-legend-dot {
+                width: 9px;
+                height: 9px;
             }
 
             .drill-down-pointer {
@@ -354,9 +449,10 @@
 
                         <!-- TINGKAT 1: APEX KEUANGAN (PUNCAK SEGITIGA SEMPURNA 50% 0%) -->
                         <div class="pyramid-tier tier-1 {{ $activeLevel === 1 ? 'active-tier' : '' }}" wire:click="selectLevel(1)">
+                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[1]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[1]) }}"></span>
                             <div class="tier-content">
                                 <div class="tier-title">Tingkat 1: Apex</div>
-                                <div class="tier-score">{{ number_format($apexScore, 1) }}%</div>
+                                <div class="tier-score">@if(count($apexBreakdown) > 0){{ number_format($apexScore, 1) }}%@else<span class="tier-empty">belum lengkap</span>@endif</div>
                             </div>
                             @if($activeLevel === 1)
                                 <div class="click-hint-badge"><i class="fas fa-check-circle text-warning"></i> Aktif Telusur</div>
@@ -365,12 +461,13 @@
 
                         <!-- TINGKAT 2: RASIO KEUANGAN (MID-TOP TRAPEZOID 37.5% - 62.5% TO 25% - 75%) -->
                         <div class="pyramid-tier tier-2 {{ $activeLevel === 2 ? 'active-tier' : '' }}" wire:click="selectLevel(2)">
+                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[2]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[2]) }}"></span>
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-chart-line text-white mr-1"></i>
                                     <span class="d-none d-md-inline">Tingkat 2: Rasio Keuangan</span>
                                     <span class="d-md-none">T2: Rasio Keuangan</span>
                                 </div>
-                                <div class="tier-score">{{ number_format($avgRatioScore, 1) }}%</div>
+                                <div class="tier-score">@if($ratioCount > 0){{ number_format($avgRatioScore, 1) }}%@else<span class="tier-empty">data belum lengkap</span>@endif</div>
                                 <div class="tier-subtitle">{{ $ratioCount }} Rasio Keuangan <br> (Likuiditas, Solvabilitas, Aktivitas, Profitabilitas, Produktivitas)</div>
                             </div>
                             @if($activeLevel === 2)
@@ -380,12 +477,13 @@
 
                         <!-- TINGKAT 3: OBJECTIVE DEPARTEMEN (MID-BOTTOM TRAPEZOID 25% - 75% TO 12.5% - 87.5%) -->
                         <div class="pyramid-tier tier-3 {{ $activeLevel === 3 ? 'active-tier' : '' }}" wire:click="selectLevel(3)">
+                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[3]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[3]) }}"></span>
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-bullseye text-white mr-1"></i>
                                     <span class="d-none d-md-inline">Tingkat 3: Objective Dept</span>
                                     <span class="d-md-none">T3: Objective</span>
                                 </div>
-                                <div class="tier-score">{{ number_format($avgObjScore, 1) }}%</div>
+                                <div class="tier-score">@if($objectiveCount > 0){{ number_format($avgObjScore, 1) }}%@else<span class="tier-empty">data belum lengkap</span>@endif</div>
                                 <div class="tier-subtitle">{{ $counts['total_kpi'] }} Sasaran Mutu Operasional Departemen</div>
                             </div>
                             @if($activeLevel === 3)
@@ -395,12 +493,13 @@
 
                         <!-- TINGKAT 4: PROGRAM KERJA / ACTION PLANS (BASE TRAPEZOID 12.5% - 87.5% TO 0% - 100%) -->
                         <div class="pyramid-tier tier-4 {{ $activeLevel === 4 ? 'active-tier' : '' }}" wire:click="selectLevel(4)">
+                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[4]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[4]) }}"></span>
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-tasks text-white mr-1"></i>
                                     <span class="d-none d-md-inline">Tingkat 4: Program Kerja (Action Plans)</span>
                                     <span class="d-md-none">T4: Program Kerja</span>
                                 </div>
-                                <div class="tier-score">{{ number_format($avgActionProgress, 1) }}%</div>
+                                <div class="tier-score">@if($actionPlanCount > 0){{ number_format($avgActionProgress, 1) }}%@else<span class="tier-empty">data belum lengkap</span>@endif</div>
                                 <div class="tier-subtitle">Inisiatif Mitigasi Perbaikan & Program Eksekusi</div>
                             </div>
                             @if($activeLevel === 4)
@@ -410,6 +509,16 @@
 
                     </div>
                     </div>{{-- /.pyramid-scroll --}}
+
+                    <!-- Keterangan warna titik status pada tiap tingkat -->
+                    <div class="pyramid-legend">
+                        @foreach($statusLegend as $status)
+                            <span class="pyramid-legend-item">
+                                <span class="pyramid-legend-dot" style="background: {{ $status['color'] }};"></span>
+                                {{ $status['label'] }}
+                            </span>
+                        @endforeach
+                    </div>
 
                     <!-- Visual Arrow Pointer for Active Drill-Down -->
                     <div class="text-center mt-2">

@@ -6,6 +6,7 @@ use App\Livewire\Concerns\AuthorizesWrites;
 use Livewire\Component;
 use Livewire\Attributes\Url;
 use App\Models\Period;
+use App\Support\ScoreStatus;
 use App\Models\FinancialRatio;
 use App\Models\DepartmentObjective;
 use App\Models\ActionPlan;
@@ -307,6 +308,15 @@ class BscDashboard extends Component
         $apexScore = $this->calculateApexScore($tierScores);
         $apexBreakdown = $this->apexBreakdown($tierScores);
 
+        // Status tiap tingkat piramida. Tingkat tanpa data ditandai "belum lengkap",
+        // bukan diberi nilai nol — keduanya berbeda arti.
+        $tierStatus = [
+            1 => ScoreStatus::for($apexScore, $apexBreakdown !== []),
+            2 => ScoreStatus::for($avgRatioScore, $ratios->count() > 0),
+            3 => ScoreStatus::for($avgObjScore, $objectives->count() > 0),
+            4 => ScoreStatus::for($avgActionProgress, $actionPlans->count() > 0),
+        ];
+
         // Save computed apex score to period model — hanya bila berubah, agar
         // render ulang Livewire tidak menulis berulang. Timestamp sengaja tidak
         // disentuh: periods.updated_at menandai sinkronisasi data terakhir,
@@ -370,6 +380,10 @@ class BscDashboard extends Component
             'lastSyncTime' => $lastSyncTime,
             'apexScore' => $apexScore,
             'apexBreakdown' => $apexBreakdown,
+            'tierStatus' => $tierStatus,
+            'statusLegend' => ScoreStatus::legend(),
+            'objectiveCount' => $objectives->count(),
+            'actionPlanCount' => $actionPlans->count(),
             'ratioCount' => $ratios->count(),
             'avgRatioScore' => $avgRatioScore,
             'avgObjScore' => $avgObjScore,
