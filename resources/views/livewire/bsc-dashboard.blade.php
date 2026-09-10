@@ -97,12 +97,6 @@
             display: none;
         }
 
-        /*
-         * Di bawah 768px bentuk segitiga dilepas dan tiap tingkat menjadi balok
-         * bertumpuk (lihat blok responsif pada public/css/custom-app.css), sehingga
-         * pembatasan di atas tidak lagi diperlukan dan judulnya kembali tampil utuh.
-         */
-
         .tier-title {
             font-size: 14px;
             letter-spacing: 0.5px;
@@ -144,6 +138,13 @@
             border-radius: 10px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
+        }
+
+        /* Penunjuk telusur: lebar mengikuti isinya, tidak melebar sepenuh kartu. */
+        .drill-down-pointer {
+            font-size: 13px;
+            padding: 0.5rem 1.5rem;
+            white-space: normal;
         }
 
         /*
@@ -222,6 +223,11 @@
             .click-hint-badge {
                 font-size: 8px;
                 padding: 2px 6px;
+            }
+
+            .drill-down-pointer {
+                font-size: 10px;
+                padding: 0.3rem 0.85rem;
             }
         }
     </style>
@@ -407,8 +413,10 @@
 
                     <!-- Visual Arrow Pointer for Active Drill-Down -->
                     <div class="text-center mt-2">
-                        <div class="badge badge-pill badge-info px-4 py-2 font-weight-bold shadow-sm" style="font-size: 13px;">
-                            <i class="fas fa-arrow-down mr-1"></i> Menampilkan Detail Drill-Down untuk Tingkat {{ $activeLevel }}
+                        <div class="badge badge-pill badge-info font-weight-bold shadow-sm drill-down-pointer">
+                            <i class="fas fa-arrow-down mr-1"></i>
+                            <span class="d-none d-md-inline">Menampilkan Detail Drill-Down untuk Tingkat {{ $activeLevel }}</span>
+                            <span class="d-md-none">Detail Tingkat {{ $activeLevel }}</span>
                         </div>
                     </div>
 
@@ -761,5 +769,33 @@
         </div>
     @endif
 
-</div>
+    @script
+    <script>
+        /*
+         * Di layar sempit piramida ditahan pada lebar minimum dan wadahnya dapat digeser
+         * mendatar. Peramban selalu memulai guliran dari tepi kiri, sehingga piramida yang
+         * terpusat di dalam kotaknya justru tampak bergeser ke kanan. Posisi awal guliran
+         * dipusatkan supaya puncaknya berada di tengah layar.
+         */
+        const pusatkanPiramida = () => {
+            const wadah = document.querySelector('.pyramid-scroll');
 
+            if (! wadah) {
+                return;
+            }
+
+            const kelebihan = wadah.scrollWidth - wadah.clientWidth;
+
+            if (kelebihan > 0) {
+                wadah.scrollLeft = kelebihan / 2;
+            }
+        };
+
+        // Dijalankan setelah tata letak selesai dihitung, termasuk saat font baru dimuat.
+        requestAnimationFrame(pusatkanPiramida);
+        window.addEventListener('load', pusatkanPiramida);
+        window.addEventListener('resize', pusatkanPiramida);
+    </script>
+    @endscript
+
+</div>
