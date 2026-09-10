@@ -159,6 +159,28 @@ class SmokeRoutesTest extends TestCase
             ->assertDontSee('Kunci Periode', false);
     }
 
+    public function test_the_layout_does_not_repeat_identity_in_two_places(): void
+    {
+        $response = $this->actingAs($this->superAdmin())->get(route('dashboard'));
+
+        // Panel pengguna sidebar dihapus: nama & peran sudah ada di navbar.
+        $response->assertDontSee('class="user-panel', false);
+        // Nama aplikasi cukup pada brand sidebar, tidak diulang di navbar kiri.
+        $response->assertDontSee('nav-item d-none d-sm-inline-block', false);
+    }
+
+    public function test_the_navbar_still_shows_the_role_and_department(): void
+    {
+        $user = $this->superAdmin();
+        $user->update(['dept_code' => 'FAT']);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            // Departemen dulu hanya tampil di panel sidebar yang kini dihapus.
+            ->assertSee('Super Admin · FAT', false);
+    }
+
     public function test_the_sidebar_shows_the_uploaded_entity_logo(): void
     {
         $user = $this->superAdmin();

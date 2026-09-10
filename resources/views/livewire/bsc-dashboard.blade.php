@@ -70,8 +70,31 @@
             text-shadow: 0 1px 3px rgba(0,0,0,0.4);
         }
 
+        /*
+         * Puncak segitiga sangat sempit: pada 800px, lebar yang terlihat hanya
+         * 200px di dasar tingkat 1 dan menyempit ke titik di atas. Teks karena
+         * itu didorong turun ke bagian yang lebar, diperkecil, dan dibatasi
+         * lebarnya — kalau tidak, ia terpotong oleh clip-path.
+         */
         .tier-1 .tier-content {
-            margin-top: 15px; /* Offset for sharp peak */
+            margin-top: 28px;
+            max-width: 120px;
+            padding: 0 2px;
+        }
+
+        .tier-1 .tier-title {
+            font-size: 9px;
+            letter-spacing: 0;
+            line-height: 1.2;
+        }
+
+        .tier-1 .tier-score {
+            font-size: 20px;
+        }
+
+        /* Keterangan panjangnya sudah ada pada kartu Apex Score di atas piramida. */
+        .tier-1 .tier-subtitle {
+            display: none;
         }
 
         .tier-title {
@@ -115,6 +138,192 @@
             border-radius: 10px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
+        }
+
+        /*
+         * TITIK STATUS TIAP TINGKAT
+         * Ditempatkan tepat di dalam sisi miring kanan setiap tingkat. Titik x sisi kanan
+         * pada pertengahan tinggi tiap tingkat: T1 56,25% · T2 68,75% · T3 81,25% · T4 93,75%,
+         * jadi posisinya diambil sedikit di dalam angka itu agar tidak terpotong clip-path.
+         */
+        .tier-status-dot {
+            position: absolute;
+            top: 50%;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+            transform: translate(-50%, -50%);
+            z-index: 3;
+        }
+
+        /* Puncaknya terlalu sempit di sisi kanan — titiknya diletakkan di tengah atas. */
+        .tier-1 .tier-status-dot {
+            left: 50%;
+            top: 34%;
+        }
+
+        .tier-2 .tier-status-dot {
+            left: 66%;
+        }
+
+        .tier-3 .tier-status-dot {
+            left: 78.5%;
+        }
+
+        .tier-4 .tier-status-dot {
+            left: 91%;
+        }
+
+        /* Pengganti angka pada tingkat yang belum punya data. */
+        .tier-empty {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            opacity: 0.92;
+        }
+
+        /* Keterangan warna titik. */
+        .pyramid-legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px 18px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+            margin-top: 4px;
+        }
+
+        .pyramid-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #475569;
+        }
+
+        .pyramid-legend-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 3px;
+            flex: 0 0 auto;
+        }
+
+        /* Penunjuk telusur: lebar mengikuti isinya, tidak melebar sepenuh kartu. */
+        .drill-down-pointer {
+            font-size: 13px;
+            padding: 0.5rem 1.5rem;
+            white-space: normal;
+        }
+
+        /*
+         * PIRAMIDA DI LAYAR SEMPIT
+         * Bentuk piramida dipertahankan pada semua ukuran layar. Yang menyesuaikan diri adalah
+         * isinya, karena ruang di dalam segitiga menyempit sebanding dengan lebar layar.
+         *
+         * Pada piramida selebar 420px, lebar yang tersedia di baris judul tiap tingkat adalah:
+         * T1 24px · T2 129px · T3 234px · T4 339px. Karena itu di bawah 768px:
+         *   - judul memakai label pendek (lihat markup: span .d-md-none),
+         *   - subjudul disembunyikan — keterangannya diulang pada tabel telusur di bawah piramida,
+         *   - tingkat 1 hanya menampilkan skornya; judulnya mustahil muat pada 24px.
+         *
+         * Lebar piramida ditahan minimal 420px di dalam wadah yang dapat digeser mendatar,
+         * sehingga pada layar yang lebih sempit isinya tergeser, bukan terpotong.
+         */
+        @media (max-width: 767.98px) {
+            /* Hanya di lebar ini; di desktop wadah dibiarkan apa adanya supaya bayangan
+               dan efek perbesar saat hover tidak terpotong. */
+            .pyramid-scroll {
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .pyramid-wrapper {
+                min-width: 420px;
+                height: 360px;
+                padding: 4px 0;
+                margin-bottom: 8px;
+            }
+
+            .pyramid-tier {
+                height: 84px;
+                margin-bottom: 2px;
+            }
+
+            /* Efek perbesar memicu geseran mendatar yang tidak diinginkan. */
+            .pyramid-tier:hover,
+            .pyramid-tier.active-tier {
+                transform: none;
+            }
+
+            .tier-content {
+                padding: 2px 6px;
+            }
+
+            .tier-title {
+                font-size: 9px;
+                letter-spacing: 0;
+                line-height: 1.25;
+            }
+
+            .tier-score {
+                font-size: 17px;
+            }
+
+            /* Terlalu panjang untuk lebar segitiga di sini; sudah ada di tabel telusur. */
+            .tier-subtitle {
+                display: none;
+            }
+
+            .tier-1 .tier-content {
+                margin-top: 20px;
+                max-width: 80px;
+            }
+
+            .tier-1 .tier-title {
+                display: none;
+            }
+
+            .tier-1 .tier-score {
+                font-size: 15px;
+            }
+
+            .click-hint-badge {
+                font-size: 8px;
+                padding: 2px 6px;
+            }
+
+            .tier-status-dot {
+                width: 10px;
+                height: 10px;
+                border-width: 1.5px;
+            }
+
+            .tier-empty {
+                font-size: 9px;
+            }
+
+            .pyramid-legend {
+                gap: 4px 12px;
+                padding-top: 10px;
+            }
+
+            .pyramid-legend-item {
+                font-size: 10px;
+            }
+
+            .pyramid-legend-dot {
+                width: 9px;
+                height: 9px;
+            }
+
+            .drill-down-pointer {
+                font-size: 10px;
+                padding: 0.3rem 0.85rem;
+            }
         }
     </style>
 
@@ -179,18 +388,18 @@
 
             @if($isStale)
                 <div class="alert alert-warning alert-dismissible fade show border-warning" role="alert">
-                    <i class="fas fa-clock mr-2 text-dark"></i> 
+                    <i class="fas fa-clock mr-2 text-dark"></i>
                     <strong>Peringatan Kesegaran Data:</strong> Data belum disinkronkan lebih dari 26 jam (Terakhir: {{ $lastSyncTime ? $lastSyncTime->diffForHumans() : 'N/A' }}).
                 </div>
             @endif
 
             @if($isClosed)
                 <div class="alert alert-secondary fade show border-dark" role="alert">
-                    <i class="fas fa-lock mr-2"></i> 
+                    <i class="fas fa-lock mr-2"></i>
                     <strong>Periode Terkunci (CLOSED):</strong> Periode {{ $selectedPeriod }} telah ditutup secara operasional. Seluruh perubahan nilai KPI/Rasio dibekukan.
                 </div>
             @endif
-            
+
             <!-- APEX SCORE SUMMARY BAR -->
             <div class="card bg-gradient-navy text-white shadow-sm mb-4">
                 <div class="card-body py-3">
@@ -200,7 +409,17 @@
                                 <i class="fas fa-crown mr-2"></i> Apex Score Hop 4 (Konsolidasi)
                             </h5>
                             <small class="text-white-50">
-                                Bobot Formula: <strong>45% Revenue (Realisasi IDR 115.2M)</strong> + <strong>55% Rasio Keuangan</strong>
+                                @if(count($apexBreakdown) > 0)
+                                    Rata-rata terbobot:
+                                    @foreach($apexBreakdown as $bagian)
+                                        <strong>{{ $bagian['weight'] }}% {{ $bagian['label'] }}</strong>{{ ! $loop->last ? ' + ' : '' }}
+                                    @endforeach
+                                    @if(count($apexBreakdown) < 3)
+                                        <span class="d-block">Tingkat tanpa data pada periode ini dikeluarkan, bobotnya dibagi ke tingkat yang tersedia.</span>
+                                    @endif
+                                @else
+                                    Belum ada data pada periode ini, sehingga skor belum dapat dihitung.
+                                @endif
                             </small>
                         </div>
                         <div class="col-md-5 text-md-right text-center mt-2 mt-md-0">
@@ -224,15 +443,16 @@
                     </span>
                 </div>
                 <div class="card-body bg-light position-relative p-4">
-                    
+
+                    <div class="pyramid-scroll">
                     <div class="pyramid-wrapper">
 
                         <!-- TINGKAT 1: APEX KEUANGAN (PUNCAK SEGITIGA SEMPURNA 50% 0%) -->
                         <div class="pyramid-tier tier-1 {{ $activeLevel === 1 ? 'active-tier' : '' }}" wire:click="selectLevel(1)">
+                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[1]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[1]) }}"></span>
                             <div class="tier-content">
-                                <div class="tier-title"><i class="fas fa-crown text-warning mr-1"></i> Tingkat 1: Apex Keuangan</div>
-                                <div class="tier-score">{{ number_format($apexScore, 1) }}%</div>
-                                <div class="tier-subtitle">Konsolidasi Rasio, Sasaran Mutu &amp; Program Kerja</div>
+                                <div class="tier-title">Tingkat 1: Apex</div>
+                                <div class="tier-score">@if(count($apexBreakdown) > 0){{ number_format($apexScore, 1) }}%@else<span class="tier-empty">belum lengkap</span>@endif</div>
                             </div>
                             @if($activeLevel === 1)
                                 <div class="click-hint-badge"><i class="fas fa-check-circle text-warning"></i> Aktif Telusur</div>
@@ -241,10 +461,14 @@
 
                         <!-- TINGKAT 2: RASIO KEUANGAN (MID-TOP TRAPEZOID 37.5% - 62.5% TO 25% - 75%) -->
                         <div class="pyramid-tier tier-2 {{ $activeLevel === 2 ? 'active-tier' : '' }}" wire:click="selectLevel(2)">
+                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[2]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[2]) }}"></span>
                             <div class="tier-content">
-                                <div class="tier-title"><i class="fas fa-chart-line text-white mr-1"></i> Tingkat 2: Rasio Keuangan</div>
-                                <div class="tier-score">{{ number_format($avgRatioScore, 1) }}%</div>
-                                <div class="tier-subtitle">7 Rasio Utama (Profitabilitas, Likuiditas, Solvabilitas, Growth)</div>
+                                <div class="tier-title"><i class="fas fa-chart-line text-white mr-1"></i>
+                                    <span class="d-none d-md-inline">Tingkat 2: Rasio Keuangan</span>
+                                    <span class="d-md-none">T2: Rasio Keuangan</span>
+                                </div>
+                                <div class="tier-score">@if($ratioCount > 0){{ number_format($avgRatioScore, 1) }}%@else<span class="tier-empty">data belum lengkap</span>@endif</div>
+                                <div class="tier-subtitle">{{ $ratioCount }} Rasio Keuangan <br> (Likuiditas, Solvabilitas, Aktivitas, Profitabilitas, Produktivitas)</div>
                             </div>
                             @if($activeLevel === 2)
                                 <div class="click-hint-badge"><i class="fas fa-check-circle text-warning"></i> Aktif Telusur</div>
@@ -253,9 +477,13 @@
 
                         <!-- TINGKAT 3: OBJECTIVE DEPARTEMEN (MID-BOTTOM TRAPEZOID 25% - 75% TO 12.5% - 87.5%) -->
                         <div class="pyramid-tier tier-3 {{ $activeLevel === 3 ? 'active-tier' : '' }}" wire:click="selectLevel(3)">
+                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[3]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[3]) }}"></span>
                             <div class="tier-content">
-                                <div class="tier-title"><i class="fas fa-bullseye text-white mr-1"></i> Tingkat 3: Objective Dept</div>
-                                <div class="tier-score">{{ number_format($avgObjScore, 1) }}%</div>
+                                <div class="tier-title"><i class="fas fa-bullseye text-white mr-1"></i>
+                                    <span class="d-none d-md-inline">Tingkat 3: Objective Dept</span>
+                                    <span class="d-md-none">T3: Objective</span>
+                                </div>
+                                <div class="tier-score">@if($objectiveCount > 0){{ number_format($avgObjScore, 1) }}%@else<span class="tier-empty">data belum lengkap</span>@endif</div>
                                 <div class="tier-subtitle">{{ $counts['total_kpi'] }} Sasaran Mutu Operasional Departemen</div>
                             </div>
                             @if($activeLevel === 3)
@@ -265,9 +493,13 @@
 
                         <!-- TINGKAT 4: PROGRAM KERJA / ACTION PLANS (BASE TRAPEZOID 12.5% - 87.5% TO 0% - 100%) -->
                         <div class="pyramid-tier tier-4 {{ $activeLevel === 4 ? 'active-tier' : '' }}" wire:click="selectLevel(4)">
+                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[4]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[4]) }}"></span>
                             <div class="tier-content">
-                                <div class="tier-title"><i class="fas fa-tasks text-white mr-1"></i> Tingkat 4: Program Kerja (Action Plans)</div>
-                                <div class="tier-score">{{ number_format($avgActionProgress, 1) }}%</div>
+                                <div class="tier-title"><i class="fas fa-tasks text-white mr-1"></i>
+                                    <span class="d-none d-md-inline">Tingkat 4: Program Kerja (Action Plans)</span>
+                                    <span class="d-md-none">T4: Program Kerja</span>
+                                </div>
+                                <div class="tier-score">@if($actionPlanCount > 0){{ number_format($avgActionProgress, 1) }}%@else<span class="tier-empty">data belum lengkap</span>@endif</div>
                                 <div class="tier-subtitle">Inisiatif Mitigasi Perbaikan & Program Eksekusi</div>
                             </div>
                             @if($activeLevel === 4)
@@ -276,11 +508,24 @@
                         </div>
 
                     </div>
+                    </div>{{-- /.pyramid-scroll --}}
+
+                    <!-- Keterangan warna titik status pada tiap tingkat -->
+                    <div class="pyramid-legend">
+                        @foreach($statusLegend as $status)
+                            <span class="pyramid-legend-item">
+                                <span class="pyramid-legend-dot" style="background: {{ $status['color'] }};"></span>
+                                {{ $status['label'] }}
+                            </span>
+                        @endforeach
+                    </div>
 
                     <!-- Visual Arrow Pointer for Active Drill-Down -->
                     <div class="text-center mt-2">
-                        <div class="badge badge-pill badge-info px-4 py-2 font-weight-bold shadow-sm" style="font-size: 13px;">
-                            <i class="fas fa-arrow-down mr-1"></i> Menampilkan Detail Drill-Down untuk Tingkat {{ $activeLevel }}
+                        <div class="badge badge-pill badge-info font-weight-bold shadow-sm drill-down-pointer">
+                            <i class="fas fa-arrow-down mr-1"></i>
+                            <span class="d-none d-md-inline">Menampilkan Detail Drill-Down untuk Tingkat {{ $activeLevel }}</span>
+                            <span class="d-md-none">Detail Tingkat {{ $activeLevel }}</span>
                         </div>
                     </div>
 
@@ -301,7 +546,7 @@
                             <i class="fas fa-tasks mr-2"></i> Telusur Detail Tingkat 4: Program Kerja & Action Plans
                         @endif
                     </h4>
-                    
+
                     <div>
                         @if($activeLevel === 2)
                             <a href="{{ route('financial-ratios', ['status' => $statusFilter, 'period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
@@ -324,7 +569,7 @@
                 </div>
 
                 <div class="card-body">
-                    
+
                     <!-- BARIS FILTER & SEARCH TELUSUR -->
                     @if($activeLevel > 1)
                         <div class="row mb-3 align-items-center">
@@ -514,10 +759,10 @@
                                             </div>
                                             <h6 class="font-weight-bold text-dark mb-2">{{ $ap->title }}</h6>
                                             <small class="text-muted d-block mb-2">
-                                                <i class="fas fa-link text-purple mr-1"></i> KPI Terkait: 
+                                                <i class="fas fa-link text-purple mr-1"></i> KPI Terkait:
                                                 <strong>{{ $ap->objective ? $ap->objective->kpi_code . ' - ' . $ap->objective->kpi_name : 'Umum' }}</strong>
                                             </small>
-                                            
+
                                             <div class="d-flex justify-content-between align-items-center small mb-1">
                                                 <span>Progress Pelaksanaan:</span>
                                                 <strong class="text-danger">{{ $ap->progress_pct }}%</strong>
@@ -633,5 +878,47 @@
         </div>
     @endif
 
-</div>
+    @script
+    <script>
+        /*
+         * Di layar sempit piramida ditahan pada lebar minimum dan wadahnya dapat digeser
+         * mendatar. Peramban selalu memulai guliran dari tepi kiri, sehingga piramida yang
+         * terpusat di dalam kotaknya justru tampak bergeser ke kanan. Posisi awal guliran
+         * dipusatkan supaya puncaknya berada di tengah layar.
+         */
+        /*
+         * Dibungkus IIFE supaya tidak ada nama yang bocor ke lingkup global: komponen ini
+         * dapat dipasang ulang (navigasi Livewire, penyegaran sebagian), dan deklarasi
+         * const global yang sama akan melempar galat pada pemasangan kedua.
+         */
+        (() => {
+            const pusatkanPiramida = () => {
+                const wadah = document.querySelector('.pyramid-scroll');
 
+                if (! wadah) {
+                    return;
+                }
+
+                const kelebihan = wadah.scrollWidth - wadah.clientWidth;
+
+                if (kelebihan > 0) {
+                    wadah.scrollLeft = kelebihan / 2;
+                }
+            };
+
+            // Dijalankan setiap kali komponen dipasang, setelah tata letak selesai dihitung.
+            requestAnimationFrame(pusatkanPiramida);
+
+            // Pendengar peristiwa hanya dipasang sekali, agar tidak menumpuk.
+            if (window.__bscPusatPiramidaTerpasang) {
+                return;
+            }
+
+            window.__bscPusatPiramidaTerpasang = true;
+            window.addEventListener('load', pusatkanPiramida, { once: true });
+            window.addEventListener('resize', pusatkanPiramida);
+        })();
+    </script>
+    @endscript
+
+</div>

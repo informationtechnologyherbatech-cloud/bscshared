@@ -6,6 +6,7 @@ use App\Livewire\Concerns\AuthorizesWrites;
 use Livewire\Component;
 use Livewire\Attributes\Url;
 use App\Models\Period;
+use App\Support\ScoreStatus;
 use App\Models\FinancialRatio;
 use App\Models\DepartmentObjective;
 use App\Models\ActionPlan;
@@ -204,6 +205,48 @@ class BscDashboard extends Component
     }
 
     /**
+     * Rincian bobot yang benar-benar dipakai menghitung Apex Score, untuk
+     * ditampilkan sebagai keterangan formula. Tingkat tanpa data dikeluarkan
+     * dan bobotnya dinormalisasi, persis seperti pada calculateApexScore().
+     *
+     * @param  array<string, float|null>  $tierScores
+     * @return array<int, array{label: string, weight: float}>
+     */
+    private function apexBreakdown(array $tierScores): array
+    {
+        $weights = config('bsc.apex_weights', []);
+        $label = [
+            'ratios' => 'Rasio Keuangan',
+            'objectives' => 'Sasaran Mutu',
+            'action_plans' => 'Program Kerja',
+        ];
+
+        $aktif = [];
+        $totalWeight = 0.0;
+
+        foreach ($tierScores as $tier => $score) {
+            $weight = (float) ($weights[$tier] ?? 0);
+            if ($score === null || $weight <= 0) {
+                continue;
+            }
+            $aktif[] = ['label' => $label[$tier] ?? $tier, 'weight' => $weight];
+            $totalWeight += $weight;
+        }
+
+        if ($totalWeight <= 0) {
+            return [];
+        }
+
+        return array_map(
+            fn (array $item) => [
+                'label' => $item['label'],
+                'weight' => round($item['weight'] / $totalWeight * 100),
+            ],
+            $aktif
+        );
+    }
+
+    /**
      * Rata-rata terbobot skor tiap tingkat piramida.
      *
      * Tingkat yang belum punya data (nilai null) dikeluarkan dari perhitungan
@@ -250,18 +293,38 @@ class BscDashboard extends Component
         $objectives = $objectivesQuery->get();
         $avgObjScore = $objectives->count() > 0 ? round($objectives->avg('achievement_pct'), 2) : 0;
 
-        $actionPlans = ActionPlan::with('objective')->get();
+        // Program kerja tidak punya kolom periode; keterkaitannya lewat sasaran mutu
+        // yang dimitigasinya. Tanpa penyaringan ini, Tingkat 4 dan Apex Score memakai
+        // program kerja dari seluruh periode, dan penanda "data belum lengkap" ikut
+        // salah pada periode yang sebenarnya memang belum punya program kerja.
+        // Program kerja tanpa sasaran mutu tidak dapat diatribusikan ke periode mana
+        // pun, sehingga tidak ikut diskor — daftar lengkapnya tetap ada di menu
+        // Program Kerja.
+        $actionPlans = ActionPlan::with('objective')
+            ->whereHas('objective', fn ($query) => $query->where('period', $this->selectedPeriod))
+            ->get();
         // PRD G-03 Requirement: Tier 4 Apex score MUST strictly represent average progress_pct of action plans
         $avgActionProgress = $actionPlans->count() > 0 ? round($actionPlans->avg('progress_pct'), 2) : 0;
 
         // Apex Score = rata-rata terbobot Tingkat 2 (rasio), Tingkat 3 (sasaran
         // mutu) dan Tingkat 4 (program kerja), seluruhnya dari data nyata.
         // Bobot diatur di config/bsc.php.
-        $apexScore = $this->calculateApexScore([
+        $tierScores = [
             'ratios' => $ratios->count() > 0 ? $avgRatioScore : null,
             'objectives' => $objectives->count() > 0 ? $avgObjScore : null,
             'action_plans' => $actionPlans->count() > 0 ? $avgActionProgress : null,
-        ]);
+        ];
+        $apexScore = $this->calculateApexScore($tierScores);
+        $apexBreakdown = $this->apexBreakdown($tierScores);
+
+        // Status tiap tingkat piramida. Tingkat tanpa data ditandai "belum lengkap",
+        // bukan diberi nilai nol — keduanya berbeda arti.
+        $tierStatus = [
+            1 => ScoreStatus::for($apexScore, $apexBreakdown !== []),
+            2 => ScoreStatus::for($avgRatioScore, $ratios->count() > 0),
+            3 => ScoreStatus::for($avgObjScore, $objectives->count() > 0),
+            4 => ScoreStatus::for($avgActionProgress, $actionPlans->count() > 0),
+        ];
 
         // Save computed apex score to period model — hanya bila berubah, agar
         // render ulang Livewire tidak menulis berulang. Timestamp sengaja tidak
@@ -325,6 +388,12 @@ class BscDashboard extends Component
             'hoursSinceSync' => $hoursSinceSync,
             'lastSyncTime' => $lastSyncTime,
             'apexScore' => $apexScore,
+            'apexBreakdown' => $apexBreakdown,
+            'tierStatus' => $tierStatus,
+            'statusLegend' => ScoreStatus::legend(),
+            'objectiveCount' => $objectives->count(),
+            'actionPlanCount' => $actionPlans->count(),
+            'ratioCount' => $ratios->count(),
             'avgRatioScore' => $avgRatioScore,
             'avgObjScore' => $avgObjScore,
             'avgActionProgress' => $avgActionProgress,

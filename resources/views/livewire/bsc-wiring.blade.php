@@ -286,6 +286,63 @@
             border-color: #334155;
             color: #94a3b8;
         }
+
+        /*
+         * DIAGRAM ALUR DI LAYAR SEMPIT
+         * Grid tiga kolom memakai lebar tetap (220px + 250px + 1fr, jarak 60px) sehingga
+         * membutuhkan sekitar 590px. Di bawah itu isinya terpotong — bukan sekadar sempit —
+         * karena wadahnya memakai overflow-hidden. Di lebar ini kolomnya ditumpuk.
+         *
+         * Garis bezier digambar dari posisi antarnode pada tata letak mendatar, jadi ia
+         * disembunyikan saat kolomnya menumpuk; urutan kartu sendiri sudah menyatakan alurnya.
+         */
+        @media (max-width: 991.98px) {
+            .bezier-grid-col {
+                grid-template-columns: 1fr;
+                gap: 14px;
+                align-items: stretch;
+            }
+
+            .svg-flow-overlay {
+                display: none;
+            }
+
+            /* Tinggi tetap hanya berguna untuk merentang garis bezier; saat ditumpuk ia
+               menyisakan area kosong yang panjang. */
+            .wiring-container-base {
+                min-height: 0;
+            }
+
+            #perspectivesCol,
+            #departmentsCol {
+                min-height: 0 !important;
+                height: auto !important;
+            }
+
+            /* Titik sambung tanpa garis penghubung hanya menjadi bulatan menggantung. */
+            .node-dot-left,
+            .node-dot-right {
+                display: none;
+            }
+
+            .revenue-node-box {
+                min-width: 0;
+                width: 100%;
+            }
+
+            .cascade-simulator-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                padding: 12px 14px;
+            }
+
+            .cascade-simulator-container input[type="range"] {
+                max-width: 100% !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+        }
     </style>
 
     <div x-data="{ darkTheme: true }" :class="darkTheme ? 'wiring-theme-dark' : 'wiring-theme-light'">
