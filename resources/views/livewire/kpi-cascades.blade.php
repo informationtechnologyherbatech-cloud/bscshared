@@ -128,6 +128,9 @@
                                     <small class="text-muted d-block mt-2">Realisasi yang sudah diisi tidak berubah; hanya definisi &amp; target yang diperbarui.</small>
                                 @endif
                             @endcanany
+                            @if (abs($revisionFactor - 1) > 1e-9)
+                                <div class="small text-info mt-2"><i class="fas fa-balance-scale mr-1"></i> Revenue {{ $year }} direvisi (faktor {{ number_format($revisionFactor, 4, ',', '.') }}); monitoring memakai target disesuaikan.</div>
+                            @endif
                             <hr class="my-2">
                             <a href="{{ route('account-post-map') }}" class="small"><i class="fas fa-project-diagram mr-1"></i> Lihat Peta Pos Akun</a>
                         </div>
@@ -179,6 +182,9 @@
                                     </td>
                                     <td class="text-right text-nowrap">
                                         {{ $fmt($r->target) }} <small class="text-muted">{{ $r->unit_label }}</small>
+                                        @if (abs($revisionFactor - 1) > 1e-9 && $r->target !== null)
+                                            <small class="d-block text-info" title="Target disesuaikan = target × (1 + e × (faktor − 1))">disesuaikan {{ $fmt($r->adjustedTarget($revisionFactor)) }}</small>
+                                        @endif
                                         <small class="d-block text-muted">{{ $r->polarity }}</small>
                                     </td>
                                     <td class="text-center text-nowrap">

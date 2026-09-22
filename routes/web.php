@@ -15,6 +15,8 @@ use App\Livewire\ManageUsers;
 use App\Livewire\AppSettings;
 use App\Livewire\AccountBalances;
 use App\Livewire\AccountPostMap;
+use App\Livewire\HoldingConsolidation;
+use App\Livewire\IndicatorTests;
 use App\Livewire\KpiCascades;
 use App\Livewire\RatioCatalog;
 use App\Livewire\RevenueTargets;
@@ -87,6 +89,12 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
     // Tingkat 3 — peta pos akun × unit dan cascade KPI Head → Supervisor → Staff.
     Route::get('/peta-pos-akun', AccountPostMap::class)->middleware('permission:manage ratios|view ratios|view objectives')->name('account-post-map');
     Route::get('/cascade-kpi', KpiCascades::class)->middleware('permission:view objectives|manage ratios')->name('kpi-cascades');
+
+    // Tingkat 4 — uji indikator (Uji A & B) sebelum KPI masuk monitoring.
+    Route::get('/uji-indikator', IndicatorTests::class)->middleware('permission:manage ratios|view objectives')->name('indicator-tests');
+
+    // Konsolidasi holding — hanya pengguna level holding (dicek juga di komponen).
+    Route::get('/konsolidasi', HoldingConsolidation::class)->middleware('permission:view consolidation')->name('consolidation');
 
     // Struktur unit kerja per entitas — sumber daftar departemen.
     Route::get('/unit-kerja', WorkUnits::class)->middleware('permission:manage units')->name('work-units');

@@ -128,6 +128,14 @@
             <nav class="mt-2">
                 <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu" data-accordion="false">
                     <li class="nav-header">KONSOLIDASI KINERJA</li>
+                    @if(auth()->user()?->can('view consolidation') && app(\App\Support\EntityContext::class)->canSwitch(auth()->user()))
+                    <li class="nav-item">
+                        <a href="{{ route('consolidation') }}" class="nav-link {{ request()->routeIs('consolidation') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-layer-group"></i>
+                            <p>Konsolidasi Holding</p>
+                        </a>
+                    </li>
+                    @endif
                     @can('view dashboard')
                     <li class="nav-item">
                         <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
@@ -179,6 +187,14 @@
                         <a href="{{ route('kpi-cascades') }}" class="nav-link {{ request()->routeIs('kpi-cascades') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-sitemap"></i>
                             <p>Cascade KPI</p>
+                        </a>
+                    </li>
+                    @endcanany
+                    @canany(['manage ratios','view objectives'])
+                    <li class="nav-item">
+                        <a href="{{ route('indicator-tests') }}" class="nav-link {{ request()->routeIs('indicator-tests') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-vial"></i>
+                            <p>Uji Indikator</p>
                         </a>
                     </li>
                     @endcanany

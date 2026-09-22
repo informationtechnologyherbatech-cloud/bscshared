@@ -103,8 +103,20 @@ class AccountPosts
             };
         }
 
-        $dipakai['LK'] = self::selisih($dipakai['PA01'], $dipakai['PA02']);
-        $dipakai['LB'] = self::selisih($dipakai['LK'], $dipakai['PA03']);
+        return self::withDerived($dipakai);
+    }
+
+    /**
+     * Tambahkan/hitung ulang turunan Laba kotor (LK = PA01 − PA02) dan Laba
+     * bersih (LB = LK − PA03) dari nilai dipakai.
+     *
+     * @param  array<string, float|null>  $dipakai
+     * @return array<string, float|null>
+     */
+    public static function withDerived(array $dipakai): array
+    {
+        $dipakai['LK'] = self::selisih($dipakai['PA01'] ?? null, $dipakai['PA02'] ?? null);
+        $dipakai['LB'] = self::selisih($dipakai['LK'], $dipakai['PA03'] ?? null);
 
         return $dipakai;
     }

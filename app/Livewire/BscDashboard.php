@@ -8,6 +8,7 @@ use Livewire\Attributes\Url;
 use App\Models\Period;
 use App\Models\RevenueTarget;
 use App\Support\Bsc\RatioEngine;
+use App\Support\Bsc\Scorecard;
 use App\Support\ScoreStatus;
 use App\Models\FinancialRatio;
 use App\Models\DepartmentObjective;
@@ -260,20 +261,7 @@ class BscDashboard extends Component
      */
     private function calculateApexScore(array $tierScores): float
     {
-        $weights = config('bsc.apex_weights', []);
-        $weightedSum = 0.0;
-        $totalWeight = 0.0;
-
-        foreach ($tierScores as $tier => $score) {
-            $weight = (float) ($weights[$tier] ?? 0);
-            if ($score === null || $weight <= 0) {
-                continue;
-            }
-            $weightedSum += $weight * (float) $score;
-            $totalWeight += $weight;
-        }
-
-        return $totalWeight > 0 ? round($weightedSum / $totalWeight, 2) : 0.0;
+        return Scorecard::apex($tierScores);
     }
 
     public function render()
@@ -290,16 +278,10 @@ class BscDashboard extends Component
         
         $ratiosQuery = FinancialRatio::where('period', $this->selectedPeriod);
         $ratios = $ratiosQuery->get();
-        // F2: bila periode ini punya rasio hasil hitungan pos akun, skornya
-        // Σ(rubrik × bobot) ÷ Σ bobot seperti sheet L2. Periode lama yang rasionya
-        // masih diisi manual tetap memakai rata-rata pencapaian.
-        // Rasio yang sudah terhitung tetapi belum bertarget belum dapat diskor.
-        $hasComputed = $ratios->contains(fn ($r) => $r->isComputed());
-        $computedScore = $hasComputed ? RatioEngine::storedScore($this->selectedPeriod) : null;
-        $hasRatioScore = $hasComputed ? $computedScore !== null : $ratios->count() > 0;
-        $avgRatioScore = $hasComputed
-            ? ($computedScore ?? 0)
-            : ($ratios->count() > 0 ? round($ratios->avg('achievement_pct'), 2) : 0);
+        // F2 dari Scorecard — sumber yang sama dengan konsolidasi holding.
+        $ratioScore = Scorecard::ratioScore($this->selectedPeriod);
+        $hasRatioScore = $ratioScore !== null;
+        $avgRatioScore = $ratioScore ?? 0;
 
         $objectivesQuery = DepartmentObjective::where('period', $this->selectedPeriod);
         $objectives = $objectivesQuery->get();

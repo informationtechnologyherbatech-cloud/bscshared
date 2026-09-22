@@ -44,6 +44,8 @@ class RolesAndPermissionsSeeder extends Seeder
             // FR-13 Admin
             'manage units',         // unit kerja per entitas
             'manage revenue',       // target & realisasi revenue (L1)
+            'view consolidation',   // konsolidasi holding (pengguna level holding)
+            'manage consolidation', // eliminasi penjualan antarentitas
             'manage users',         // can_manage_users
             'manage settings',
             'manage apikey',
@@ -73,6 +75,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'view dokumentasi',
                 'view integration','view staging','view gateway','manage integration','manage apikey',
                 'manage revenue',
+                'view consolidation','manage consolidation',
             ],
             // 9/13 — Kelola Sasaran Mutu, pantau capaian, tindak lanjut program kerja (HRIS & Mutu)
             'Admin HRIS' => [

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToEntity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Satu baris sheet "L3 Cascade KPI": KPI tahunan satu jabatan di satu unit.
@@ -64,6 +65,24 @@ class KpiCascade extends Model
     public function objectives(): HasMany
     {
         return $this->hasMany(DepartmentObjective::class);
+    }
+
+    public function test(): HasOne
+    {
+        return $this->hasOne(KpiTest::class);
+    }
+
+    /**
+     * Kolom "Target disesuaikan" L3: target × (1 + e × (faktor revisi − 1)).
+     * Guardrail (e = 0) tidak ikut turun/naik saat revenue direvisi.
+     */
+    public function adjustedTarget(float $faktor): ?float
+    {
+        if ($this->target === null) {
+            return null;
+        }
+
+        return $this->target * (1 + (float) ($this->elasticity ?? 0) * ($faktor - 1));
     }
 
     public function isGuardrail(): bool

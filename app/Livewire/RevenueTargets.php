@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
+use App\Models\RevenuePlan;
 use App\Models\RevenueTarget;
 use App\Support\EntityContext;
 use Livewire\Attributes\Url;
@@ -33,6 +34,12 @@ class RevenueTargets extends Component
 
     /** Target setahun untuk dibantu difasing ke 12 bulan. */
     public string $annualTarget = '';
+
+    /** Target setahun yang disahkan direksi (sheet Asumsi B7). */
+    public string $approvedTarget = '';
+
+    /** Target revisi di tengah tahun (Asumsi B8) — sumber faktor revisi KPI. */
+    public string $revisedTarget = '';
 
     public function mount(): void
     {
@@ -67,6 +74,10 @@ class RevenueTargets extends Component
 
         $total = collect($this->rows)->sum(fn ($r) => (float) ($r['target'] ?: 0));
         $this->annualTarget = $total > 0 ? $this->angka($total) : '';
+
+        $rencana = RevenuePlan::where('year', $this->year)->first();
+        $this->approvedTarget = $rencana ? $this->angka($rencana->approved_target) : '';
+        $this->revisedTarget = $rencana && $rencana->revised_target !== null ? $this->angka($rencana->revised_target) : '';
         $this->resetErrorBag();
     }
 
@@ -155,10 +166,29 @@ class RevenueTargets extends Component
         $this->validate([
             'rows.*.target' => ['nullable', 'numeric', 'min:0'],
             'rows.*.actual' => ['nullable', 'numeric', 'min:0'],
+            'approvedTarget' => ['nullable', 'numeric', 'gt:0'],
+            'revisedTarget' => ['nullable', 'numeric', 'gt:0'],
         ], [], [
             'rows.*.target' => 'target',
             'rows.*.actual' => 'realisasi',
+            'approvedTarget' => 'target disahkan',
+            'revisedTarget' => 'target revisi',
         ]);
+
+        if ($this->revisedTarget !== '' && $this->approvedTarget === '') {
+            $this->addError('approvedTarget', 'Isi target disahkan lebih dulu sebelum target revisi.');
+
+            return;
+        }
+
+        if ($this->approvedTarget === '') {
+            RevenuePlan::where('year', $this->year)->delete();
+        } else {
+            RevenuePlan::updateOrCreate(['year' => $this->year], [
+                'approved_target' => (float) $this->approvedTarget,
+                'revised_target' => $this->revisedTarget === '' ? null : (float) $this->revisedTarget,
+            ]);
+        }
 
         foreach ($this->rows as $bulan => $baris) {
             $periode = $this->year.'-'.$bulan;
@@ -209,6 +239,9 @@ class RevenueTargets extends Component
             'totalTarget' => $kumTarget,
             'totalActual' => $kumActual,
             'entity' => app(EntityContext::class)->entity(),
+            'revisionFactor' => is_numeric($this->approvedTarget) && is_numeric($this->revisedTarget) && (float) $this->approvedTarget > 0
+                ? (float) $this->revisedTarget / (float) $this->approvedTarget
+                : null,
             'years' => range((int) now()->format('Y') - 3, (int) now()->format('Y') + 2),
         ])->layout('layouts.app', ['title' => 'Target Revenue']);
     }

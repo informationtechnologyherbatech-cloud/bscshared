@@ -114,7 +114,12 @@ F1 diisi lewat menu **Target Revenue**. F2 dihitung dari 16 pos akun yang diisi 
 menu **Pos Akun**, dengan rasio, bobot, dan target dari menu **Katalog Rasio**.
 KPI unit kerja disusun di menu **Cascade KPI** (Head → Supervisor → Staff) dan
 ditelusuri ke rasio lewat **Peta Pos Akun**; yang lolos validasi Keuangan
-masuk monitoring Objective Departemen.
+masuk monitoring Objective Departemen. Keuangan memvalidasinya lewat menu
+**Uji Indikator** (Uji A & Uji B sheet L4).
+
+Pengguna level holding melihat keempat entitas berdampingan di menu
+**Konsolidasi Holding**, termasuk revenue grup setelah eliminasi penjualan
+antarentitas.
 Bila salah satu belum punya data, bobotnya
 dinormalisasi ke yang tersedia. Bobot diatur di `config/bsc.php`.
 

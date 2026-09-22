@@ -38,7 +38,9 @@ dengan bentuk dan arti yang sama untuk keempat entitas.
 | **L2 Rasio Keuangan** | Rasio dihitung dari pos akun, skor rubrik × bobot | ✅ `App\Support\Bsc\RatioEngine` |
 | **Peta Rasio-Akun-Dept** | Pemilik (O) / Kontributor (K) tiap pos akun | ✅ Menu **Peta Pos Akun** |
 | **L3 Cascade KPI**, **Form Sasaran Kinerja** | KPI Head → Supervisor → Staff, bobot per jabatan | ✅ Menu **Cascade KPI** |
-| **L4 Uji Indikator** | Uji A (logika) & Uji B (simulasi) | ⏳ Tahap 4 |
+| **L4 Uji Indikator** | Uji A (logika) & Uji B (simulasi) | ✅ Menu **Uji Indikator** |
+| **Asumsi** — A (B7–B9) | Target revenue disahkan, revisi, faktor revisi | ✅ Menu **Target Revenue** |
+| *(di luar workbook)* | Konsolidasi holding & eliminasi antarentitas | ✅ Menu **Konsolidasi Holding** |
 
 ---
 
@@ -157,18 +159,47 @@ dengan bentuk dan arti yang sama untuk keempat entitas.
   `tests/Feature/KpiCascadeTest.php`: semua baris harus lolos cek, dan peran
   unit serta ringkasan per unit harus sama dengan workbook.
 
-> **Belum**: "Target disesuaikan" (target × (1 + e × (faktor revisi − 1))).
-> Elastisitas sudah disimpan, tetapi faktor revisi butuh target revenue
-> *disahkan* vs *revisi* yang belum dicatat aplikasi — dikerjakan bersama Tahap 4.
-
 ---
 
-## Tahap berikutnya
+## Tahap 4 — sudah diterapkan
 
-**Tahap 4 — Uji indikator (L4) & konsolidasi holding.**
-Uji A/B sebelum KPI masuk monitoring. Tampilan holding yang menggabungkan
-keempat entitas — termasuk **eliminasi penjualan antarentitas** (mis. Herbatech
-sebagai pemasok HPP Erdigma), agar revenue grup tidak terhitung dua kali.
+### Uji indikator (sheet L4)
+- Menu **Uji Indikator**, dikerjakan Keuangan (`manage ratios`) per KPI cascade.
+- **Uji A** — 8 pertanyaan Ya/Tidak. Q3 (pos akun ada di rumus rasio), Q4 (unit
+  Pemilik/Kontributor), Q7 (jenis ukuran sesuai level), dan Q8 (bobot 100%)
+  **dihitung dari data** dan tidak bisa diisi manual; Q1, Q2, Q5, Q6 dijawab
+  Keuangan. Driver: 8 Ya = LOLOS, 7 Ya = REVISI MINOR; Guardrail cukup Q5, Q7, Q8.
+- **Uji B** — baseline dari pos akun periode terpilih, % perbaikan KPI, dan
+  koefisien transmisi per pos akun (plus keterangan asumsinya). 19 rasio & F2
+  dinilai ulang dengan **mesin yang sama** seperti Tingkat 2. Kesimpulan: rasio
+  yang diklaim bergerak & ke arah baik → LOLOS; klaim REV dinilai dari Penjualan.
+- Hasil uji tersimpan sebagai bukti (penguji & waktunya). **Tetapkan Lolos**
+  hanya bisa setelah hasil uji disimpan; status yang dianjurkan: Guardrail cukup
+  Uji A, Driver harus lolos Uji A dan Uji B.
+- Kebenaran dijaga `tests/Feature/IndicatorTestWorkbookTest.php`: contoh Uji B
+  workbook (TTC-H02, klaim P2, perbaikan 5%, koefisien PA01 0,4 · PA02 0,4 ·
+  PA03 −0,3) harus menghasilkan skenario rasio yang sama, Δ NPM 0,008578, 12
+  rasio lain ikut bergerak, dan kesimpulan LOLOS.
+
+### Target disesuaikan
+- Menu **Target Revenue** kini mencatat target setahun **disahkan** dan **revisi**;
+  faktor revisi = revisi ÷ disahkan.
+- Cascade KPI menampilkan **Target disesuaikan** = target × (1 + e × (faktor − 1)),
+  dan monitoring memakai target itu. Guardrail (e = 0) tidak berubah.
+
+### Konsolidasi holding
+- Menu **Konsolidasi Holding**, hanya untuk pengguna **level holding** (tanpa
+  entitas) dengan izin `view consolidation` — pengguna yang terikat satu entitas
+  ditolak walaupun perannya punya izin itu.
+- Keempat entitas berdampingan dengan skala yang sama: revenue YTD, F1, F2, skor
+  puncak, sasaran mutu, KPI Lolos. Skor tiap entitas dihitung dengan fungsi yang
+  sama dengan Piramida BSC entitas itu (`App\Support\Bsc\Scorecard`).
+- **Eliminasi penjualan antarentitas** (`manage consolidation`): per bulan,
+  penjual → pembeli, rencana & realisasi. Rencana dikurangkan dari target grup,
+  realisasi dari revenue grup.
+- F1 grup = realisasi bersih ÷ target bersih (kumulatif, maks 100).
+  F2 grup = F2 entitas dibobot target revenue YTD-nya.
+  Skor puncak grup = 0,45 × F1 grup + 0,55 × F2 grup.
 
 ---
 
@@ -181,3 +212,10 @@ sebagai pemasok HPP Erdigma), agar revenue grup tidak terhitung dua kali.
 - Untuk tiga entitas manufaktur belum ada workbook tersendiri; formatnya
   mengikuti workbook Erdigma, dengan unit kerja yang dapat diubah lewat menu
   Unit Kerja.
+- **F2 grup** memakai rata-rata F2 entitas yang dibobot target revenue — bukan
+  rasio dari laporan keuangan konsolidasi. Rasio konsolidasi penuh butuh pos
+  akun konsolidasi (termasuk eliminasi piutang/utang & persediaan antarentitas)
+  yang belum dicatat. Bobot ini keputusan yang dapat diubah bila holding
+  menghendaki cara lain (mis. rata-rata sederhana).
+- Belum diterapkan: alat bantu penyusunan target revenue L1 bagian B–F (CAGR,
+  regresi, bottom-up brand × channel, Ansoff, SWOT, rekonsiliasi).

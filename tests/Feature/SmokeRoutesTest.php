@@ -49,6 +49,8 @@ class SmokeRoutesTest extends TestCase
             'katalog rasio' => ['ratio-catalog'],
             'peta pos akun' => ['account-post-map'],
             'cascade kpi' => ['kpi-cascades'],
+            'uji indikator' => ['indicator-tests'],
+            'konsolidasi holding' => ['consolidation'],
         ];
     }
 

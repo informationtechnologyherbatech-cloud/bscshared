@@ -104,6 +104,28 @@ class EntityContext
         $this->override = $entityId;
     }
 
+    /**
+     * Jalankan $fn dengan entitas tertentu aktif, lalu kembalikan konteks
+     * semula — juga bila $fn melempar galat. Dipakai konsolidasi holding untuk
+     * menghitung skor tiap entitas dengan kueri berentitas yang sama.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $fn
+     * @return T
+     */
+    public function runAs(int $entityId, callable $fn): mixed
+    {
+        $sebelumnya = $this->override;
+        $this->override = $entityId;
+
+        try {
+            return $fn();
+        } finally {
+            $this->override = $sebelumnya;
+        }
+    }
+
     public function forget(): void
     {
         $this->override = false;

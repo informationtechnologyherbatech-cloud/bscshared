@@ -82,7 +82,19 @@ class RatioEngine
      */
     public function evaluateWith(array $inputs, int $bulan, array $targets): array
     {
-        $dipakai = AccountPosts::usedValues($inputs, $bulan);
+        return $this->evaluateUsed(AccountPosts::usedValues($inputs, $bulan), $targets);
+    }
+
+    /**
+     * Evaluasi dari nilai pos akun yang sudah "dipakai" (disetahunkan /
+     * dirata-rata, termasuk LK & LB). Dipakai juga oleh simulasi Uji B, yang
+     * menggeser nilai-nilai ini lalu menilai ulang.
+     *
+     * @param  array<string, float|null>  $dipakai
+     * @param  array<string, float|null>  $targets
+     */
+    public function evaluateUsed(array $dipakai, array $targets): array
+    {
         $baris = [];
         $kelompok = [];
 

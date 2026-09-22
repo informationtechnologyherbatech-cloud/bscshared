@@ -63,6 +63,44 @@
                 </div>
             @endcan
 
+            <div class="card card-outline card-secondary">
+                <div class="card-header">
+                    <h3 class="card-title font-weight-bold"><i class="fas fa-stamp mr-1"></i> Target setahun disahkan &amp; revisi</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-end">
+                        <div class="col-md-4 form-group mb-md-0">
+                            <label class="small">Disahkan direksi (Rp)</label>
+                            @can('manage revenue')
+                                <input type="number" min="0" step="any" wire:model.live.debounce.500ms="approvedTarget"
+                                       class="form-control @error('approvedTarget') is-invalid @enderror" placeholder="belum diisi">
+                                @error('approvedTarget') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                            @else
+                                <div>{{ $approvedTarget !== '' ? number_format((float) $approvedTarget, 0, ',', '.') : '—' }}</div>
+                            @endcan
+                        </div>
+                        <div class="col-md-4 form-group mb-md-0">
+                            <label class="small">Revisi tengah tahun (Rp) <span class="text-muted">— opsional</span></label>
+                            @can('manage revenue')
+                                <input type="number" min="0" step="any" wire:model.live.debounce.500ms="revisedTarget"
+                                       class="form-control @error('revisedTarget') is-invalid @enderror" placeholder="tidak ada revisi">
+                                @error('revisedTarget') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                            @else
+                                <div>{{ $revisedTarget !== '' ? number_format((float) $revisedTarget, 0, ',', '.') : '—' }}</div>
+                            @endcan
+                        </div>
+                        <div class="col-md-4">
+                            <div class="small text-muted">Faktor revisi (revisi ÷ disahkan)</div>
+                            <div class="h5 mb-0 font-weight-bold">{{ $revisionFactor !== null ? number_format($revisionFactor, 4, ',', '.') : '1' }}</div>
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        Faktor ini menyesuaikan target KPI di Cascade KPI: target × (1 + elastisitas × (faktor − 1)).
+                        KPI guardrail (elastisitas 0) tidak ikut berubah. Tersimpan bersama tombol Simpan di bawah.
+                    </small>
+                </div>
+            </div>
+
             <div class="card card-teal card-outline">
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
                     <h3 class="card-title font-weight-bold mb-2 mb-md-0"><i class="fas fa-calendar-alt mr-1"></i> Fasing bulanan {{ $year }}</h3>
