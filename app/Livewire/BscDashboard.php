@@ -52,6 +52,9 @@ class BscDashboard extends Component
     {
         $this->activeLevel = (int) $level;
         $this->searchQuery = '';
+
+        // Langsung gulir ke panel Telusur Detail — tidak perlu scroll manual.
+        $this->dispatch('telusur-detail');
     }
 
     public function filterStatus($status)
@@ -323,8 +326,10 @@ class BscDashboard extends Component
         // Apex Score = rata-rata terbobot Tingkat 2 (rasio), Tingkat 3 (sasaran
         // mutu) dan Tingkat 4 (program kerja), seluruhnya dari data nyata.
         // Bobot diatur di config/bsc.php.
-        // F1: pencapaian revenue kumulatif (Tingkat 1). Null = belum ada target.
-        $revenueScore = RevenueTarget::cumulativeAchievement($this->selectedPeriod);
+        // F1: pencapaian revenue kumulatif (Tingkat 1). Null (dengan alasannya) =
+        // belum ada target bulanan atau belum ada realisasi.
+        $revenueDetail = RevenueTarget::cumulative($this->selectedPeriod);
+        $revenueScore = $revenueDetail['score'];
 
         // Skor puncak = 0,45 × F1 + 0,55 × F2 (config/bsc.php).
         $tierScores = [
@@ -407,6 +412,10 @@ class BscDashboard extends Component
             'apexScore' => $apexScore,
             'apexBreakdown' => $apexBreakdown,
             'revenueScore' => $revenueScore,
+            'revenueDetail' => $revenueDetail,
+            'revenueReason' => RevenueTarget::reasonLabel($revenueDetail['reason']),
+            'hasRatioScore' => $hasRatioScore,
+            'apexWeights' => config('bsc.apex_weights', []),
             'tierStatus' => $tierStatus,
             'statusLegend' => ScoreStatus::legend(),
             'objectiveCount' => $objectives->count(),

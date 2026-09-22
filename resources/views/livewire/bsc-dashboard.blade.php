@@ -453,7 +453,7 @@
                             <div class="tier-content">
                                 {{-- Tingkat 1 = Revenue (L1). Skor puncak gabungan ada di kartu Apex di atas. --}}
                                 <div class="tier-title">Tingkat 1: Revenue</div>
-                                <div class="tier-score">@if($revenueScore !== null){{ number_format($revenueScore, 1) }}%@else<span class="tier-empty">belum ada target</span>@endif</div>
+                                <div class="tier-score">@if($revenueScore !== null){{ number_format($revenueScore, 1) }}%@else<span class="tier-empty">{{ $revenueReason }}</span>@endif</div>
                             </div>
                             @if($activeLevel === 1)
                                 <div class="click-hint-badge"><i class="fas fa-check-circle text-warning"></i> Aktif Telusur</div>
@@ -468,7 +468,7 @@
                                     <span class="d-none d-md-inline">Tingkat 2: Rasio Keuangan</span>
                                     <span class="d-md-none">T2: Rasio Keuangan</span>
                                 </div>
-                                <div class="tier-score">@if($ratioCount > 0){{ number_format($avgRatioScore, 1) }}%@else<span class="tier-empty">data belum lengkap</span>@endif</div>
+                                <div class="tier-score">@if($hasRatioScore){{ number_format($avgRatioScore, 1) }}%@else<span class="tier-empty">{{ $ratioCount > 0 ? 'target rasio belum diisi' : 'data belum lengkap' }}</span>@endif</div>
                                 <div class="tier-subtitle">{{ $ratioCount }} Rasio Keuangan <br> (Likuiditas, Solvabilitas, Aktivitas, Profitabilitas, Produktivitas)</div>
                             </div>
                             @if($activeLevel === 2)
@@ -534,7 +534,9 @@
             </div>
 
             <!-- PANEL TELUSUR DETAIL (DYNAMIC DRILL-DOWN PANEL) -->
-            <div class="card drill-down-card bg-white mb-4">
+            {{-- Klik tingkat piramida → komponen mengirim "telusur-detail" → gulir ke sini. --}}
+            <div class="card drill-down-card bg-white mb-4" id="telusurDetail" style="scroll-margin-top: 70px;"
+                 x-data x-on:telusur-detail.window="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
                 <div class="card-header bg-teal text-white d-flex justify-content-between align-items-center">
                     <h4 class="card-title font-weight-bold mb-0">
                         @if($activeLevel === 1)
@@ -602,16 +604,30 @@
                             <div class="col-md-6 mb-3">
                                 <div class="p-3 bg-light rounded border border-teal h-100">
                                     <h5 class="font-weight-bold text-teal"><i class="fas fa-calculator mr-2"></i> Rincian Bobot Apex Score</h5>
-                                    <p class="text-muted small">Apex Score dihitung dari kombinasi realisasi Revenue puncak dan rata-rata rasio keuangan perusahaan:</p>
+                                    <p class="text-muted small">Skor puncak = {{ (float) ($apexWeights['revenue'] ?? 0) * 100 }}% × F1 (revenue) + {{ (float) ($apexWeights['ratios'] ?? 0) * 100 }}% × F2 (rasio keuangan).
+                                        Tingkat tanpa data dikeluarkan dan bobotnya dibagi ke yang tersedia.</p>
                                     <ul class="list-group list-group-flush small mb-3">
                                         <li class="list-group-item bg-transparent d-flex justify-content-between">
-                                            <span>Skor Revenue — F1 (45%)</span>
-                                            <strong class="text-dark">96.00%</strong>
+                                            <span>Skor Revenue — F1 ({{ (float) ($apexWeights['revenue'] ?? 0) * 100 }}%)</span>
+                                            @if($revenueScore !== null)
+                                                <strong class="text-dark">{{ number_format($revenueScore, 2) }}%</strong>
+                                            @else
+                                                <span class="text-muted">{{ $revenueReason }} — dikeluarkan</span>
+                                            @endif
                                         </li>
                                         <li class="list-group-item bg-transparent d-flex justify-content-between">
-                                            <span>Skor Rasio Keuangan — F2 (55%)</span>
-                                            <strong class="text-dark">{{ number_format($avgRatioScore, 2) }}%</strong>
+                                            <span>Skor Rasio Keuangan — F2 ({{ (float) ($apexWeights['ratios'] ?? 0) * 100 }}%)</span>
+                                            @if($hasRatioScore)
+                                                <strong class="text-dark">{{ number_format($avgRatioScore, 2) }}%</strong>
+                                            @else
+                                                <span class="text-muted">belum ada skor — dikeluarkan</span>
+                                            @endif
                                         </li>
+                                        @if($apexBreakdown)
+                                            <li class="list-group-item bg-transparent small text-muted">
+                                                Bobot efektif periode ini: @foreach($apexBreakdown as $b){{ $b['label'] }} {{ $b['weight'] }}%@if(! $loop->last) · @endif @endforeach
+                                            </li>
+                                        @endif
                                         <li class="list-group-item bg-transparent d-flex justify-content-between font-weight-bold border-top">
                                             <span class="text-teal">Total Konsolidasi Apex Score</span>
                                             <span class="text-teal h5 font-weight-bold mb-0">{{ number_format($apexScore, 2) }}%</span>
@@ -622,23 +638,57 @@
                             <div class="col-md-6 mb-3">
                                 <div class="p-3 bg-light rounded border border-info h-100">
                                     <h5 class="font-weight-bold text-info"><i class="fas fa-chart-line mr-2"></i> Capaian Target Revenue</h5>
+                                    @php($rd = $revenueDetail)
+                                    <small class="text-muted d-block">Target setahun {{ substr($selectedPeriod, 0, 4) }}: <strong>{{ rupiah($rd['annual']) }}</strong></small>
                                     <div class="d-flex justify-content-between align-items-center mt-3">
                                         <div>
-                                            <small class="text-muted d-block">Baseline RKAP 2026</small>
-                                            <h4 class="font-weight-bold text-dark">IDR 120.00 M</h4>
+                                            <small class="text-muted d-block">Target kumulatif Jan–{{ substr($selectedPeriod, 5, 2) }}</small>
+                                            <h4 class="font-weight-bold text-dark">{{ rupiah($rd['target_ytd']) }}</h4>
                                         </div>
-                                        <div>
-                                            <small class="text-muted d-block">Realisasi Puncak</small>
-                                            <h4 class="font-weight-bold text-success">IDR 115.20 M</h4>
+                                        <div class="text-right">
+                                            <small class="text-muted d-block">Realisasi kumulatif ({{ $rd['months_actual'] }} bulan)</small>
+                                            <h4 class="font-weight-bold text-success">{{ $rd['months_actual'] ? rupiah($rd['actual_ytd']) : '—' }}</h4>
                                         </div>
                                     </div>
-                                    <div class="progress mt-3 style-progress" style="height: 10px;">
-                                        <div class="progress-bar bg-success" style="width: 96%"></div>
-                                    </div>
-                                    <div class="d-flex justify-content-between small text-muted mt-1">
-                                        <span>Capaian Target: 96.00%</span>
-                                        <span class="text-danger">Delta: -4.00%</span>
-                                    </div>
+                                    @if($revenueScore !== null)
+                                        <div class="progress mt-3 style-progress" style="height: 10px;">
+                                            <div class="progress-bar {{ $revenueScore >= 100 ? 'bg-success' : ($revenueScore >= 80 ? 'bg-warning' : 'bg-danger') }}" style="width: {{ min(100, $revenueScore) }}%"></div>
+                                        </div>
+                                        <div class="d-flex justify-content-between small text-muted mt-1">
+                                            <span>Capaian kumulatif (F1): {{ number_format($revenueScore, 2, ',', '.') }}%</span>
+                                            @php($selisih = $rd['actual_ytd'] - $rd['target_ytd'])
+                                            <span class="{{ $selisih < 0 ? 'text-danger' : 'text-success' }}">Selisih: {{ rupiah($selisih) }}</span>
+                                        </div>
+                                    @else
+                                        <div class="alert alert-light border small mt-3 mb-0">
+                                            <i class="fas fa-info-circle text-info mr-1"></i>
+                                            @switch($rd['reason'])
+                                                @case(\App\Models\RevenueTarget::BELUM_DIFASING)
+                                                    Target setahun sudah disahkan, tetapi target bulanannya belum diisi. Buka
+                                                    <a class="font-weight-bold text-primary" href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}">Target &amp; Realisasi Revenue</a>,
+                                                    klik <strong>Bagi rata</strong> atau <strong>Pola musiman</strong>, lalu <strong>Simpan</strong>.
+                                                    @break
+                                                @case(\App\Models\RevenueTarget::TANPA_REALISASI)
+                                                    Target bulanan sudah ada, tetapi realisasi Jan–{{ substr($selectedPeriod, 5, 2) }} belum diisi di
+                                                    <a class="font-weight-bold text-primary" href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}">Target &amp; Realisasi Revenue</a>.
+                                                    @break
+                                                @default
+                                                    Belum ada target revenue {{ substr($selectedPeriod, 0, 4) }}. Susun di
+                                                    <a class="font-weight-bold text-primary" href="{{ route('revenue-planning', ['year' => substr($selectedPeriod, 0, 4)]) }}">Perencanaan Target</a>
+                                                    atau isi langsung di <a class="font-weight-bold text-primary" href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}">Target &amp; Realisasi Revenue</a>.
+                                            @endswitch
+                                        </div>
+                                    @endif
+                                    @canany(['manage revenue', 'view dashboard'])
+                                        <div class="mt-3">
+                                            <a href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-edit mr-1"></i> Isi target &amp; realisasi bulanan
+                                            </a>
+                                            <a href="{{ route('revenue-planning', ['year' => substr($selectedPeriod, 0, 4)]) }}" class="btn btn-sm btn-outline-info">
+                                                <i class="fas fa-drafting-compass mr-1"></i> Perencanaan target
+                                            </a>
+                                        </div>
+                                    @endcanany
                                 </div>
                             </div>
                         </div>
@@ -667,13 +717,7 @@
                                             <td class="text-center font-weight-bold text-dark">{{ $r->display($r->actual) }}</td>
                                             <td class="text-center font-weight-bold text-teal">{{ number_format($r->achievement_pct, 1) }}%</td>
                                             <td class="text-center">
-                                                @if($r->status === 'Tercapai')
-                                                    <span class="badge badge-tercapai px-2 py-1"><i class="fas fa-check-circle"></i> Tercapai</span>
-                                                @elseif($r->status === 'Waspada')
-                                                    <span class="badge badge-waspada px-2 py-1"><i class="fas fa-exclamation-triangle"></i> Waspada</span>
-                                                @else
-                                                    <span class="badge badge-dibawah px-2 py-1"><i class="fas fa-times-circle"></i> Off-Target</span>
-                                                @endif
+                                                <x-status-badge :status="$r->status" />
                                             </td>
                                             <td class="text-center">
                                                 <button wire:click="inspectItem('ratio', {{ $r->id }})" class="btn btn-xs btn-outline-teal">
@@ -717,13 +761,7 @@
                                             <td class="text-center font-weight-bold text-dark">{{ number_format($obj->actual, 1) }}</td>
                                             <td class="text-center font-weight-bold text-teal">{{ number_format($obj->achievement_pct, 1) }}%</td>
                                             <td class="text-center">
-                                                @if($obj->status === 'Tercapai')
-                                                    <span class="badge badge-tercapai px-2 py-1"><i class="fas fa-check-circle"></i> Tercapai</span>
-                                                @elseif($obj->status === 'Waspada')
-                                                    <span class="badge badge-waspada px-2 py-1"><i class="fas fa-exclamation-triangle"></i> Waspada</span>
-                                                @else
-                                                    <span class="badge badge-dibawah px-2 py-1"><i class="fas fa-times-circle"></i> Off-Target</span>
-                                                @endif
+                                                <x-status-badge :status="$obj->status" />
                                             </td>
                                             <td class="text-center">
                                                 <span class="badge badge-pill badge-light border text-purple">

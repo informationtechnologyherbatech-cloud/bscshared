@@ -115,15 +115,7 @@
                                             {{ number_format($r->achievement_pct, 1) }}%
                                         </td>
                                         <td class="text-center">
-                                            @if($r->status === 'Tercapai')
-                                                <span class="badge badge-tercapai px-2 py-1"><i class="fas fa-check-circle"></i> Tercapai</span>
-                                            @elseif($r->status === 'Waspada')
-                                                <span class="badge badge-waspada px-2 py-1"><i class="fas fa-exclamation-circle"></i> Waspada</span>
-                                            @elseif($r->status === \App\Support\Bsc\RatioEngine::TANPA_TARGET)
-                                                <span class="badge badge-info px-2 py-1"><i class="fas fa-question-circle"></i> Belum Ada Target</span>
-                                            @else
-                                                <span class="badge badge-dibawah px-2 py-1"><i class="fas fa-times-circle"></i> Off-Target</span>
-                                            @endif
+                                            <x-status-badge :status="$r->status" />
                                         </td>
                                         <td class="text-center">
                                             @if($r->isComputed())

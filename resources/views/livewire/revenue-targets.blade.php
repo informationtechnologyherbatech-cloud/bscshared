@@ -36,38 +36,9 @@
                 </div>
             @endif
 
-            @can('manage revenue')
-                <div class="card card-outline card-info">
-                    <div class="card-header">
-                        <h3 class="card-title font-weight-bold"><i class="fas fa-magic mr-1"></i> Bantu fasing target setahun</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row align-items-end">
-                            <div class="col-md-5 form-group mb-md-0">
-                                <label class="small">Target revenue {{ $year }} (Rp)</label>
-                                <x-input-rupiah wire:model="annualTarget"
-                                       class="form-control @error('annualTarget') is-invalid @enderror" placeholder="mis. Rp 900.000.000.000" />
-                                @error('annualTarget') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="col-md-7">
-                                <button wire:click="phaseEvenly" class="btn btn-outline-info btn-sm mb-1">
-                                    <i class="fas fa-equals mr-1"></i> Bagi rata 12 bulan
-                                </button>
-                                <button wire:click="phaseBySeason" class="btn btn-outline-info btn-sm mb-1">
-                                    <i class="fas fa-chart-area mr-1"></i> Ikuti pola musiman {{ (int) $year - 1 }}
-                                </button>
-                                <small class="d-block text-muted">Hanya mengisi kolom target di bawah — belum tersimpan sampai Anda menekan Simpan.
-                                    Untuk menyusun angka setahunnya (CAGR, regresi, bottom-up, Ansoff, SWOT), buka
-                                    <a href="{{ route('revenue-planning', ['year' => $year]) }}">Perencanaan Target</a>.</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endcan
-
-            <div class="card card-outline card-secondary">
+            <div class="card card-outline card-info">
                 <div class="card-header">
-                    <h3 class="card-title font-weight-bold"><i class="fas fa-stamp mr-1"></i> Target setahun disahkan &amp; revisi</h3>
+                    <h3 class="card-title font-weight-bold"><i class="fas fa-stamp mr-1"></i> Target revenue setahun {{ $year }}</h3>
                 </div>
                 <div class="card-body">
                     <div class="row align-items-end">
@@ -75,8 +46,8 @@
                             <label class="small">Disahkan direksi (Rp)</label>
                             @can('manage revenue')
                                 <x-input-rupiah wire:model.live.debounce.500ms="approvedTarget"
-                                       class="form-control @error('approvedTarget') is-invalid @enderror" placeholder="belum diisi" />
-                                @error('approvedTarget') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                       class="form-control {{ $errors->has('approvedTarget') ? 'is-invalid' : '' }}" placeholder="mis. Rp 900.000.000.000" />
+                                @error('approvedTarget') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
                             @else
                                 <div>{{ rupiah($approvedTarget) }}</div>
                             @endcan
@@ -85,8 +56,8 @@
                             <label class="small">Revisi tengah tahun (Rp) <span class="text-muted">— opsional</span></label>
                             @can('manage revenue')
                                 <x-input-rupiah wire:model.live.debounce.500ms="revisedTarget"
-                                       class="form-control @error('revisedTarget') is-invalid @enderror" placeholder="tidak ada revisi" />
-                                @error('revisedTarget') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                       class="form-control {{ $errors->has('revisedTarget') ? 'is-invalid' : '' }}" placeholder="tidak ada revisi" />
+                                @error('revisedTarget') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
                             @else
                                 <div>{{ rupiah($revisedTarget) }}</div>
                             @endcan
@@ -96,9 +67,27 @@
                             <div class="h5 mb-0 font-weight-bold">{{ $revisionFactor !== null ? number_format($revisionFactor, 4, ',', '.') : '1' }}</div>
                         </div>
                     </div>
+
+                    @can('manage revenue')
+                        <hr class="my-3">
+                        <div class="d-flex flex-wrap align-items-center">
+                            <span class="small font-weight-bold mr-2 mb-1">Isi target bulanan dari angka setahun:</span>
+                            <button wire:click="phaseEvenly" class="btn btn-outline-info btn-sm mr-1 mb-1">
+                                <i class="fas fa-equals mr-1"></i> Bagi rata 12 bulan
+                            </button>
+                            <button wire:click="phaseBySeason" class="btn btn-outline-info btn-sm mb-1">
+                                <i class="fas fa-chart-area mr-1"></i> Ikuti pola musiman {{ (int) $year - 1 }}
+                            </button>
+                        </div>
+                        @error('annualTarget') <div class="text-danger small mt-1"><i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</div> @enderror
+                    @endcan
+
                     <small class="text-muted d-block mt-2">
-                        Faktor ini menyesuaikan target KPI di Cascade KPI: target × (1 + elastisitas × (faktor − 1)).
-                        KPI guardrail (elastisitas 0) tidak ikut berubah. Tersimpan bersama tombol Simpan di bawah.
+                        Langkah: (1) isi target setahun yang disahkan (revisi bila target diubah di tengah tahun) → (2) klik
+                        <strong>Bagi rata</strong> atau <strong>Pola musiman</strong> — memakai angka revisi bila ada → (3) periksa tabel bulanan →
+                        (4) <strong>Simpan</strong>. Angka setahunnya dapat disusun di
+                        <a href="{{ route('revenue-planning', ['year' => $year]) }}">Perencanaan Target</a>.
+                        Faktor revisi menyesuaikan target KPI di Cascade KPI: target × (1 + elastisitas × (faktor − 1)).
                     </small>
                 </div>
             </div>

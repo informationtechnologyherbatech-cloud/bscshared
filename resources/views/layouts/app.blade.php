@@ -128,14 +128,11 @@
             <!-- Sidebar Menu — RBAC 13 Menu PRD Tabel 4 (hanya tampil sesuai permission) -->
             <nav class="mt-2">
                 <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu" data-accordion="false">
-                    <li class="nav-header">KONSOLIDASI KINERJA</li>
-                    @if(auth()->user()?->can('view consolidation') && app(\App\Support\EntityContext::class)->canSwitch(auth()->user()))
-                    <li class="nav-item">
-                        <a href="{{ route('consolidation') }}" class="nav-link {{ request()->routeIs('consolidation') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-layer-group"></i>
-                            <p>Konsolidasi Holding</p>
-                        </a>
-                    </li>
+                    {{-- Menu dikelompokkan mengikuti tingkat piramida BSC; di tiap kelompok
+                         urutannya mengikuti alur kerja: atur → isi → lihat hasil. --}}
+                    @php($menuHolding = auth()->user()?->can('view consolidation') && app(\App\Support\EntityContext::class)->canSwitch(auth()->user()))
+                    @if(auth()->user()?->can('view dashboard') || auth()->user()?->can('view wiring') || $menuHolding)
+                    <li class="nav-header">RINGKASAN KINERJA</li>
                     @endif
                     @can('view dashboard')
                     <li class="nav-item">
@@ -145,29 +142,47 @@
                         </a>
                     </li>
                     @endcan
-                    @canany(['manage revenue','view dashboard'])
+                    @can('view wiring')
                     <li class="nav-item">
-                        <a href="{{ route('revenue') }}" class="nav-link {{ request()->routeIs('revenue') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-bullseye"></i>
-                            <p>Target Revenue</p>
+                        <a href="{{ route('bsc-wiring') }}" class="nav-link {{ request()->routeIs('bsc-wiring') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-project-diagram"></i>
+                            <p>Wiring / Peta Hubungan</p>
                         </a>
                     </li>
+                    @endcan
+                    @if($menuHolding)
+                    <li class="nav-item">
+                        <a href="{{ route('consolidation') }}" class="nav-link {{ request()->routeIs('consolidation') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-layer-group"></i>
+                            <p>Konsolidasi Holding</p>
+                        </a>
+                    </li>
+                    @endif
+
+                    @canany(['manage revenue','view dashboard'])
+                    <li class="nav-header">TINGKAT 1 · REVENUE</li>
                     <li class="nav-item">
                         <a href="{{ route('revenue-planning') }}" class="nav-link {{ request()->routeIs('revenue-planning') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-drafting-compass"></i>
                             <p>Perencanaan Target</p>
                         </a>
                     </li>
-                    @endcanany
-                    @can('view ratios')
                     <li class="nav-item">
-                        <a href="{{ route('financial-ratios') }}" class="nav-link {{ request()->routeIs('financial-ratios') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-coins"></i>
-                            <p>Rasio Keuangan</p>
+                        <a href="{{ route('revenue') }}" class="nav-link {{ request()->routeIs('revenue') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-bullseye"></i>
+                            <p>Target & Realisasi Revenue</p>
                         </a>
                     </li>
-                    @endcan
+                    @endcanany
+
                     @can('view ratios')
+                    <li class="nav-header">TINGKAT 2 · RASIO KEUANGAN</li>
+                    <li class="nav-item">
+                        <a href="{{ route('ratio-catalog') }}" class="nav-link {{ request()->routeIs('ratio-catalog') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-sliders-h"></i>
+                            <p>Katalog Rasio</p>
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a href="{{ route('account-balances') }}" class="nav-link {{ request()->routeIs('account-balances') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-book"></i>
@@ -175,20 +190,22 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ route('ratio-catalog') }}" class="nav-link {{ request()->routeIs('ratio-catalog') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-sliders-h"></i>
-                            <p>Katalog Rasio</p>
+                        <a href="{{ route('financial-ratios') }}" class="nav-link {{ request()->routeIs('financial-ratios') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-coins"></i>
+                            <p>Rasio Keuangan</p>
                         </a>
                     </li>
                     @endcan
-                    @can('view objectives')
+
+                    @canany(['view objectives','manage ratios','view ratios'])
+                    <li class="nav-header">TINGKAT 3 · KPI & SASARAN MUTU</li>
                     <li class="nav-item">
-                        <a href="{{ route('department-objectives') }}" class="nav-link {{ request()->routeIs('department-objectives') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-bullseye"></i>
-                            <p>Objective Departemen</p>
+                        <a href="{{ route('account-post-map') }}" class="nav-link {{ request()->routeIs('account-post-map') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-th"></i>
+                            <p>Peta Pos Akun</p>
                         </a>
                     </li>
-                    @endcan
+                    @endcanany
                     @canany(['view objectives','manage ratios'])
                     <li class="nav-item">
                         <a href="{{ route('kpi-cascades') }}" class="nav-link {{ request()->routeIs('kpi-cascades') ? 'active' : '' }}">
@@ -196,8 +213,6 @@
                             <p>Cascade KPI</p>
                         </a>
                     </li>
-                    @endcanany
-                    @canany(['manage ratios','view objectives'])
                     <li class="nav-item">
                         <a href="{{ route('indicator-tests') }}" class="nav-link {{ request()->routeIs('indicator-tests') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-vial"></i>
@@ -205,27 +220,21 @@
                         </a>
                     </li>
                     @endcanany
-                    @canany(['manage ratios','view ratios','view objectives'])
+                    @can('view objectives')
                     <li class="nav-item">
-                        <a href="{{ route('account-post-map') }}" class="nav-link {{ request()->routeIs('account-post-map') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-project-diagram"></i>
-                            <p>Peta Pos Akun</p>
+                        <a href="{{ route('department-objectives') }}" class="nav-link {{ request()->routeIs('department-objectives') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-crosshairs"></i>
+                            <p>Objective Departemen</p>
                         </a>
                     </li>
-                    @endcanany
+                    @endcan
+
                     @can('view actionplans')
+                    <li class="nav-header">TINGKAT 4 · PROGRAM KERJA</li>
                     <li class="nav-item">
                         <a href="{{ route('action-plans') }}" class="nav-link {{ request()->routeIs('action-plans') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-tasks"></i>
                             <p>Program Kerja (Action)</p>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view wiring')
-                    <li class="nav-item">
-                        <a href="{{ route('bsc-wiring') }}" class="nav-link {{ request()->routeIs('bsc-wiring') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-project-diagram"></i>
-                            <p>Wiring / Peta Hubungan</p>
                         </a>
                     </li>
                     @endcan
@@ -430,6 +439,7 @@
 @endif
 
 @livewireScripts
+@include('partials.livewire-feedback')
 <script>
 // FR-15 fallback: pastikan klik profil selalu buka #logoutModal meski data-toggle terhalang Livewire/AdminLTE (fix # -> /# )
 document.addEventListener('DOMContentLoaded', function(){

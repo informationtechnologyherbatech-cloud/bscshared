@@ -135,13 +135,7 @@
                                             {{ number_format($obj->achievement_pct, 1) }}%
                                         </td>
                                         <td class="text-center">
-                                            @if($obj->status === 'Tercapai')
-                                                <span class="badge badge-tercapai px-2 py-1"><i class="fas fa-check-circle"></i> Tercapai</span>
-                                            @elseif($obj->status === 'Waspada')
-                                                <span class="badge badge-waspada px-2 py-1"><i class="fas fa-exclamation-circle"></i> Waspada</span>
-                                            @else
-                                                <span class="badge badge-dibawah px-2 py-1"><i class="fas fa-times-circle"></i> Off-Target</span>
-                                            @endif
+                                            <x-status-badge :status="$obj->status" />
                                         </td>
                                         <td class="text-center">
                                             <button wire:click="editObjective({{ $obj->id }})" class="btn btn-xs {{ $isClosed ? 'btn-secondary' : 'btn-primary' }}" {{ $isClosed ? 'disabled' : '' }} title="{{ $isClosed ? 'Terkunci' : 'Edit' }}">

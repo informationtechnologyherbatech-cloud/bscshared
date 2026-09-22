@@ -32,6 +32,27 @@ class RevenueTarget extends Model
      */
     public static function cumulativeAchievement(string $period): ?float
     {
+        return static::cumulative($period)['score'];
+    }
+
+    /** Alasan F1 belum dapat dihitung. */
+    public const TANPA_TARGET = 'no_target';
+
+    public const BELUM_DIFASING = 'not_phased';
+
+    public const TANPA_REALISASI = 'no_actual';
+
+    /**
+     * Rincian F1 (sheet L1 bagian G): Σ realisasi ÷ Σ target Jan s.d. periode,
+     * maks 100. Skor null — dengan alasannya — bila:
+     *   - belum ada target bulanan (target setahun mungkin sudah disahkan tetapi
+     *     belum difasing ke bulanan), atau
+     *   - belum ada realisasi sama sekali (bukan 0%: belum ada datanya).
+     *
+     * @return array{score: float|null, reason: string|null, target_ytd: float, actual_ytd: float, months_actual: int, annual: float|null}
+     */
+    public static function cumulative(string $period): array
+    {
         $tahun = substr($period, 0, 4);
 
         $baris = static::query()
@@ -40,13 +61,34 @@ class RevenueTarget extends Model
             ->get(['target', 'actual']);
 
         $target = (float) $baris->sum('target');
+        $denganRealisasi = $baris->filter(fn ($b) => $b->actual !== null);
+        $realisasi = (float) $denganRealisasi->sum(fn ($b) => (float) $b->actual);
+        $setahun = RevenuePlan::where('year', $tahun)->first();
 
-        if ($target <= 0) {
-            return null;
-        }
+        $alasan = match (true) {
+            $target <= 0 && $setahun !== null => self::BELUM_DIFASING,
+            $target <= 0 => self::TANPA_TARGET,
+            $denganRealisasi->isEmpty() => self::TANPA_REALISASI,
+            default => null,
+        };
 
-        $realisasi = (float) $baris->sum(fn ($b) => (float) ($b->actual ?? 0));
+        return [
+            'score' => $alasan === null ? round(min(100.0, $realisasi / $target * 100), 2) : null,
+            'reason' => $alasan,
+            'target_ytd' => $target,
+            'actual_ytd' => $realisasi,
+            'months_actual' => $denganRealisasi->count(),
+            'annual' => $setahun ? ($setahun->revised_target ?? $setahun->approved_target) : null,
+        ];
+    }
 
-        return round(min(100.0, $realisasi / $target * 100), 2);
+    /** Keterangan singkat alasan F1 kosong, untuk piramida. */
+    public static function reasonLabel(?string $alasan): string
+    {
+        return match ($alasan) {
+            self::BELUM_DIFASING => 'target bulanan belum difasing',
+            self::TANPA_REALISASI => 'belum ada realisasi',
+            default => 'belum ada target',
+        };
     }
 }

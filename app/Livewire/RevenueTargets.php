@@ -73,8 +73,8 @@ class RevenueTargets extends Component
             ];
         }
 
-        $total = collect($this->rows)->sum(fn ($r) => (float) ($r['target'] ?: 0));
-        $this->annualTarget = $total > 0 ? $this->angka($total) : '';
+        // Angka setahun untuk fasing diambil dari target disahkan/revisi (annualTargetValue).
+        $this->annualTarget = '';
 
         $rencana = RevenuePlan::where('year', $this->year)->first();
         $this->approvedTarget = $rencana ? $this->angka($rencana->approved_target) : '';
@@ -147,13 +147,17 @@ class RevenueTargets extends Component
     private function annualTargetValue(): ?float
     {
         $this->resetErrorBag('annualTarget');
-        // Komponen rupiah mengirim angka murni; teks lama "1.000.000,5" tetap dipahami.
-        $bersih = is_numeric($this->annualTarget)
-            ? $this->annualTarget
-            : str_replace(['Rp', '.', ',', ' '], ['', '', '.', ''], $this->annualTarget);
+
+        // Sumber angka setahun: revisi bila ada, lalu angka disahkan. $annualTarget
+        // tetap diterima (isian lama/uji) — dan teks "Rp 1.000.000,5" tetap dipahami.
+        $sumber = trim((string) $this->annualTarget) !== '' ? $this->annualTarget
+            : (trim((string) $this->revisedTarget) !== '' ? $this->revisedTarget : $this->approvedTarget);
+        $bersih = is_numeric($sumber)
+            ? $sumber
+            : str_replace(['Rp', '.', ',', ' '], ['', '', '.', ''], (string) $sumber);
 
         if (! is_numeric($bersih) || (float) $bersih <= 0) {
-            $this->addError('annualTarget', 'Isi target setahun lebih dulu (angka lebih dari 0).');
+            $this->addError('annualTarget', 'Isi target setahun "Disahkan direksi" lebih dulu (angka lebih dari 0).');
 
             return null;
         }
@@ -213,6 +217,13 @@ class RevenueTargets extends Component
 
         $this->loadYear();
         session()->flash('message', 'Target & realisasi revenue '.$this->year.' tersimpan.');
+
+        // F1 dihitung dari target & realisasi BULANAN; target setahun saja belum cukup.
+        $adaTargetBulanan = collect($this->rows)->contains(fn ($r) => (float) ($r['target'] ?: 0) > 0);
+        if ($this->approvedTarget !== '' && ! $adaTargetBulanan) {
+            session()->flash('error', 'Target setahun tersimpan, tetapi target bulanan masih kosong sehingga Tingkat 1 (F1) belum terhitung. '
+                .'Klik "Bagi rata 12 bulan" atau "Ikuti pola musiman", lalu Simpan lagi.');
+        }
     }
 
     public function render()
