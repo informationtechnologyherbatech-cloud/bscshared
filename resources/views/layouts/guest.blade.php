@@ -68,6 +68,24 @@
             box-shadow:0 10px 28px rgba(0,32,32,.22); border:1px solid rgba(255,255,255,.7);
         }
         .brand-quote{ background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.14); border-radius:var(--r-lg); padding:16px 18px; }
+        /* Logo holding & entitas — berkasnya berlatar terang, jadi diletakkan di kartu putih. */
+        .brand-logo-card{
+            display:inline-flex; align-items:center; justify-content:center; background:#fff;
+            border-radius:var(--r-lg); padding:10px 18px; box-shadow:0 10px 28px rgba(0,32,32,.22);
+        }
+        .brand-logo-card img{ height:76px; max-width:240px; width:auto; object-fit:contain; display:block; }
+        .entity-logo-strip small{ color:rgba(255,255,255,.72); font-size:12px; letter-spacing:.04em; text-transform:uppercase; }
+        .entity-logo-row{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; }
+        .entity-logo-tile{
+            background:#fff; border-radius:var(--r-lg); height:64px; padding:8px;
+            display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px rgba(0,32,32,.18);
+        }
+        .entity-logo-tile img{ max-width:100%; max-height:100%; object-fit:contain; display:block; }
+        @media (max-width: 575.98px){
+            .brand-logo-card img{ height:56px; max-width:200px; }
+            .entity-logo-row{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+            .entity-logo-tile{ height:52px; }
+        }
         .brand-quote p{ font-size:16px; line-height:1.5; color:rgba(255,255,255,.92); margin:0; } /* body-md 16 */
 
         /* Action zone 58% — Level 1 white, 40px premium padding (DESIGN Layout) */

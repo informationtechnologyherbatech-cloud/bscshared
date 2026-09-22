@@ -42,7 +42,7 @@ npm install && npm run build
 php artisan serve
 ```
 
-Akun awal hasil seeder: `superadmin@herbatech.co.id` / `Bsc#Admin2026`
+Akun awal hasil seeder: `superadmin@emc.co.id` / `Bsc#Admin2026`
 — **segera ganti** pada menu *Manajemen Pengguna*. Keduanya dapat ditentukan
 sendiri lewat `SUPERADMIN_EMAIL` dan `SUPERADMIN_PASSWORD` di `.env` sebelum
 seeder dijalankan. Instalasi yang sudah ada tidak diubah oleh seeder.

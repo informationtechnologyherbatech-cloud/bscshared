@@ -10,14 +10,27 @@
 | sebagai identitas bawaan instalasi di bawah.
 |
 */
+// logo/favicon: path relatif terhadap folder public/. Logo sidebar & favicon
+// halaman admin mengikuti entitas yang sedang aktif.
 $profil = [
-    'HERBAEMAS' => ['name' => 'Herbaemas', 'legal_name' => 'PT Herba Emas Wahidatama', 'industry' => 'manufaktur'],
-    'HERBATECH' => ['name' => 'Herbatech', 'legal_name' => 'PT Herbatech Innopharma Industry', 'industry' => 'manufaktur'],
-    'AEJ' => ['name' => 'AEJ', 'legal_name' => 'PT Abithama Emas Juara', 'industry' => 'manufaktur'],
-    'ERDIGMA' => ['name' => 'Erdigma', 'legal_name' => 'PT Erhanesia Digima Mukitama', 'industry' => 'digital_marketing'],
+    'HERBAEMAS' => ['name' => 'Herbaemas', 'legal_name' => 'PT Herba Emas Wahidatama', 'industry' => 'manufaktur',
+        'logo' => 'images/logo herbaemas.webp', 'favicon' => 'images/logo herbaemas.webp'],
+    'HERBATECH' => ['name' => 'Herbatech', 'legal_name' => 'PT Herbatech Innopharma Industry', 'industry' => 'manufaktur',
+        'logo' => 'images/logo herbatech.webp', 'favicon' => 'images/logo herbatech.webp'],
+    'AEJ' => ['name' => 'AEJ', 'legal_name' => 'PT Abithama Emas Juara', 'industry' => 'manufaktur',
+        'logo' => 'images/logo aej.webp', 'favicon' => 'images/logo aej.webp'],
+    'ERDIGMA' => ['name' => 'Erdigma', 'legal_name' => 'PT Erhanesia Digima Mukitama', 'industry' => 'digital_marketing',
+        'logo' => 'images/logo erdigma.webp', 'favicon' => 'images/logo erdigma.webp'],
 ];
 
-$holding = ['name' => 'Erhanesia Mulia Corpora', 'legal_name' => 'Erhanesia Mulia Corpora'];
+$holding = [
+    'name' => 'Erhanesia Mulia Corpora',
+    'legal_name' => 'Erhanesia Mulia Corpora',
+    'logo' => 'images/logo emc.webp',
+    // Logo dengan teks — dipakai di halaman login.
+    'logo_text' => 'images/logo emc - text.webp',
+    'favicon' => 'images/logo emc.webp',
+];
 
 // Identitas bawaan mengikuti jenis instalasi (.env): instalasi holding memakai
 // identitas holding; instalasi satu entitas memakai profil entitas itu.

@@ -26,7 +26,7 @@ class SecurityTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
 
         $this->actingAs(
-            User::where('email', 'superadmin@herbatech.co.id')->firstOrFail()
+            User::where('email', 'superadmin@emc.co.id')->firstOrFail()
         );
     }
 

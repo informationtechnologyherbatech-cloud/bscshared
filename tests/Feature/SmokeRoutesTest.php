@@ -22,7 +22,7 @@ class SmokeRoutesTest extends TestCase
     {
         $this->seed(RolesAndPermissionsSeeder::class);
 
-        return User::where('email', 'superadmin@herbatech.co.id')->firstOrFail();
+        return User::where('email', 'superadmin@emc.co.id')->firstOrFail();
     }
 
     public static function routeProvider(): array
@@ -193,6 +193,8 @@ class SmokeRoutesTest extends TestCase
     public function test_the_sidebar_shows_the_uploaded_entity_logo(): void
     {
         $user = $this->superAdmin();
+        // Entitas tanpa berkas logo di public/images → logo unggahan Setting dipakai.
+        config(['entity.profiles' => [], 'entity.holding' => ['name' => 'Erhanesia Mulia Corpora']]);
         Storage::fake('public');
         Storage::disk('public')->put('branding/logo.png', 'x');
         AppSetting::setValue('app_logo', 'branding/logo.png');

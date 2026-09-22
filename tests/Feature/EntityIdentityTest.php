@@ -21,7 +21,7 @@ class EntityIdentityTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
 
         $this->actingAs(
-            User::where('email', 'superadmin@herbatech.co.id')->firstOrFail()
+            User::where('email', 'superadmin@emc.co.id')->firstOrFail()
         );
     }
 
@@ -113,6 +113,8 @@ class EntityIdentityTest extends TestCase
     {
         // APP_URL kerap tidak menyertakan port yang dipakai saat pengembangan.
         config()->set('app.url', 'http://localhost');
+        // Entitas tanpa berkas logo di public/images → logo unggahan Setting dipakai.
+        config(['entity.profiles' => [], 'entity.holding' => ['name' => 'Erhanesia Mulia Corpora']]);
         Storage::fake('public');
         Storage::disk('public')->put('branding/logo.png', 'x');
         AppSetting::setValue('app_logo', 'branding/logo.png');
@@ -123,6 +125,8 @@ class EntityIdentityTest extends TestCase
 
     public function test_branding_url_is_null_when_the_file_is_missing(): void
     {
+        // Entitas tanpa berkas logo di public/images → logo unggahan Setting dipakai.
+        config(['entity.profiles' => [], 'entity.holding' => ['name' => 'Erhanesia Mulia Corpora']]);
         Storage::fake('public');
         AppSetting::setValue('app_logo', 'branding/hilang.png');
 
@@ -142,6 +146,7 @@ class EntityIdentityTest extends TestCase
         $response->assertOk();
         $response->assertSee('Scorecard Nusantara', false);
         $response->assertSee('PT Nusantara Farma Sejahtera', false);
-        $response->assertDontSee('PT Herbatech Innopharma', false);
+        // Subjudul identitas mengikuti Setting; nama entitas lain hanya muncul di deretan logo grup.
+        $response->assertSee('brand-subtitle mb-4">PT Nusantara Farma Sejahtera</p>', false);
     }
 }

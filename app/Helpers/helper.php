@@ -98,19 +98,90 @@ if (! function_exists('entity_branding_url')) {
     }
 }
 
+if (! function_exists('public_image_url')) {
+    /**
+     * URL berkas di folder public/ bila berkasnya ada. Tiap segmen path di-encode
+     * karena nama berkas logo memakai spasi (mis. "logo emc - text.webp").
+     */
+    function public_image_url(?string $path): ?string
+    {
+        if (! $path || ! is_file(public_path($path))) {
+            return null;
+        }
+
+        return asset(implode('/', array_map('rawurlencode', explode('/', $path))));
+    }
+}
+
+if (! function_exists('entity_profile')) {
+    /**
+     * Profil branding (config/entity.php) untuk entitas yang sedang aktif.
+     * Tanpa entitas aktif (mis. halaman login): entitas instalasi, atau profil
+     * holding pada instalasi holding.
+     *
+     * @return array<string, string>|null
+     */
+    function entity_profile(): ?array
+    {
+        $kode = app(\App\Support\EntityContext::class)->entity()?->code;
+
+        if ($kode === null) {
+            if (config('bsc.holding_mode')) {
+                return config('entity.holding');
+            }
+            $kode = config('bsc.default_entity');
+        }
+
+        return config('entity.profiles.'.$kode);
+    }
+}
+
 if (! function_exists('entity_logo')) {
-    /** URL logo entitas, atau null bila belum diatur. */
+    /**
+     * URL logo untuk halaman admin: logo entitas aktif (public/images), lalu
+     * logo yang diunggah di Setting Sistem, atau null (ikon bawaan).
+     */
     function entity_logo(): ?string
     {
-        return entity_branding_url('app_logo');
+        return public_image_url(entity_profile()['logo'] ?? null) ?? entity_branding_url('app_logo');
     }
 }
 
 if (! function_exists('entity_favicon')) {
-    /** URL favicon entitas, dengan fallback ke favicon bawaan. */
+    /** URL favicon: milik entitas aktif, lalu unggahan Setting, lalu favicon bawaan. */
     function entity_favicon(): string
     {
-        return entity_branding_url('app_favicon') ?? asset('favicon.ico');
+        return public_image_url(entity_profile()['favicon'] ?? null)
+            ?? entity_branding_url('app_favicon')
+            ?? asset('favicon.ico');
+    }
+}
+
+if (! function_exists('group_logo')) {
+    /** Logo holding Erhanesia Mulia Corpora dengan teks — halaman login. */
+    function group_logo(): ?string
+    {
+        return public_image_url(config('entity.holding.logo_text')) ?? public_image_url(config('entity.holding.logo'));
+    }
+}
+
+if (! function_exists('group_entity_logos')) {
+    /**
+     * Logo keempat entitas grup yang berkasnya tersedia, urut seperti profil.
+     *
+     * @return array<int, array{code: string, name: string, legal_name: string, url: string}>
+     */
+    function group_entity_logos(): array
+    {
+        $hasil = [];
+
+        foreach (config('entity.profiles', []) as $kode => $p) {
+            if ($url = public_image_url($p['logo'] ?? null)) {
+                $hasil[] = ['code' => $kode, 'name' => $p['name'], 'legal_name' => $p['legal_name'], 'url' => $url];
+            }
+        }
+
+        return $hasil;
     }
 }
 

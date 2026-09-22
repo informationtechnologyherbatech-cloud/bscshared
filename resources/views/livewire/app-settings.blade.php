@@ -120,7 +120,8 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label>Logo (PNG/JPG/WEBP max 2MB)</label>
+                                            <label>Logo cadangan (PNG/JPG/WEBP max 2MB)</label>
+                                            <small class="d-block text-muted mb-1">Logo &amp; favicon admin otomatis memakai logo entitas aktif di <code>public/images</code> (atur di <code>config/entity.php</code>); unggahan ini dipakai bila entitas belum punya logo.</small>
                                             <div class="custom-file">
                                                 <input type="file" wire:model="logoUpload" class="custom-file-input @error('logoUpload') is-invalid @enderror" accept="image/*">
                                                 <label class="custom-file-label">{{ $logoUpload ? $logoUpload->getClientOriginalName() : 'Pilih file logo' }}</label>
