@@ -16,7 +16,7 @@ class DepartmentObjectives extends Component
     public $selectedStatus = '';
 
     #[Url(as: 'period')]
-    public $selectedPeriod = '2026-08';
+    public $selectedPeriod = '';
 
     public $editingObjId = null;
     public $editTarget = 0;
@@ -29,6 +29,10 @@ class DepartmentObjectives extends Component
         }
         if (request()->query('period')) {
             $this->selectedPeriod = request()->query('period');
+        }
+        // Bawaan: periode terbaru entitas aktif (sebelumnya dipatok 2026-08).
+        if (! in_array($this->selectedPeriod, Period::list(), true)) {
+            $this->selectedPeriod = Period::currentPeriod();
         }
     }
 
@@ -130,7 +134,7 @@ class DepartmentObjectives extends Component
         foreach ($objectives->pluck('dept_code')->unique() as $kode) {
             $departments[$kode] ??= $kode;
         }
-        $periods = Period::pluck('period')->toArray();
+        $periods = Period::list();
 
         return view('livewire.department-objectives', [
             'objectives' => $objectives,

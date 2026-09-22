@@ -10,6 +10,7 @@ use App\Models\RevenuePlan;
 use App\Models\WorkUnit;
 use App\Support\Bsc\AccountPosts;
 use App\Support\Bsc\CascadeChecks;
+use App\Support\Bsc\MonitoringSync;
 use App\Support\Bsc\PostMap;
 use App\Support\Bsc\RatioLibrary;
 use App\Support\EntityContext;
@@ -410,44 +411,7 @@ class KpiCascades extends Component
             return;
         }
 
-        $lolos = KpiCascade::where('year', $this->year)->where('validation_status', KpiCascade::LOLOS)->get();
-        $faktor = RevenuePlan::factorFor($this->year);
-        $baru = 0;
-        $diperbarui = 0;
-
-        DB::transaction(function () use ($lolos, $periode, $faktor, &$baru, &$diperbarui) {
-            foreach ($lolos as $kpi) {
-                $objektif = DepartmentObjective::where('period', $periode->period)
-                    ->where(fn ($q) => $q->where('kpi_cascade_id', $kpi->id)->orWhere('kpi_code', $kpi->code))
-                    ->first();
-
-                $definisi = [
-                    'kpi_cascade_id' => $kpi->id,
-                    'dept_code' => $kpi->unit_code,
-                    'kpi_code' => $kpi->code,
-                    'kpi_name' => mb_substr($kpi->objective.($kpi->brand ? ' — '.$kpi->brand : ''), 0, 255),
-                    'polarity' => $kpi->polarity,
-                    'target' => $kpi->adjustedTarget($faktor) ?? 0,
-                ];
-
-                if ($objektif) {
-                    $capaian = RatioLibrary::achievement((float) $objektif->actual, (float) $definisi['target'], $kpi->polarity) ?? 0;
-                    $objektif->update($definisi + [
-                        'achievement_pct' => $capaian,
-                        'status' => $capaian >= 100 ? 'Tercapai' : ($capaian >= 80 ? 'Waspada' : 'Di Bawah Target'),
-                    ]);
-                    $diperbarui++;
-                } else {
-                    DepartmentObjective::create($definisi + [
-                        'period' => $periode->period,
-                        'actual' => 0,
-                        'achievement_pct' => 0,
-                        'status' => 'Di Bawah Target',
-                    ]);
-                    $baru++;
-                }
-            }
-        });
+        ['created' => $baru, 'updated' => $diperbarui] = MonitoringSync::syncPeriod($periode->period);
 
         session()->flash('message', 'Monitoring '.$periode->period.': '.$baru.' KPI baru, '.$diperbarui.' diperbarui. '
             .'Hanya KPI berstatus Lolos yang dimasukkan; realisasi yang sudah diisi tidak berubah.');

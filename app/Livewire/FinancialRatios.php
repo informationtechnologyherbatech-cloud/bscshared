@@ -15,7 +15,7 @@ class FinancialRatios extends Component
     public $selectedStatus = '';
 
     #[Url(as: 'period')]
-    public $selectedPeriod = '2026-08';
+    public $selectedPeriod = '';
 
     public $editingRatioId = null;
     public $editTarget = 0;
@@ -28,6 +28,10 @@ class FinancialRatios extends Component
         }
         if (request()->query('period')) {
             $this->selectedPeriod = request()->query('period');
+        }
+        // Bawaan: periode terbaru entitas aktif (sebelumnya dipatok 2026-08).
+        if (! in_array($this->selectedPeriod, Period::list(), true)) {
+            $this->selectedPeriod = Period::currentPeriod();
         }
     }
 
@@ -124,7 +128,7 @@ class FinancialRatios extends Component
         $ratios = $query->get();
 
         $categories = FinancialRatio::distinct()->pluck('category')->toArray();
-        $periods = Period::pluck('period')->toArray();
+        $periods = Period::list();
 
         return view('livewire.financial-ratios', [
             'ratios' => $ratios,

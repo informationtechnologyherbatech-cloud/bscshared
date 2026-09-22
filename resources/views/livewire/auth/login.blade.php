@@ -38,7 +38,7 @@
                     <label class="form-label-premium">Email <span style="color:var(--c-error)">*</span></label>
                     <div class="input-group">
                         <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-envelope"></i></span></div>
-                        <input type="email" wire:model="email" class="form-control @error('email') is-invalid @enderror" placeholder="superadmin@herbatech.co.id" autofocus autocomplete="email">
+                        <input type="email" wire:model="email" class="form-control @error('email') is-invalid @enderror" placeholder="nama@perusahaan.co.id" autofocus autocomplete="email">
                     </div>
                     @error('email') <span class="invalid-feedback d-block" style="font-size:12px;">{{ $message }}</span> @enderror
                 </div>

@@ -16,4 +16,20 @@ class Period extends Model
     {
         return $this->status === 'CLOSED';
     }
+
+    /** Periode terbaru entitas aktif (YYYY-MM), atau bulan berjalan bila belum ada. */
+    public static function currentPeriod(): string
+    {
+        return static::orderByDesc('period')->value('period') ?? now()->format('Y-m');
+    }
+
+    /**
+     * Daftar periode entitas aktif, terbaru lebih dulu.
+     *
+     * @return array<int, string>
+     */
+    public static function list(): array
+    {
+        return static::orderByDesc('period')->pluck('period')->all();
+    }
 }

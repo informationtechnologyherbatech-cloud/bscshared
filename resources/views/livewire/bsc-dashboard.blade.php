@@ -406,7 +406,7 @@
                     <div class="row align-items-center">
                         <div class="col-md-7">
                             <h5 class="font-weight-bold text-uppercase mb-1 text-warning">
-                                <i class="fas fa-crown mr-2"></i> Apex Score Hop 4 (Konsolidasi)
+                                <i class="fas fa-crown mr-2"></i> Skor Puncak (Apex)
                             </h5>
                             <small class="text-white-50">
                                 @if(count($apexBreakdown) > 0)
@@ -605,11 +605,11 @@
                                     <p class="text-muted small">Apex Score dihitung dari kombinasi realisasi Revenue puncak dan rata-rata rasio keuangan perusahaan:</p>
                                     <ul class="list-group list-group-flush small mb-3">
                                         <li class="list-group-item bg-transparent d-flex justify-content-between">
-                                            <span>Skor Realisasi Revenue (45%)</span>
+                                            <span>Skor Revenue — F1 (45%)</span>
                                             <strong class="text-dark">96.00%</strong>
                                         </li>
                                         <li class="list-group-item bg-transparent d-flex justify-content-between">
-                                            <span>Skor Rata-Rata 7 Rasio Keuangan (55%)</span>
+                                            <span>Skor Rasio Keuangan — F2 (55%)</span>
                                             <strong class="text-dark">{{ number_format($avgRatioScore, 2) }}%</strong>
                                         </li>
                                         <li class="list-group-item bg-transparent d-flex justify-content-between font-weight-bold border-top">

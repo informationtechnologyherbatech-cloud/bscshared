@@ -8,6 +8,7 @@ use Livewire\Attributes\Url;
 use App\Models\Period;
 use App\Models\RevenueTarget;
 use App\Support\Bsc\RatioEngine;
+use App\Support\Bsc\MonitoringSync;
 use App\Support\Bsc\Scorecard;
 use App\Support\ScoreStatus;
 use App\Models\FinancialRatio;
@@ -20,7 +21,7 @@ class BscDashboard extends Component
     use AuthorizesWrites;
 
     #[Url]
-    public $selectedPeriod = '2026-08';
+    public $selectedPeriod = '';
 
     public $periods = [];
 
@@ -40,12 +41,10 @@ class BscDashboard extends Component
 
     public function mount()
     {
-        $this->periods = Period::pluck('period')->toArray();
-        if (empty($this->periods)) {
-            $this->periods = ['2026-08'];
-        }
+        // Terbaru lebih dulu; tanpa periode sama sekali dipakai bulan berjalan.
+        $this->periods = Period::list() ?: [Period::currentPeriod()];
         if (!in_array($this->selectedPeriod, $this->periods)) {
-            $this->selectedPeriod = $this->periods[0] ?? '2026-08';
+            $this->selectedPeriod = $this->periods[0];
         }
     }
 
@@ -95,6 +94,12 @@ class BscDashboard extends Component
             return;
         }
 
+        // Templat = periode terakhir sebelum periode baru (sebelumnya selalu
+        // 2026-08, sehingga entitas lain atau tahun berikutnya menyalin data keliru).
+        $sumber = Period::where('period', '<', $periodStr)->orderByDesc('period')->value('period')
+            ?? Period::orderByDesc('period')->value('period');
+        $tahunSama = $sumber && substr($sumber, 0, 4) === substr($periodStr, 0, 4);
+
         // Create new period (G-05: Actuals initialized to 0.00, NOT copied from target)
         Period::create([
             'period' => $periodStr,
@@ -102,14 +107,18 @@ class BscDashboard extends Component
             'apex_score' => 0.00,
         ]);
 
-        // Copy template of objectives with 0 actuals
-        $baseObjectives = DepartmentObjective::where('period', '2026-08')->get();
-        if ($baseObjectives->isEmpty()) {
-            $baseObjectives = DepartmentObjective::distinct('kpi_code')->get();
-        }
+        // Salin sasaran periode sumber dengan realisasi 0. Sasaran yang tertaut ke
+        // KPI cascade hanya disalin dalam tahun yang sama — KPI cascade berlaku per
+        // tahun; untuk tahun baru, sasarannya datang dari KPI Lolos tahun itu.
+        $baseObjectives = $sumber ? DepartmentObjective::where('period', $sumber)->get() : collect();
 
         foreach ($baseObjectives as $base) {
+            if ($base->kpi_cascade_id && ! $tahunSama) {
+                continue;
+            }
+
             DepartmentObjective::create([
+                'kpi_cascade_id' => $base->kpi_cascade_id,
                 'period' => $periodStr,
                 'dept_code' => $base->dept_code,
                 'kpi_code' => $base->kpi_code,
@@ -125,7 +134,9 @@ class BscDashboard extends Component
         // Copy template of financial ratios with 0 actuals
         // Rasio hasil hitungan tidak disalin — periode baru mendapatkannya
         // saat pos akunnya diisi di menu Pos Akun.
-        $baseRatios = FinancialRatio::where('period', '2026-08')->where('source', '!=', RatioEngine::SOURCE_COMPUTED)->get();
+        $baseRatios = $sumber
+            ? FinancialRatio::where('period', $sumber)->where('source', '!=', RatioEngine::SOURCE_COMPUTED)->get()
+            : collect();
         foreach ($baseRatios as $baseR) {
             FinancialRatio::create([
                 'period' => $periodStr,
@@ -138,12 +149,19 @@ class BscDashboard extends Component
             ]);
         }
 
-        $this->periods = Period::pluck('period')->toArray();
+        // KPI cascade berstatus Lolos tahun itu yang belum ada ikut dimasukkan,
+        // dengan target disesuaikan faktor revisi revenue.
+        $sinkron = MonitoringSync::syncPeriod($periodStr);
+
+        $this->periods = Period::list();
         $this->selectedPeriod = $periodStr;
         $this->newPeriodInput = '';
         $this->showCreatePeriodModal = false;
 
-        session()->flash('message', 'Periode baru ' . $periodStr . ' berhasil dibuat (Realisasi diinisialisasi 0 per aturan PRD G-05)!');
+        session()->flash('message', 'Periode baru ' . $periodStr . ' berhasil dibuat'
+            . ($sumber ? ' dari templat ' . $sumber : '')
+            . ($sinkron['created'] ? ', ' . $sinkron['created'] . ' KPI Lolos dari Cascade KPI ditambahkan' : '')
+            . ' (realisasi diinisialisasi 0 per aturan PRD G-05).');
     }
 
     public function inspectItem($type, $id)
@@ -176,7 +194,9 @@ class BscDashboard extends Component
                     'actual' => number_format($obj->actual, 1),
                     'achievement' => number_format($obj->achievement_pct, 1) . '%',
                     'status' => $obj->status,
-                    'upstream' => 'Menyokong Rasio Keuangan Hop 4 (Tingkat 2)',
+                    'upstream' => $obj->kpiCascade?->ratio_code
+                        ? 'Menggerakkan ' . \App\Support\Bsc\RatioLibrary::impactName($obj->kpiCascade->ratio_code) . ' (Tingkat 2)'
+                        : 'Menyokong Rasio Keuangan (Tingkat 2)',
                     'downstream' => $obj->actionPlans->count() . ' Program Kerja Mitigasi (Tingkat 4)',
                     'description' => 'Sasaran mutu operasional departemen ' . $obj->dept_code . ' untuk mencapai target strategic BSC.',
                     'action_plans' => $obj->actionPlans->toArray(),

@@ -132,7 +132,8 @@
                             <div class="form-row">
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">Periode Laporan</label>
-                                    <input type="text" wire:model="financePeriod" class="form-control form-control-sm font-weight-bold" placeholder="2026-08">
+                                    <input type="month" wire:model.live="financePeriod" class="form-control form-control-sm font-weight-bold @error('financePeriod') is-invalid @enderror">
+                                    @error('financePeriod') <span class="invalid-feedback">{{ $message }}</span> @enderror
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">4101 · Penjualan (JT)</label>
@@ -165,6 +166,20 @@
                                     <input type="number" step="100" wire:model="hutangPayload" class="form-control form-control-sm font-weight-bold">
                                 </div>
                             </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <label class="small font-weight-bold">3101 · Modal / Ekuitas (JT)</label>
+                                    <input type="number" step="100" wire:model="modalPayload" class="form-control form-control-sm font-weight-bold">
+                                </div>
+                                <div class="col-md-9 small text-muted d-flex align-items-center">
+                                    <span>
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Saldo masuk ke <a href="{{ route('account-balances', ['period' => $financePeriod]) }}">Pos Akun</a>
+                                        (Penjualan→PA01, HPP→PA02, Beban→PA03, Persediaan→PA05, Piutang→PA06, Hutang→PA07, Kas→PA08, Ekuitas→PA13),
+                                        lalu 19 rasio dihitung ulang dengan target dari Katalog Rasio. Aliran = nilai YTD; neraca = saldo akhir.
+                                    </span>
+                                </div>
+                            </div>
                             <div class="text-right">
                                 @can('manage integration')
                                 <button type="submit" class="btn btn-success btn-sm font-weight-bold px-4">
@@ -185,7 +200,7 @@
                                         <th>Kelompok Rasio</th>
                                         <th>Nama Rasio Keuangan</th>
                                         <th>Target</th>
-                                        <th>Realisasi Aktual Diterima</th>
+                                        <th>Realisasi</th>
                                         <th>Pencapaian (%)</th>
                                         <th>Status Kinerja</th>
                                     </tr>
@@ -195,9 +210,9 @@
                                         <tr>
                                             <td><span class="badge badge-info">{{ $fr->category }}</span></td>
                                             <td class="font-weight-bold">{{ $fr->ratio_name }}</td>
-                                            <td><code>{{ $fr->target }}</code></td>
-                                            <td class="font-weight-bold text-primary">{{ $fr->actual }}</td>
-                                            <td><span class="badge badge-pill badge-primary">{{ $fr->achievement_pct }}%</span></td>
+                                            <td><code>{{ $fr->display($fr->target) }}</code></td>
+                                            <td class="font-weight-bold text-primary">{{ $fr->display($fr->actual) }}</td>
+                                            <td><span class="badge badge-pill badge-primary">{{ number_format((float) $fr->achievement_pct, 1, ',', '.') }}%</span></td>
                                             <td>
                                                 <span class="badge badge-{{ $fr->status == 'Tercapai' ? 'success' : ($fr->status == 'Waspada' ? 'warning' : 'danger') }}">
                                                     {{ $fr->status }}
@@ -296,11 +311,22 @@
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
                                         <label>Departemen Pengirim</label>
-                                        <input type="text" wire:model="deptPayload" class="form-control form-control-sm" placeholder="PROD / QC / HRD">
+                                        <select wire:model.live="deptPayload" class="form-control form-control-sm @error('deptPayload') is-invalid @enderror">
+                                            @foreach($units as $u)
+                                                <option value="{{ $u->code }}">{{ $u->code }} — {{ \Illuminate\Support\Str::limit($u->name, 30) }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="form-group col-md-6">
-                                        <label>Kode KPI Acuan</label>
-                                        <input type="text" wire:model="kpiCodePayload" class="form-control form-control-sm" placeholder="KPI-PROD-001">
+                                        <label>Kode KPI Acuan <small class="text-muted">(periode {{ $currentPeriod }})</small></label>
+                                        <select wire:model.live="kpiCodePayload" class="form-control form-control-sm @error('kpiCodePayload') is-invalid @enderror">
+                                            @forelse($kpiOptions as $k)
+                                                <option value="{{ $k->kpi_code }}">{{ $k->kpi_code }} — {{ \Illuminate\Support\Str::limit($k->kpi_name, 30) }}</option>
+                                            @empty
+                                                <option value="">belum ada sasaran di unit ini</option>
+                                            @endforelse
+                                        </select>
+                                        @error('kpiCodePayload') <span class="invalid-feedback">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
                                 <div class="form-row">
@@ -315,7 +341,8 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Tautan URL Bukti Evidensi (S3 / Cloud PDF)</label>
-                                    <input type="url" wire:model="evidenceUrlPayload" class="form-control form-control-sm">
+                                    <input type="url" wire:model="evidenceUrlPayload" class="form-control form-control-sm @error('evidenceUrlPayload') is-invalid @enderror" placeholder="https://…">
+                                    <small class="text-muted">Target KPI yang tertaut Cascade KPI tidak diubah oleh payload.</small>
                                 </div>
                                 @can('manage integration')
                                 <button type="submit" class="btn btn-primary btn-sm btn-block">

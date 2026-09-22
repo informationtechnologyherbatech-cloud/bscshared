@@ -80,12 +80,11 @@
                             <div class="form-group">
                                 <label>Pilih Departemen Pengirim</label>
                                 <select wire:model="simulatedDept" class="form-control form-control-sm">
-                                    <option value="PROD">PROD - Produksi</option>
-                                    <option value="QC">QC - Quality Control</option>
-                                    <option value="FIN">FIN - Keuangan & Akuntansi</option>
-                                    <option value="HRD">HRD - Human Resources</option>
-                                    <option value="MKT">MKT - Pemasaran</option>
+                                    @foreach($units as $u)
+                                        <option value="{{ $u->code }}">{{ $u->code }} - {{ \Illuminate\Support\Str::limit($u->name, 40) }}</option>
+                                    @endforeach
                                 </select>
+                                @error('simulatedDept') <small class="text-danger">{{ $message }}</small> @enderror
                             </div>
                             @can('manage integration')
                             <button wire:click="simulateInbound" class="btn btn-info btn-sm btn-block">

@@ -38,6 +38,9 @@ class ActionPlans extends Component
             // Harus salah satu unit kerja aktif entitas ini — sebelumnya teks bebas,
             // sehingga salah ketik membuat departemen "baru" yang tidak ada.
             'ownerDept' => ['required', 'string', 'max:30', \Illuminate\Validation\Rule::in(WorkUnit::active()->pluck('code')->all())],
+            // Sasaran harus milik entitas aktif (model berentitas) — id buatan
+            // dari entitas lain ditolak.
+            'objectiveId' => ['nullable', \Illuminate\Validation\Rule::exists('department_objectives', 'id')->where('entity_id', app(\App\Support\EntityContext::class)->id())],
         ]);
 
         ActionPlan::create([
@@ -112,7 +115,12 @@ class ActionPlans extends Component
         }
 
         $actionPlans = $query->get();
-        $offTargetObjectives = DepartmentObjective::where('status', '!=', 'Tercapai')->get();
+        // Hanya sasaran periode terbaru — sebelumnya semua periode, sehingga kode
+        // KPI yang sama muncul berulang kali di pilihan.
+        $offTargetObjectives = DepartmentObjective::where('period', \App\Models\Period::currentPeriod())
+            ->where('status', '!=', 'Tercapai')
+            ->orderBy('dept_code')->orderBy('kpi_code')
+            ->get();
 
         return view('livewire.action-plans', [
             'actionPlans' => $actionPlans,
