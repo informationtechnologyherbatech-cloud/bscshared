@@ -168,7 +168,7 @@
                                                 @endif
                                             </div>
                                         @else
-                                            <div class="text-right">{{ $rows[$kode]['target'] !== '' ? \App\Support\Bsc\RatioLibrary::format((float) $rows[$kode]['target'], $r['unit']) : '—' }}</div>
+                                            <div class="text-right">{{ $rows[$kode]['target'] !== '' ? ratio_format((float) $rows[$kode]['target'], $r['unit']) : '—' }}</div>
                                         @endif
                                     </td>
                                 </tr>

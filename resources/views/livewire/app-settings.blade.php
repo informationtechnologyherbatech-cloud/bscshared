@@ -139,7 +139,7 @@
                                         <div class="form-group mb-0">
                                             <label>Versi Aplikasi</label>
                                             <input type="text" class="form-control" value="{{ app_version() }}" readonly>
-                                            <small class="text-muted">Diambil dari <code>app_version()</code> pada <code>app/Helpers/helper.php</code> (ubah lewat <code>APP_VERSION</code> di berkas .env).</small>
+                                            <small class="text-muted">Diambil dari <code>app_version()</code> pada <code>app/Http/Helpers/helper.php</code> (ubah lewat <code>APP_VERSION</code> di berkas .env).</small>
                                         </div>
                                     </div>
                                 </div>
@@ -356,7 +356,7 @@
                                         </tr>
                                         <tr>
                                             <td><i class="fas fa-check-circle text-success mr-1"></i> Kata sandi</td>
-                                            <td class="text-muted">{{ \App\Support\PasswordPolicy::hint() }} Di-hash bcrypt.</td>
+                                            <td class="text-muted">{{ password_hint() }} Di-hash bcrypt.</td>
                                         </tr>
                                         <tr>
                                             <td><i class="fas fa-check-circle text-success mr-1"></i> Kata sandi lemah</td>

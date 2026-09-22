@@ -5,9 +5,9 @@
             if ($n === null) {
                 return '<span class="text-muted">—</span>';
             }
-            $status = \App\Support\ScoreStatus::for($n);
+            $status = score_status($n);
 
-            return '<span class="font-weight-bold" style="color:'.e(\App\Support\ScoreStatus::color($status)).'">'.e(number_format($n, 1, ',', '.')).'</span>';
+            return '<span class="font-weight-bold" style="color:'.e(score_color($status)).'">'.e(number_format($n, 1, ',', '.')).'</span>';
         };
         $g = $data['group'];
     @endphp

@@ -142,7 +142,7 @@ dinormalisasi ke yang tersedia. Bobot diatur di `config/bsc.php`.
 ## Versi Aplikasi
 
 Versi aplikasi diambil dari helper `app_version()` pada
-[`app/Helpers/helper.php`](app/Helpers/helper.php) — sesuai pola yang dipakai
+[`app/Http/Helpers/helper.php`](app/Http/Helpers/helper.php) — sesuai pola yang dipakai
 proyek *official-website*:
 
 ```php
@@ -155,6 +155,31 @@ sehingga versi dapat dinaikkan tanpa mengubah kode. Versi ditampilkan pada foote
 halaman login, dan menu *Setting Sistem → Informasi Sistem*.
 
 Helper dimuat otomatis lewat `autoload.files` di `composer.json`.
+
+---
+
+## Fungsi Bantu Blade
+
+Seluruh fungsi bantu ada di satu berkas,
+[`app/Http/Helpers/helper.php`](app/Http/Helpers/helper.php), sesuai pola proyek
+*warh*. Aturannya:
+
+- **View tidak menyebut nama kelas.** Tidak ada `\App\Support\...` atau `::class`
+  di dalam Blade — markup jadi sulit dibaca, dan memindahkan kelas berarti
+  menyisir puluhan berkas Blade.
+- **Fungsi di sini hanya meneruskan** ke kelas aslinya; logikanya tidak disalin,
+  supaya tetap satu sumber kebenaran.
+- Semuanya dibungkus `function_exists()` dan dimuat lewat `autoload.files`.
+
+Contoh yang tersedia: `active_entity()`, `can_switch_entity()`,
+`switchable_entities()`, `entity_logo_of()`, `active_period()`,
+`periods_with_status()`, `period_label()`, `month_short()`, `period_closed()`,
+`score_status()`, `score_color()`, `score_label()`, `ratio_format()`,
+`ratio_posts()`, `post_kind_label()`, `post_is_neraca()`, `post_is_hris()`,
+`post_role_label()`, `kpi_levels()`, `kpi_statuses()`, `rupiah()`.
+
+Aturan ini dijaga tes: `BladeHelpersTest` menolak berkas Blade yang memuat
+`\App\` atau `::class`, dan memastikan seluruh Blade tetap dapat dikompilasi.
 
 ---
 

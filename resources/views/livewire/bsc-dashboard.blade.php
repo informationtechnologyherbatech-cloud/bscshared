@@ -478,7 +478,7 @@
 
                         <!-- TINGKAT 1: APEX KEUANGAN (PUNCAK SEGITIGA SEMPURNA 50% 0%) -->
                         <div class="pyramid-tier tier-1 {{ $activeLevel === 1 ? 'active-tier' : '' }}" wire:click="selectLevel(1)">
-                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[1]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[1]) }}"></span>
+                            <span class="tier-status-dot" style="background: {{ score_color($tierStatus[1]) }};" title="{{ score_label($tierStatus[1]) }}"></span>
                             <div class="tier-content">
                                 {{-- Tingkat 1 = Revenue (L1). Skor puncak gabungan ada di kartu Apex di atas. --}}
                                 <div class="tier-title">Tingkat 1: Revenue</div>
@@ -491,7 +491,7 @@
 
                         <!-- TINGKAT 2: RASIO KEUANGAN (MID-TOP TRAPEZOID 37.5% - 62.5% TO 25% - 75%) -->
                         <div class="pyramid-tier tier-2 {{ $activeLevel === 2 ? 'active-tier' : '' }}" wire:click="selectLevel(2)">
-                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[2]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[2]) }}"></span>
+                            <span class="tier-status-dot" style="background: {{ score_color($tierStatus[2]) }};" title="{{ score_label($tierStatus[2]) }}"></span>
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-chart-line text-white mr-1"></i>
                                     <span class="d-none d-md-inline">Tingkat 2: Rasio Keuangan</span>
@@ -507,7 +507,7 @@
 
                         <!-- TINGKAT 3: OBJECTIVE DEPARTEMEN (MID-BOTTOM TRAPEZOID 25% - 75% TO 12.5% - 87.5%) -->
                         <div class="pyramid-tier tier-3 {{ $activeLevel === 3 ? 'active-tier' : '' }}" wire:click="selectLevel(3)">
-                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[3]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[3]) }}"></span>
+                            <span class="tier-status-dot" style="background: {{ score_color($tierStatus[3]) }};" title="{{ score_label($tierStatus[3]) }}"></span>
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-bullseye text-white mr-1"></i>
                                     <span class="d-none d-md-inline">Tingkat 3: Objective Dept</span>
@@ -523,7 +523,7 @@
 
                         <!-- TINGKAT 4: PROGRAM KERJA / ACTION PLANS (BASE TRAPEZOID 12.5% - 87.5% TO 0% - 100%) -->
                         <div class="pyramid-tier tier-4 {{ $activeLevel === 4 ? 'active-tier' : '' }}" wire:click="selectLevel(4)">
-                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[4]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[4]) }}"></span>
+                            <span class="tier-status-dot" style="background: {{ score_color($tierStatus[4]) }};" title="{{ score_label($tierStatus[4]) }}"></span>
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-tasks text-white mr-1"></i>
                                     <span class="d-none d-md-inline">Tingkat 4: Program Kerja (Action Plans)</span>
@@ -701,12 +701,12 @@
                                         <div class="alert alert-light border small mt-3 mb-0">
                                             <i class="fas fa-info-circle text-info mr-1"></i>
                                             @switch($rd['reason'])
-                                                @case(\App\Models\RevenueTarget::BELUM_DIFASING)
+                                                @case(f1_belum_difasing())
                                                     Target setahun sudah disahkan, tetapi target bulanannya belum diisi. Buka
                                                     <a class="font-weight-bold text-primary" href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}">Target &amp; Realisasi Revenue</a>,
                                                     klik <strong>Bagi rata</strong> atau <strong>Pola musiman</strong>, lalu <strong>Simpan</strong>.
                                                     @break
-                                                @case(\App\Models\RevenueTarget::TANPA_REALISASI)
+                                                @case(f1_tanpa_realisasi())
                                                     Target bulanan sudah ada, tetapi realisasi Jan–{{ substr($selectedPeriod, 5, 2) }} belum diisi di
                                                     <a class="font-weight-bold text-primary" href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}">Target &amp; Realisasi Revenue</a>.
                                                     @break

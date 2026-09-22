@@ -268,12 +268,12 @@
                                             @foreach ($uB['rows'] as $r)
                                                 <tr class="{{ $r['claimed'] ? 'table-info font-weight-bold' : '' }}">
                                                     <td><code>{{ $r['code'] }}</code> {{ $r['name'] }} @if ($r['claimed']) <span class="badge badge-info">diklaim</span> @endif</td>
-                                                    <td class="text-right">{{ \App\Support\Bsc\RatioLibrary::format($r['baseline'], $r['unit']) }}</td>
-                                                    <td class="text-right">{{ \App\Support\Bsc\RatioLibrary::format($r['scenario'], $r['unit']) }}</td>
+                                                    <td class="text-right">{{ ratio_format($r['baseline'], $r['unit']) }}</td>
+                                                    <td class="text-right">{{ ratio_format($r['scenario'], $r['unit']) }}</td>
                                                     <td class="text-right {{ ($r['delta_pct'] ?? 0) > 0 ? 'text-success' : (($r['delta_pct'] ?? 0) < 0 ? 'text-danger' : 'text-muted') }}">
                                                         {{ $r['delta_pct'] === null ? '—' : $pct($r['delta_pct']) }}
                                                     </td>
-                                                    <td class="text-right text-muted">{{ \App\Support\Bsc\RatioLibrary::format($r['target'], $r['unit']) }}</td>
+                                                    <td class="text-right text-muted">{{ ratio_format($r['target'], $r['unit']) }}</td>
                                                     <td class="text-center">{{ $r['rubric_baseline'] ?? '—' }} → {{ $r['rubric_scenario'] ?? '—' }}</td>
                                                     <td class="text-right">{{ $r['weighted_baseline'] ?? '—' }} → {{ $r['weighted_scenario'] ?? '—' }}</td>
                                                 </tr>

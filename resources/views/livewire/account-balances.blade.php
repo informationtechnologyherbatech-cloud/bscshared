@@ -78,13 +78,13 @@
                                 </thead>
                                 <tbody>
                                     @foreach ($posts as $kode => $pos)
-                                        @php($neraca = $pos['kind'] === \App\Support\Bsc\AccountPosts::NERACA)
+                                        @php($neraca = post_is_neraca($pos['kind']))
                                         <tr>
                                             <td class="align-middle"><code>{{ $kode }}</code></td>
                                             <td class="align-middle">
                                                 <div class="font-weight-bold">{{ $pos['name'] }}</div>
                                                 <small class="text-muted">
-                                                    <span class="badge badge-light border">{{ \App\Support\Bsc\AccountPosts::kindLabel($pos['kind']) }}</span>
+                                                    <span class="badge badge-light border">{{ post_kind_label($pos['kind']) }}</span>
                                                     {{ $pos['hint'] }}
                                                 </small>
                                             </td>
@@ -102,12 +102,12 @@
                                             </td>
                                             <td class="align-middle">
                                                 @if ($bisaUbah)
-                                                    @php($hris = in_array($pos['kind'], [\App\Support\Bsc\AccountPosts::HRIS_RATA, \App\Support\Bsc\AccountPosts::HRIS_ALIRAN], true))
+                                                    @php($hris = post_is_hris($pos['kind']))
                                                     {{-- Jumlah karyawan & jam kerja bukan rupiah: tanpa awalan Rp, tanpa desimal. --}}
                                                     <x-input-rupiah wire:model.live.debounce.500ms="values.{{ $kode }}.amount"
                                                            :prefix="$hris ? '' : 'Rp'" :decimals="$hris ? 0 : 2"
                                                            class="form-control form-control-sm text-right {{ $errors->has('values.'.$kode.'.amount') ? 'is-invalid' : '' }}"
-                                                           placeholder="{{ $neraca ? 'saldo akhir' : ($pos['kind'] === \App\Support\Bsc\AccountPosts::HRIS_RATA ? 'rata-rata (orang)' : ($hris ? 'jam kerja YTD' : 'YTD')) }}" />
+                                                           placeholder="{{ $neraca ? 'saldo akhir' : (post_is_hris_rata($pos['kind']) ? 'rata-rata (orang)' : ($hris ? 'jam kerja YTD' : 'YTD')) }}" />
                                                 @else
                                                     <div class="text-right">{{ $values[$kode]['amount'] !== '' ? number_format((float) $values[$kode]['amount'], 0, ',', '.') : '—' }}</div>
                                                 @endif
@@ -115,7 +115,7 @@
                                             <td class="text-right align-middle small text-muted">
                                                 @if (($hasil['used'][$kode] ?? null) === null)
                                                     —
-                                                @elseif (in_array($pos['kind'], [\App\Support\Bsc\AccountPosts::HRIS_RATA, \App\Support\Bsc\AccountPosts::HRIS_ALIRAN], true))
+                                                @elseif (post_is_hris($pos['kind']))
                                                     {{ number_format($hasil['used'][$kode], 0, ',', '.') }}
                                                 @else
                                                     {{ rupiah($hasil['used'][$kode]) }}
@@ -209,8 +209,8 @@
                                         <small class="text-muted">{{ $r['group'] }} · {{ $r['formula'] }}</small>
                                     </td>
                                     <td class="small">{{ $r['polarity'] }}</td>
-                                    <td class="text-right">{{ \App\Support\Bsc\RatioLibrary::format($r['actual'], $r['unit']) }}</td>
-                                    <td class="text-right text-muted">{{ \App\Support\Bsc\RatioLibrary::format($r['target'], $r['unit']) }}</td>
+                                    <td class="text-right">{{ ratio_format($r['actual'], $r['unit']) }}</td>
+                                    <td class="text-right text-muted">{{ ratio_format($r['target'], $r['unit']) }}</td>
                                     <td class="text-right">{{ $r['achievement'] !== null ? number_format($r['achievement'], 1, ',', '.').'%' : '—' }}</td>
                                     <td class="text-right">{{ $r['rubric'] !== null ? number_format($r['rubric'], 0) : '—' }}</td>
                                     <td class="text-right">{{ rtrim(rtrim(number_format($r['weight'], 2, ',', '.'), '0'), ',') }}</td>

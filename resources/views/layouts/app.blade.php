@@ -49,12 +49,11 @@
         <!-- Right navbar links: tiap info tampil sebagai "chip" — ikon berbingkai + keterangan kecil + nilai. -->
         <ul class="navbar-nav ml-auto align-items-center">
             @auth
-            @php($konteks = app(\App\Support\EntityContext::class))
-            @php($entitasAktif = $konteks->entity())
-            @php($logoAktif = $entitasAktif ? public_image_url(config('entity.profiles.'.$entitasAktif->code.'.logo')) : null)
+            @php($entitasAktif = active_entity())
+            @php($logoAktif = entity_logo_of($entitasAktif?->code))
             @if($entitasAktif)
             <li class="nav-item dropdown">
-                @if($konteks->canSwitch(auth()->user()))
+                @if(can_switch_entity())
                     <a class="nav-link nb-chip nb-entity-chip" data-toggle="dropdown" href="#" title="Pilih entitas yang ditampilkan">
                         @if($logoAktif)<span class="nb-chip-icon nb-chip-logo"><img src="{{ $logoAktif }}" alt="{{ $entitasAktif->name }}"></span>@else<span class="nb-chip-icon"><i class="fas fa-building"></i></span>@endif
                         <span class="nb-chip-text">
@@ -67,9 +66,9 @@
                         <div class="nb-entity-menu-head">
                             <i class="fas fa-arrow-right-arrow-left mr-2"></i>Tampilkan data entitas
                         </div>
-                        @foreach($konteks->accessibleFor(auth()->user()) as $e)
+                        @foreach(switchable_entities() as $e)
                             @php($aktif = $e->id === $entitasAktif->id)
-                            @php($logoEntitas = public_image_url(config('entity.profiles.'.$e->code.'.logo')))
+                            @php($logoEntitas = entity_logo_of($e->code))
                             <form method="POST" action="{{ route('entity.switch') }}" class="m-0">
                                 @csrf
                                 <input type="hidden" name="entity_id" value="{{ $e->id }}">
@@ -106,21 +105,20 @@
             @auth
             {{-- Periode aktif: berlaku di semua halaman (disimpan di sesi, per entitas).
                  Bawaannya bulan berjalan; memilih periode di halaman juga mengubahnya. --}}
-            @php($daftarPeriode = \App\Models\Period::orderByDesc('period')->get(['period', 'status']))
+            @php($daftarPeriode = periods_with_status())
             @if($daftarPeriode->isNotEmpty())
-            @php($periodeAktif = \App\Models\Period::active())
+            @php($periodeAktif = active_period())
             @php($bulanIni = now()->format('Y-m'))
-            @php($namaBulan = ['01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April', '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus', '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'])
             <li class="nav-item dropdown">
                 <a class="nav-link nb-chip" data-toggle="dropdown" href="#" title="Periode yang ditampilkan di semua halaman">
                     {{-- Mini kalender: tahun di pita atas, singkatan bulan di badan. --}}
                     <span class="nb-cal" aria-hidden="true">
                         <span class="nb-cal-year" data-cal-year>{{ substr($periodeAktif, 0, 4) }}</span>
-                        <span class="nb-cal-month" data-cal-month>{{ mb_strtoupper(mb_substr($namaBulan[substr($periodeAktif, 5, 2)] ?? '', 0, 3)) }}</span>
+                        <span class="nb-cal-month" data-cal-month>{{ month_short($periodeAktif) }}</span>
                     </span>
                     <span class="nb-chip-text">
                         <small>Periode</small>
-                        <strong data-periode-aktif="{{ $periodeAktif }}">{{ ($namaBulan[substr($periodeAktif, 5, 2)] ?? $periodeAktif) }} {{ substr($periodeAktif, 0, 4) }}</strong>
+                        <strong data-periode-aktif="{{ $periodeAktif }}">{{ period_label($periodeAktif) }}</strong>
                     </span>
                     <i class="fas fa-chevron-down nb-chip-caret"></i>
                 </a>
@@ -139,10 +137,10 @@
                                         <input type="hidden" name="period" value="{{ $p->period }}">
                                         <button type="submit" data-periode="{{ $p->period }}"
                                                 class="nb-period-item {{ $pilih ? 'is-active' : '' }}"
-                                                title="{{ $namaBulan[substr($p->period, 5, 2)] ?? '' }} {{ $tahun }}{{ $p->status === 'CLOSED' ? ' · ditutup' : '' }}">
-                                            <strong>{{ mb_substr($namaBulan[substr($p->period, 5, 2)] ?? $p->period, 0, 3) }}</strong>
+                                                title="{{ period_label($p->period) }}{{ period_closed($p->status) ? ' · ditutup' : '' }}">
+                                            <strong>{{ month_abbr($p->period) }}</strong>
                                             <small>
-                                                @if($p->status === 'CLOSED')<i class="fas fa-lock"></i>@endif
+                                                @if(period_closed($p->status))<i class="fas fa-lock"></i>@endif
                                                 {{ $p->period === $bulanIni ? 'bulan ini' : $p->period }}
                                             </small>
                                         </button>
@@ -204,7 +202,7 @@
                 <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu" data-accordion="false">
                     {{-- Menu dikelompokkan mengikuti tingkat piramida BSC; di tiap kelompok
                          urutannya mengikuti alur kerja: atur → isi → lihat hasil. --}}
-                    @php($menuHolding = auth()->user()?->can('view consolidation') && app(\App\Support\EntityContext::class)->canSwitch(auth()->user()))
+                    @php($menuHolding = auth()->user()?->can('view consolidation') && can_switch_entity())
                     @if(auth()->user()?->can('view dashboard') || auth()->user()?->can('view wiring') || $menuHolding)
                     <li class="nav-header">RINGKASAN KINERJA</li>
                     @endif

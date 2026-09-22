@@ -140,8 +140,8 @@
                                     <td class="text-right align-middle small text-muted">{{ rupiah($r['kum_actual']) }}</td>
                                     <td class="text-right align-middle font-weight-bold">
                                         @if($r['kumulatif'] !== null)
-                                            @php($status = \App\Support\ScoreStatus::for($r['kumulatif']))
-                                            <span style="color: {{ \App\Support\ScoreStatus::color($status) }}">{{ number_format($r['kumulatif'], 1, ',', '.') }}%</span>
+                                            @php($status = score_status($r['kumulatif']))
+                                            <span style="color: {{ score_color($status) }}">{{ number_format($r['kumulatif'], 1, ',', '.') }}%</span>
                                         @else
                                             <span class="text-muted font-weight-normal">—</span>
                                         @endif

@@ -21,7 +21,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Versi rilis aplikasi. Dibaca oleh helper app_version() pada
-    | app/Helpers/helper.php dan ditampilkan di antarmuka.
+    | app/Http/Helpers/helper.php dan ditampilkan di antarmuka.
     |
     */
 

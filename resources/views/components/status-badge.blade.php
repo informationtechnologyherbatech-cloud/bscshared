@@ -8,7 +8,7 @@
     $label = match ($status) {
         'Tercapai' => ['badge-tercapai', 'fa-check-circle', 'Tercapai', 'Capaian ≥ 100% target'],
         'Waspada' => ['badge-waspada', 'fa-exclamation-circle', 'Waspada', 'Capaian 80–99% target'],
-        \App\Support\Bsc\RatioEngine::TANPA_TARGET => ['badge-info', 'fa-question-circle', 'Belum Ada Target', 'Nilai sudah ada, target belum diisi'],
+        status_tanpa_target() => ['badge-info', 'fa-question-circle', 'Belum Ada Target', 'Nilai sudah ada, target belum diisi'],
         'Belum Lengkap' => ['badge-secondary', 'fa-hourglass-half', 'Belum Lengkap', 'Data belum lengkap'],
         default => ['badge-dibawah', 'fa-times-circle', 'Di Bawah Target', 'Capaian < 80% target'],
     };

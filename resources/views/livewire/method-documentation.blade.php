@@ -75,12 +75,12 @@
                                         <tr>
                                             <td><code>{{ $kode }}</code></td>
                                             <td>{{ $p['name'] }}</td>
-                                            <td>{{ \App\Support\Bsc\AccountPosts::kindLabel($p['kind']) }}</td>
+                                            <td>{{ post_kind_label($p['kind']) }}</td>
                                             <td>
                                                 @switch($p['kind'])
-                                                    @case(\App\Support\Bsc\AccountPosts::ALIRAN) YTD × 12 ÷ bulan berjalan @break
-                                                    @case(\App\Support\Bsc\AccountPosts::NERACA) (saldo awal tahun + saldo akhir) ÷ 2 @break
-                                                    @case(\App\Support\Bsc\AccountPosts::HRIS_ALIRAN) YTD × 12 ÷ bulan berjalan @break
+                                                    @case(post_kind('aliran')) YTD × 12 ÷ bulan berjalan @break
+                                                    @case(post_kind('neraca')) (saldo awal tahun + saldo akhir) ÷ 2 @break
+                                                    @case(post_kind('hris_aliran')) YTD × 12 ÷ bulan berjalan @break
                                                     @default rata-rata periode, apa adanya
                                                 @endswitch
                                             </td>

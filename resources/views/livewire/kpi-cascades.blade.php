@@ -304,7 +304,7 @@
                                 <div class="form-group col-md-2">
                                     <label class="small">Level</label>
                                     <select wire:model.live="form.level" class="form-control form-control-sm">
-                                        @foreach (\App\Models\KpiCascade::LEVELS as $l)
+                                        @foreach (kpi_levels() as $l)
                                             <option value="{{ $l }}">{{ $l }}</option>
                                         @endforeach
                                     </select>
@@ -432,8 +432,8 @@
                                     <label class="small">Pos akun digerakkan</label>
                                     <select wire:model="form.post_code" class="form-control form-control-sm" @disabled($form['ratio_code'] === '')>
                                         <option value="">—</option>
-                                        @foreach (\App\Support\Bsc\RatioLibrary::postsOf((string) $form['ratio_code']) as $pos)
-                                            <option value="{{ $pos }}">{{ $pos }} — {{ $posts[$pos]['name'] }} · {{ \App\Models\AccountPostRole::label($postRoles[$pos] ?? null) }}</option>
+                                        @foreach (ratio_posts((string) $form['ratio_code']) as $pos)
+                                            <option value="{{ $pos }}">{{ $pos }} — {{ $posts[$pos]['name'] }} · {{ post_role_label($postRoles[$pos] ?? null) }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -462,7 +462,7 @@
                                 <div class="form-group col-md-3">
                                     <label class="small">Status validasi</label>
                                     <select wire:model="form.validation_status" class="form-control form-control-sm">
-                                        @foreach (\App\Models\KpiCascade::STATUSES as $s)
+                                        @foreach (kpi_statuses() as $s)
                                             <option value="{{ $s }}">{{ $s }}</option>
                                         @endforeach
                                     </select>
