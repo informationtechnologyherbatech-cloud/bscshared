@@ -174,6 +174,22 @@
                         </a>
                     </li>
                     @endcan
+                    @canany(['view objectives','manage ratios'])
+                    <li class="nav-item">
+                        <a href="{{ route('kpi-cascades') }}" class="nav-link {{ request()->routeIs('kpi-cascades') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-sitemap"></i>
+                            <p>Cascade KPI</p>
+                        </a>
+                    </li>
+                    @endcanany
+                    @canany(['manage ratios','view ratios','view objectives'])
+                    <li class="nav-item">
+                        <a href="{{ route('account-post-map') }}" class="nav-link {{ request()->routeIs('account-post-map') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-project-diagram"></i>
+                            <p>Peta Pos Akun</p>
+                        </a>
+                    </li>
+                    @endcanany
                     @can('view actionplans')
                     <li class="nav-item">
                         <a href="{{ route('action-plans') }}" class="nav-link {{ request()->routeIs('action-plans') ? 'active' : '' }}">

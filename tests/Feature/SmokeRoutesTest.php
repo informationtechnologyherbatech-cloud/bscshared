@@ -47,6 +47,8 @@ class SmokeRoutesTest extends TestCase
             'unit kerja' => ['work-units'],
             'pos akun' => ['account-balances'],
             'katalog rasio' => ['ratio-catalog'],
+            'peta pos akun' => ['account-post-map'],
+            'cascade kpi' => ['kpi-cascades'],
         ];
     }
 

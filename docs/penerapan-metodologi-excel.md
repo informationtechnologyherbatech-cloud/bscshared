@@ -36,8 +36,8 @@ dengan bentuk dan arti yang sama untuk keempat entitas.
 | **Asumsi** — B, C, D | 19 rasio, bobot 5 kelompok, rubrik 5 tingkat | ✅ Menu **Katalog Rasio**, `config/bsc.php` |
 | **Asumsi** — F, G | 16 pos akun & data baseline | ✅ Menu **Pos Akun** |
 | **L2 Rasio Keuangan** | Rasio dihitung dari pos akun, skor rubrik × bobot | ✅ `App\Support\Bsc\RatioEngine` |
-| **Peta Rasio-Akun-Dept** | Pemilik (O) / Kontributor (K) tiap pos akun | ⏳ Tahap 3 |
-| **L3 Cascade KPI**, **Form Sasaran Kinerja** | KPI Head → Supervisor → Staff, bobot per jabatan | ⏳ Tahap 3 |
+| **Peta Rasio-Akun-Dept** | Pemilik (O) / Kontributor (K) tiap pos akun | ✅ Menu **Peta Pos Akun** |
+| **L3 Cascade KPI**, **Form Sasaran Kinerja** | KPI Head → Supervisor → Staff, bobot per jabatan | ✅ Menu **Cascade KPI** |
 | **L4 Uji Indikator** | Uji A (logika) & Uji B (simulasi) | ⏳ Tahap 4 |
 
 ---
@@ -113,12 +113,57 @@ dengan bentuk dan arti yang sama untuk keempat entitas.
 
 ---
 
-## Tahap berikutnya
+## Tahap 3 — sudah diterapkan
 
-**Tahap 3 — Cascade KPI (L3).**
-KPI berjenjang Head (lag) → Supervisor (lead) → Staff (output) dengan kode KPI
-induk, bobot per jabatan (Σ 100%), jenis Driver/Guardrail, elastisitas, serta
-rasio & pos akun yang digerakkannya; peta Pemilik/Kontributor pos akun.
+### Peta pos akun (sheet Peta Rasio-Akun-Dept)
+- **Bagian 1** (tetap): pos akun pembentuk tiap rasio (P = pembilang, Y = penyebut),
+  di `RatioLibrary::posts()`.
+- **Bagian 2** (isian): menu **Peta Pos Akun**, per entitas — tiap unit kerja
+  Pemilik (O) / Kontributor (K) / kosong pada 16 pos akun. Hanya Keuangan
+  (`manage ratios`) yang dapat mengubah. Cek "tepat satu Pemilik" per pos akun;
+  PA01 Penjualan boleh beberapa Pemilik (tiap unit channel memiliki porsinya).
+- **Bagian 3** (otomatis): rasio yang boleh diklaim tiap unit.
+- Erdigma terisi dari workbook (usulan awal, perlu disahkan CFO). Entitas
+  manufaktur **sengaja kosong** — kepemilikan pos akun menentukan siapa dibebani
+  target rupiah, jadi harus ditetapkan Keuangan masing-masing entitas.
+- Kebenaran dijaga `tests/Feature/PostMapWorkbookTest.php`: 47 sambungan
+  bagian 1 dan jumlah rasio yang boleh diklaim ke-17 unit Erdigma harus sama
+  dengan workbook.
+
+### Cascade KPI (sheet L3 Cascade KPI & Form Sasaran Kinerja)
+- Menu **Cascade KPI**, per tahun: KPI Head (lag) → Supervisor (lead) → Staff
+  (output, rutin/milestone), dengan kode KPI induk, jabatan/PIC, brand (BU
+  berbasis brand), target & satuan, metode, key initiative, program kerja,
+  record, bobot, jenis Driver/Guardrail, elastisitas, rasio (atau REV) & pos
+  akun yang digerakkan, arah pengaruh.
+- Kode otomatis mengikuti workbook (`SCM-H01`, `SCM-S01`, `SCM-T01`). KPI turunan
+  mewarisi unit, brand, rasio, dan pos akun induknya.
+- Kolom "auto" workbook dihitung langsung: Σ bobot per jabatan (harus 100%),
+  peran unit di pos akun (dari Peta), nama rasio & pos akun, serta ringkasan per
+  unit (Σ bobot Head per brand, jumlah KPI Supervisor/Staff, baris ≠100%).
+- Pemeriksaan logis Uji A yang bisa dihitung otomatis: jenis ukuran sesuai level
+  (Q7), bobot 100% (Q8), pos akun ada di rumus rasio yang diklaim (Q3), unit
+  Pemilik/Kontributor pos itu (Q4), dan KPI induk sah.
+- **Status validasi** (Belum diuji / Lolos / Revisi) hanya ditetapkan Keuangan.
+  Bila unit mengubah isi KPI yang sudah Lolos, statusnya kembali "Belum diuji".
+- **Masukkan ke monitoring**: KPI berstatus Lolos dimasukkan ke Objective
+  Departemen untuk periode yang dipilih. Realisasi yang sudah diisi tidak
+  berubah; hanya definisi & target yang diperbarui.
+- Objective Departemen kini menghitung capaian menurut polaritas Naik / Turun /
+  **Rentang** (sebelumnya Rentang dihitung seperti Naik), dan kolom target/
+  realisasinya diperlebar sehingga target ratusan miliar rupiah dan pecahan
+  seperti 0,97 tidak terpotong.
+- Contoh Terisi (SCM, TTC Eyebost, CMP) dipakai di
+  `tests/Feature/KpiCascadeTest.php`: semua baris harus lolos cek, dan peran
+  unit serta ringkasan per unit harus sama dengan workbook.
+
+> **Belum**: "Target disesuaikan" (target × (1 + e × (faktor revisi − 1))).
+> Elastisitas sudah disimpan, tetapi faktor revisi butuh target revenue
+> *disahkan* vs *revisi* yang belum dicatat aplikasi — dikerjakan bersama Tahap 4.
+
+---
+
+## Tahap berikutnya
 
 **Tahap 4 — Uji indikator (L4) & konsolidasi holding.**
 Uji A/B sebelum KPI masuk monitoring. Tampilan holding yang menggabungkan

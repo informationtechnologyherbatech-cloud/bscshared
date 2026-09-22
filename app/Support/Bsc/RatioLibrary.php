@@ -49,6 +49,66 @@ class RatioLibrary
         ];
     }
 
+    /** Kode tambahan untuk KPI yang menggerakkan Target Revenue (Tingkat 1). */
+    public const REVENUE = 'REV';
+
+    /**
+     * Peta bagian 1 — pos akun pembentuk tiap rasio. P = pembilang, Y = penyebut,
+     * P+ / P− = bagian pembilang gabungan yang menambah / mengurangi. DIO, DSO, DPO
+     * (365 ÷ rasio lain) dibaca terbalik, persis seperti di workbook.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public static function posts(): array
+    {
+        return [
+            'P1' => ['PA01' => 'P+,Y', 'PA02' => 'P−'],
+            'P2' => ['PA01' => 'P+,Y', 'PA02' => 'P−', 'PA03' => 'P−', 'PA04' => 'P−'],
+            'P3' => ['PA01' => 'P+', 'PA02' => 'P−', 'PA03' => 'P−', 'PA11' => 'Y'],
+            'P4' => ['PA01' => 'P+', 'PA02' => 'P−', 'PA03' => 'P−', 'PA13' => 'Y'],
+            'A1' => ['PA02' => 'P', 'PA05' => 'Y'],
+            'A2' => ['PA01' => 'P', 'PA11' => 'Y'],
+            'A3' => ['PA01' => 'P', 'PA06' => 'Y'],
+            'A4' => ['PA02' => 'Y', 'PA05' => 'P'],
+            'A5' => ['PA01' => 'Y', 'PA06' => 'P'],
+            'A6' => ['PA02' => 'Y', 'PA07' => 'P'],
+            'D1' => ['PA01' => 'P', 'PA15' => 'Y'],
+            'D2' => ['PA01' => 'P', 'PA16' => 'Y'],
+            'D3' => ['PA01' => 'P', 'PA04' => 'Y'],
+            'D4' => ['PA01' => 'P+', 'PA02' => 'P−', 'PA04' => 'P−', 'PA14' => 'Y'],
+            'L1' => ['PA09' => 'P', 'PA10' => 'Y'],
+            'L2' => ['PA05' => 'P−', 'PA09' => 'P+', 'PA10' => 'Y'],
+            'L3' => ['PA08' => 'P', 'PA10' => 'Y'],
+            'S1' => ['PA12' => 'P', 'PA13' => 'Y'],
+            'S2' => ['PA11' => 'Y', 'PA12' => 'P'],
+        ];
+    }
+
+    /**
+     * Pos akun yang membentuk satu kode dampak. REV (Target Revenue) hanya
+     * digerakkan lewat Penjualan.
+     *
+     * @return array<int, string>
+     */
+    public static function postsOf(string $code): array
+    {
+        if ($code === self::REVENUE) {
+            return ['PA01'];
+        }
+
+        return array_keys(self::posts()[$code] ?? []);
+    }
+
+    /** Nama untuk kode dampak (rasio atau REV). */
+    public static function impactName(string $code): ?string
+    {
+        if ($code === self::REVENUE) {
+            return 'Target Revenue (Tingkat 1)';
+        }
+
+        return self::all()[$code]['name'] ?? null;
+    }
+
     /** Lima kelompok & bobotnya (sheet Asumsi bagian B, sudah disepakati di BSC). */
     public static function groups(): array
     {

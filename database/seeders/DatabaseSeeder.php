@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call(EntityStructureSeeder::class);
         $this->call(RatioCatalogSeeder::class);
+        $this->call(AccountPostRoleSeeder::class);
         $this->call(BscDataSeeder::class);
         $this->call(RolesAndPermissionsSeeder::class);
     }

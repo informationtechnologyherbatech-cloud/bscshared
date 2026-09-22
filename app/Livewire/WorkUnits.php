@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
+use App\Models\AccountPostRole;
 use App\Models\DepartmentObjective;
 use App\Models\WorkUnit;
 use App\Support\EntityContext;
@@ -133,12 +134,18 @@ class WorkUnits extends Component
             $unit = WorkUnit::findOrFail($this->unitId);
 
             if ($unit->code !== $data['code'] && $unit->isInUse()) {
-                $this->addError('code', 'Kode tidak dapat diubah karena sudah dipakai sasaran mutu atau program kerja. Ubah namanya saja.');
+                $this->addError('code', 'Kode tidak dapat diubah karena sudah dipakai sasaran mutu, program kerja, atau cascade KPI. Ubah namanya saja.');
 
                 return;
             }
 
+            $kodeLama = $unit->code;
             $unit->update($data);
+
+            // Peran unit di Peta Pos Akun ikut berganti kode.
+            if ($kodeLama !== $unit->code) {
+                AccountPostRole::where('unit_code', $kodeLama)->update(['unit_code' => $unit->code]);
+            }
             session()->flash('message', 'Unit kerja '.$unit->code.' berhasil diperbarui.');
         } else {
             $unit = WorkUnit::create($data);
@@ -180,13 +187,14 @@ class WorkUnits extends Component
 
         if ($unit->isInUse()) {
             session()->flash('error', 'Unit kerja '.$unit->code.' masih dipakai '.$unit->usageCount()
-                .' sasaran mutu/program kerja. Nonaktifkan saja agar riwayatnya tetap utuh.');
+                .' sasaran mutu/program kerja/KPI. Nonaktifkan saja agar riwayatnya tetap utuh.');
             $this->confirmDeleteId = null;
 
             return;
         }
 
         $kode = $unit->code;
+        AccountPostRole::where('unit_code', $kode)->delete();
         $unit->delete();
         $this->confirmDeleteId = null;
 

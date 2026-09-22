@@ -70,19 +70,10 @@ class DepartmentObjectives extends Component
         $target = floatval($this->editTarget);
         $actual = floatval($this->editActual);
 
-        // Calculate achievement based on polarity
-        if ($obj->polarity === 'Turun') {
-            // Lower actual is better (e.g. defect rate, cycle time)
-            $ach = $actual > 0 ? round(($target / $actual) * 100, 2) : 100;
-        } else {
-            // Higher actual is better (Naik)
-            $ach = $target > 0 ? round(($actual / $target) * 100, 2) : 100;
-        }
-
-        // Cap achievement at 100% per business rule (Cap 100%)
-        if ($ach > 100) {
-            $ach = 100.00;
-        }
+        // Capaian menurut polaritas — Naik, Turun, dan Rentang — dibatasi 100%,
+        // sama dengan rasio keuangan. Rentang sebelumnya dihitung seperti Naik.
+        // Target 0 tidak dapat dinilai; dianggap tercapai seperti sebelumnya.
+        $ach = \App\Support\Bsc\RatioLibrary::achievement($actual, $target, $obj->polarity ?: 'Naik') ?? 100.0;
 
         $status = 'Waspada';
         if ($ach >= 100) {

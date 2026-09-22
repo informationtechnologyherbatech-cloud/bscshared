@@ -32,11 +32,16 @@ class WorkUnit extends Model
         return $query->where('is_active', true)->orderBy('sort')->orderBy('code');
     }
 
-    /** Berapa baris data lain yang merujuk kode unit ini. */
+    /**
+     * Berapa baris data lain yang merujuk kode unit ini. Peran unit di Peta Pos
+     * Akun tidak dihitung: itu konfigurasi, dan ikut berganti/terhapus bersama
+     * unitnya (lihat WorkUnits).
+     */
     public function usageCount(): int
     {
         return DepartmentObjective::where('dept_code', $this->code)->count()
-            + ActionPlan::where('owner_dept', $this->code)->count();
+            + ActionPlan::where('owner_dept', $this->code)->count()
+            + KpiCascade::where('unit_code', $this->code)->count();
     }
 
     public function isInUse(): bool

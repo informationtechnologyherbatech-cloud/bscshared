@@ -12,6 +12,7 @@ class DepartmentObjective extends Model
 
     protected $fillable = [
         'entity_id',
+        'kpi_cascade_id',
         'period',
         'dept_code',
         'kpi_code',
@@ -22,6 +23,12 @@ class DepartmentObjective extends Model
         'achievement_pct',
         'status',
     ];
+
+    /** KPI cascade (L3) asal sasaran ini; kosong untuk sasaran lama/manual. */
+    public function kpiCascade()
+    {
+        return $this->belongsTo(KpiCascade::class);
+    }
 
     public function actionPlans()
     {

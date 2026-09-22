@@ -112,6 +112,9 @@ Skor puncak = 0,45 × F1 (pencapaian revenue kumulatif) + 0,55 × F2 (skor rasio
 
 F1 diisi lewat menu **Target Revenue**. F2 dihitung dari 16 pos akun yang diisi di
 menu **Pos Akun**, dengan rasio, bobot, dan target dari menu **Katalog Rasio**.
+KPI unit kerja disusun di menu **Cascade KPI** (Head → Supervisor → Staff) dan
+ditelusuri ke rasio lewat **Peta Pos Akun**; yang lolos validasi Keuangan
+masuk monitoring Objective Departemen.
 Bila salah satu belum punya data, bobotnya
 dinormalisasi ke yang tersedia. Bobot diatur di `config/bsc.php`.
 
