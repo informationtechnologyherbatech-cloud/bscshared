@@ -200,13 +200,21 @@
                         <div class="col-md-6 form-group">
                             <label>Entitas</label>
                             <select wire:model.live="entity_id" class="form-control @error('entity_id') is-invalid @enderror">
-                                <option value="">Semua entitas (level holding)</option>
+                                @if($holdingMode)
+                                    <option value="">Semua entitas (level holding)</option>
+                                @endif
                                 @foreach($entities as $e)
                                     <option value="{{ $e->id }}">{{ $e->name }} — {{ $e->legal_name }}</option>
                                 @endforeach
                             </select>
                             @error('entity_id') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                            <small class="text-muted">Pengguna level holding dapat berpindah antarentitas; selainnya hanya melihat entitasnya sendiri.</small>
+                            <small class="text-muted">
+                                @if($holdingMode)
+                                    Pengguna level holding dapat berpindah antarentitas; selainnya hanya melihat entitasnya sendiri.
+                                @else
+                                    Instalasi ini khusus satu entitas (BSC_HOLDING_MODE=false).
+                                @endif
+                            </small>
                         </div>
                         <div class="col-md-6 form-group">
                             <label>Unit kerja</label>

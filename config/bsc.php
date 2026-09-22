@@ -21,6 +21,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Mode Holding
+    |--------------------------------------------------------------------------
+    |
+    | false (bawaan) — instalasi satu entitas: semua pengguna terkunci di
+    |   default_entity; tidak ada pengalih entitas dan menu Konsolidasi Holding.
+    | true — instalasi holding: pengguna level holding (tanpa entitas) dapat
+    |   berpindah antarentitas dan membuka Konsolidasi Holding; default_entity
+    |   menjadi entitas yang dibuka pertama.
+    |
+    */
+
+    'holding_mode' => (bool) env('BSC_HOLDING_MODE', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Bobot Skor Puncak (Apex)
     |--------------------------------------------------------------------------
     |

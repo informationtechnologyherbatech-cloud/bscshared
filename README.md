@@ -98,11 +98,15 @@ target revenue, serta katalog rasio (rasio aktif, bobot, target).
   **level holding** (tanpa entitas) berpindah lewat pengalih di navbar.
 - Tautkan pengguna ke entitasnya di **Manage User → Entitas**.
 - Kelola struktur organisasi tiap entitas di **Administrasi → Unit Kerja**.
-- **Entitas bawaan** instalasi diatur di `.env`: `BSC_DEFAULT_ENTITY=ERDIGMA`
-  (HERBAEMAS | HERBATECH | AEJ | ERDIGMA). Entitas ini dibuka pertama oleh pengguna
-  level holding dan menjadi pemilik data contoh saat `php artisan migrate:fresh --seed`;
-  kode departemen contoh otomatis disesuaikan dengan unit kerja entitas itu. Setelah
-  mengubahnya, jalankan `php artisan config:clear` bila konfigurasi di-cache.
+- **Jenis instalasi** diatur di `.env`:
+
+  | Variabel | Nilai | Arti |
+  |---|---|---|
+  | `BSC_DEFAULT_ENTITY` | `HERBAEMAS` · `HERBATECH` · `AEJ` · `ERDIGMA` (bawaan) | Entitas instalasi & pemilik data contoh saat `php artisan migrate:fresh --seed` (kode departemen contoh disesuaikan dengan unit kerja entitas itu). |
+  | `BSC_HOLDING_MODE` | `false` (bawaan) | **Instalasi satu entitas**: semua pengguna terkunci di `BSC_DEFAULT_ENTITY`; tidak ada pengalih entitas dan menu Konsolidasi Holding. |
+  | | `true` | **Instalasi holding**: pengguna level holding dapat berpindah antarentitas dan membuka Konsolidasi Holding; `BSC_DEFAULT_ENTITY` menjadi entitas yang dibuka pertama. |
+
+  Setelah mengubahnya, jalankan `php artisan config:clear` bila konfigurasi di-cache.
 
 Metodologi lengkap dan tahapan penerapannya:
 [docs/penerapan-metodologi-excel.md](docs/penerapan-metodologi-excel.md).

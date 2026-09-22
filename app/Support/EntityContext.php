@@ -17,7 +17,10 @@ use Illuminate\Support\Facades\DB;
  * memang tidak punya pengguna.
  *
  * Aturannya:
- *   - pengguna yang terikat satu entitas selalu berada di entitas itu;
+ *   - instalasi satu entitas (BSC_HOLDING_MODE=false): semua pengguna berada
+ *     di entitas instalasi (BSC_DEFAULT_ENTITY), tanpa pengalih;
+ *   - instalasi holding — pengguna yang terikat satu entitas selalu berada di
+ *     entitas itu;
  *   - pengguna tanpa entitas (level holding) memilih entitas lewat pengalih,
  *     disimpan di sesi; bila belum memilih, dipakai entitas bawaan instalasi
  *     (BSC_DEFAULT_ENTITY) — lihat defaultId().
@@ -36,6 +39,9 @@ class EntityContext
 
     private bool $defaultResolved = false;
 
+    /** false = belum dicari; null = kode di .env tidak dikenal/nonaktif. */
+    private int|null|false $installation = false;
+
     public function id(): ?int
     {
         if ($this->override !== false) {
@@ -47,6 +53,10 @@ class EntityContext
 
         if (! $user) {
             return null;
+        }
+
+        if (! $this->isHoldingMode() && ($instalasi = $this->installationEntityId())) {
+            return $instalasi;
         }
 
         if ($user->entity_id) {
@@ -76,20 +86,40 @@ class EntityContext
      */
     public function accessibleFor(User $user): Collection
     {
+        if (! $this->isHoldingMode() && ($instalasi = $this->installationEntityId())) {
+            return $this->accessible[$user->id] ??= Entity::whereKey($instalasi)->get();
+        }
+
         return $this->accessible[$user->id] ??= $user->entity_id
             ? Entity::whereKey($user->entity_id)->get()
             : Entity::active()->get();
     }
 
-    /** Pengguna level holding dapat berpindah antarentitas. */
+    /** Pengguna level holding dapat berpindah antarentitas — hanya di instalasi holding. */
     public function canSwitch(User $user): bool
     {
-        return ! $user->entity_id && $this->accessibleFor($user)->count() > 1;
+        return $this->isHoldingMode() && ! $user->entity_id && $this->accessibleFor($user)->count() > 1;
+    }
+
+    /** Instalasi holding (BSC_HOLDING_MODE=true) atau instalasi satu entitas. */
+    public function isHoldingMode(): bool
+    {
+        return (bool) config('bsc.holding_mode');
+    }
+
+    /** Entitas instalasi (BSC_DEFAULT_ENTITY), bila kodenya dikenal & aktif. */
+    public function installationEntityId(): ?int
+    {
+        if ($this->installation === false) {
+            $this->installation = Entity::configuredDefault()?->id;
+        }
+
+        return $this->installation;
     }
 
     public function switchTo(User $user, int $entityId): bool
     {
-        if (! $this->accessibleFor($user)->contains('id', $entityId)) {
+        if (! $this->canSwitch($user) || ! $this->accessibleFor($user)->contains('id', $entityId)) {
             return false;
         }
 
@@ -132,6 +162,7 @@ class EntityContext
         $this->accessible = [];
         $this->default = null;
         $this->defaultResolved = false;
+        $this->installation = false;
     }
 
     /**

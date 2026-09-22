@@ -47,7 +47,7 @@ class ManageUsers extends Component
             'name' => 'required|string|min:3|max:255',
             'email' => ['required','email','max:255', Rule::unique('users','email')->ignore($this->userId)],
             'role' => 'required|exists:roles,name',
-            'entity_id' => ['nullable', 'integer', 'exists:entities,id'],
+            'entity_id' => ['nullable', 'integer', Rule::in($this->selectableEntities()->pluck('id')->all())],
             // Bila entitas dipilih, departemen harus salah satu unit kerjanya.
             // Pengguna level holding tidak terikat unit entitas mana pun, jadi
             // kode lamanya dibiarkan apa adanya.
@@ -85,7 +85,7 @@ class ManageUsers extends Component
         $this->password = '';
         $this->role = $user->getRoleNames()->first() ?? 'Viewer';
         $this->dept_code = $user->dept_code ?? '';
-        $this->entity_id = $user->entity_id ?? '';
+        $this->entity_id = $user->entity_id ?? $this->installationDefault();
         $this->is_active = (bool) $user->is_active;
         $this->must_change_password = (bool) $user->must_change_password;
         $this->isEdit = true;
@@ -106,7 +106,7 @@ class ManageUsers extends Component
         $this->password = '';
         $this->role = 'Viewer';
         $this->dept_code = '';
-        $this->entity_id = '';
+        $this->entity_id = $this->installationDefault();
         $this->is_active = true;
         $this->must_change_password = true;
         $this->resetErrorBag();
@@ -241,6 +241,29 @@ class ManageUsers extends Component
     public function updatingFilterRole() { $this->resetPage(); }
     public function updatingFilterStatus() { $this->resetPage(); }
 
+    /**
+     * Entitas yang boleh dipilih di formulir: semua entitas aktif di instalasi
+     * holding, hanya entitas instalasi di instalasi satu entitas.
+     */
+    private function selectableEntities(): \Illuminate\Support\Collection
+    {
+        $konteks = app(\App\Support\EntityContext::class);
+
+        if (! $konteks->isHoldingMode() && ($id = $konteks->installationEntityId())) {
+            return \App\Models\Entity::whereKey($id)->get();
+        }
+
+        return \App\Models\Entity::active()->get();
+    }
+
+    /** Instalasi satu entitas: pengguna baru langsung tertaut ke entitas itu. */
+    private function installationDefault(): string
+    {
+        $konteks = app(\App\Support\EntityContext::class);
+
+        return $konteks->isHoldingMode() ? '' : (string) ($konteks->installationEntityId() ?? '');
+    }
+
     /** Ganti entitas → departemen lama belum tentu ada di entitas baru. */
     public function updatedEntityId(): void
     {
@@ -291,7 +314,8 @@ class ManageUsers extends Component
             'passwordHint' => PasswordPolicy::hint(),
             'users' => $users,
             'roles' => $roles,
-            'entities' => \App\Models\Entity::active()->get(),
+            'entities' => $this->selectableEntities(),
+            'holdingMode' => app(\App\Support\EntityContext::class)->isHoldingMode(),
             'units' => $this->unitsForSelectedEntity(),
         ])->layout('layouts.app', ['title' => 'Manage User']);
     }
