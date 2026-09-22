@@ -43,9 +43,11 @@ return [
     |   katalog 19 rasio, peta pos akun, peran & akun admin. Seluruh angka
     |   capaian (periode, pos akun, target rasio, sasaran mutu, program kerja)
     |   diisi sendiri lewat menu — lihat Dokumentasi Metode › Panduan Pengisian.
-    | true — ikut memuat data ILUSTRASI workbook (periode 2026-08, pos akun &
-    |   target rasio sehingga F2 = 94,1, sasaran mutu & KPI cascade contoh)
-    |   untuk demo atau pengujian.
+    | true — ikut memuat data ILUSTRASI workbook untuk keempat tingkat piramida
+    |   (demo/pelatihan/pengujian): periode 2026-08; T1 target 2026 Rp 840 M
+    |   difasing + realisasi Jan–Agu & Perencanaan Target 2027; T2 16 pos akun +
+    |   target rasio (F2 = 94,1); T3 8 KPI cascade + hasil Uji Indikator +
+    |   sasaran mutu; T4 3 program kerja. Semua ditulis ke entitas BSC_DEFAULT_ENTITY.
     |
     */
 

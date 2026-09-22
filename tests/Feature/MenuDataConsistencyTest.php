@@ -109,6 +109,8 @@ class MenuDataConsistencyTest extends TestCase
             'period' => '2026-08', 'dept_code' => 'OPS', 'kpi_code' => 'OPS-99', 'kpi_name' => 'x', 'target' => 1, 'actual' => 0,
         ]));
 
+        $sebelum = ActionPlan::count();
+
         Livewire::test(ActionPlans::class)
             ->set('title', 'Program kerja uji')
             ->set('ownerDept', 'SCM')
@@ -116,7 +118,7 @@ class MenuDataConsistencyTest extends TestCase
             ->call('createPlan')
             ->assertHasErrors('objectiveId');
 
-        $this->assertSame(0, ActionPlan::count());
+        $this->assertSame($sebelum, ActionPlan::count());
     }
 
     /* ------------------------------------------------------ staging log */

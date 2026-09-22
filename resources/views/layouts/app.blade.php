@@ -170,7 +170,7 @@
                     <li class="nav-item">
                         <a href="{{ route('revenue') }}" class="nav-link {{ request()->routeIs('revenue') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-bullseye"></i>
-                            <p>Target & Realisasi Revenue</p>
+                            <p>Target & Realisasi</p>
                         </a>
                     </li>
                     @endcanany

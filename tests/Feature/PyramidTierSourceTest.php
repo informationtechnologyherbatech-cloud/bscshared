@@ -11,6 +11,7 @@ use App\Models\Period;
 use App\Models\RevenuePlan;
 use App\Models\RevenueTarget;
 use App\Models\User;
+use App\Support\EntityContext;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -39,6 +40,13 @@ class PyramidTierSourceTest extends TestCase
         ]);
         $user->assignRole('Super Admin');
         $this->actingAs($user);
+
+        // Tes ini menguji Tingkat 1 & 4 dari keadaan kosong: data revenue & program
+        // kerja contoh dibersihkan (Tingkat 2 & 3 contoh tetap dipakai).
+        app(EntityContext::class)->use(Entity::where('code', 'ERDIGMA')->value('id'));
+        RevenueTarget::query()->delete();
+        RevenuePlan::query()->delete();
+        ActionPlan::query()->delete();
     }
 
     public function test_an_approved_target_without_monthly_phasing_is_explained(): void

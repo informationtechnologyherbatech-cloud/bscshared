@@ -104,7 +104,7 @@ target revenue, serta katalog rasio (rasio aktif, bobot, target).
   |---|---|---|
   | `BSC_DEFAULT_ENTITY` | `HERBAEMAS` · `HERBATECH` · `AEJ` · `ERDIGMA` (bawaan) | Entitas instalasi & pemilik data contoh saat `php artisan migrate:fresh --seed` (kode departemen contoh disesuaikan dengan unit kerja entitas itu). |
   | `BSC_SEED_DEMO` | `false` (bawaan) | `db:seed` hanya menyiapkan **struktur** (entitas, unit kerja, katalog 19 rasio, peta pos akun, peran, akun admin); seluruh periode, target, dan realisasi diisi sendiri — ikuti [Panduan Pengisian](docs/panduan-pengisian.md). |
-  | | `true` | Ikut memuat data **ilustrasi** workbook (periode 2026-08, pos akun & target rasio → F2 94,1, sasaran mutu & KPI cascade contoh) untuk demo/pengujian. |
+  | | `true` | Ikut memuat data **ilustrasi** workbook untuk **keempat tingkat**: T1 target 2026 + realisasi Jan–Agu & Perencanaan Target 2027 · T2 pos akun & target rasio (F2 94,1) · T3 8 KPI cascade + Uji Indikator + sasaran mutu · T4 program kerja. Untuk demo, pelatihan, atau pengujian. |
   | `BSC_HOLDING_MODE` | `false` (bawaan) | **Instalasi satu entitas**: semua pengguna terkunci di `BSC_DEFAULT_ENTITY`; tidak ada pengalih entitas dan menu Konsolidasi Holding. |
   | | `true` | **Instalasi holding**: pengguna level holding dapat berpindah antarentitas dan membuka Konsolidasi Holding; `BSC_DEFAULT_ENTITY` menjadi entitas yang dibuka pertama. |
 

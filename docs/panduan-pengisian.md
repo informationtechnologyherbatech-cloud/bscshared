@@ -16,7 +16,7 @@ tingkat, isi dari atas ke bawah: *atur → isi → lihat hasil*.
 | Persiapan | Setting › Entitas, Unit Kerja, Manage User | Super Admin / Admin HRIS | Sekali di awal |
 | Persiapan | Piramida BSC › **Periode Baru** | Admin FAT / Super Admin | Awal tiap bulan |
 | 1 · Revenue | Perencanaan Target | Direksi + Finance | Sekali setahun |
-| 1 · Revenue | Target & Realisasi Revenue | Finance | Target: awal tahun · Realisasi: tiap bulan |
+| 1 · Revenue | Target & Realisasi | Finance | Target: awal tahun · Realisasi: tiap bulan |
 | 2 · Rasio | Katalog Rasio | Finance | Awal tahun |
 | 2 · Rasio | Pos Akun | Finance | Tiap bulan |
 | 3 · KPI | Peta Pos Akun | Finance + CFO | Awal tahun |
@@ -58,7 +58,7 @@ Menyusun angka target setahun dari beberapa sudut pandang (sheet L1 bagian A–F
 8. **G.** Klik **Terapkan ke Target Revenue** untuk mengisi 12 target bulanan
    mengikuti pola musiman.
 
-### b. Target & Realisasi Revenue
+### b. Target & Realisasi
 1. **Awal tahun**:
    - Isi **Disahkan direksi** (dan **Revisi** bila target berubah di tengah tahun).
    - Klik **Bagi rata 12 bulan** atau **Ikuti pola musiman**.
@@ -183,5 +183,17 @@ Buka Cascade KPI, lalu klik *Ambil dari Objective Departemen*.
 lewat Piramida BSC (peran dengan izin *override*).
 
 **Butuh data contoh untuk latihan.** Set `BSC_SEED_DEMO=true` di `.env`, lalu
-jalankan `php artisan migrate:fresh --seed`. Hati-hati: perintah ini menghapus
-semua data.
+jalankan `php artisan migrate:fresh --seed`. Keempat tingkat piramida terisi
+angka ilustrasi workbook:
+
+| Tingkat | Isi contoh | Di mana melihatnya |
+|---|---|---|
+| 1 | Target 2026 Rp 840 M difasing 70 M/bulan, realisasi Jan–Agu (F1 96,43%); Perencanaan Target 2027 lengkap dengan target Rp 900 M disahkan | Target & Realisasi · Perencanaan Target (tahun 2027) |
+| 2 | 16 pos akun periode 2026-08 dan target 19 rasio tahun 2026 (F2 94,1) | Pos Akun · Katalog Rasio · Rasio Keuangan |
+| 3 | 8 KPI Head berstatus Lolos beserta hasil Uji A/B, dan sasaran bulanan berisi realisasi | Cascade KPI · Uji Indikator · Objective Departemen |
+| 4 | 3 program kerja untuk sasaran yang Waspada | Program Kerja (Action) |
+
+Hati-hati: `migrate:fresh` menghapus semua data. Untuk menambahkan data contoh
+ke database yang sudah berisi, jalankan `php artisan db:seed --class=BscDataSeeder`;
+perintah ini **menimpa** data periode 2026-08 dan revenue 2026 entitas itu.
+Kembalikan `BSC_SEED_DEMO=false` sebelum dipakai untuk data sungguhan.

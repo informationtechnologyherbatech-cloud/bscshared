@@ -38,6 +38,30 @@ final class WorkbookIllustration
         '07' => 69e9, '08' => 71e9, '09' => null, '10' => null, '11' => null, '12' => null,
     ];
 
+    /** Sheet L1 bagian C — channel & basis 2026E per brand (Rp), growth 2027. */
+    public const CHANNELS = ['SOC', 'TTC', 'ECO', 'OFD', 'PTN'];
+
+    public const BRANDS = [
+        ['name' => 'Eyebost', 'cells' => [190e9, 145e9, 75e9, 48e9, 18e9], 'growth' => 0.12],
+        ['name' => 'Brand 2', 'cells' => [96e9, 76e9, 38e9, 19e9, 9e9], 'growth' => 0.15],
+        ['name' => 'Brand 3', 'cells' => [38e9, 29e9, 19e9, 10e9, 0], 'growth' => 0.20],
+    ];
+
+    /** Sheet L1 bagian D — inisiatif Ansoff (revenue tambahan, probabilitas). */
+    public const ANSOFF = [
+        ['quadrant' => 'penetrasi', 'initiative' => 'Perluasan coverage outlet Modern Trade', 'revenue' => 25e9, 'probability' => 0.7],
+        ['quadrant' => 'pasar', 'initiative' => 'Masuk 1 marketplace / negara baru', 'revenue' => 40e9, 'probability' => 0.4],
+        ['quadrant' => 'produk', 'initiative' => 'Peluncuran 3 SKU baru hasil PDV', 'revenue' => 50e9, 'probability' => 0.5],
+    ];
+
+    /** Sheet L1 bagian E — SWOT. */
+    public const SWOT = [
+        's' => 'Brand Eyebost sudah dikenal di TikTok',
+        'w' => 'Ketergantungan pada satu manufacture',
+        'o' => 'Pertumbuhan live commerce',
+        't' => 'Perubahan algoritma / komisi platform',
+    ];
+
     /** @return array<string, array{amount: float|null, opening: float|null}> */
     public static function inputs(): array
     {

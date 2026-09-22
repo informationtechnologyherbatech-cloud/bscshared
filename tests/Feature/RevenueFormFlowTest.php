@@ -83,7 +83,7 @@ class RevenueFormFlowTest extends TestCase
 
         $halaman->assertSeeInOrder([
             'RINGKASAN KINERJA', 'Piramida BSC',
-            'TINGKAT 1 · REVENUE', 'Perencanaan Target', 'Target &amp; Realisasi Revenue',
+            'TINGKAT 1 · REVENUE', 'Perencanaan Target', 'Target &amp; Realisasi',
             'TINGKAT 2 · RASIO KEUANGAN', 'Katalog Rasio', 'Pos Akun', 'Rasio Keuangan',
             'TINGKAT 3 · KPI &amp; SASARAN MUTU', 'Peta Pos Akun', 'Cascade KPI', 'Uji Indikator', 'Objective Departemen',
             'TINGKAT 4 · PROGRAM KERJA', 'Program Kerja (Action)',

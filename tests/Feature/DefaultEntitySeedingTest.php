@@ -2,13 +2,19 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActionPlan;
 use App\Models\DepartmentObjective;
 use App\Models\Entity;
 use App\Models\FinancialRatio;
+use App\Models\KpiCascade;
+use App\Models\KpiTest;
 use App\Models\Period;
+use App\Models\RevenueForecastPlan;
+use App\Models\RevenueTarget;
 use App\Models\StagingLog;
 use App\Models\User;
 use App\Models\WorkUnit;
+use App\Support\Bsc\RatioEngine;
 use App\Support\EntityContext;
 use Database\Seeders\BscDataSeeder;
 use Database\Seeders\DatabaseSeeder;
@@ -120,5 +126,35 @@ class DefaultEntitySeedingTest extends TestCase
 
         $this->actingAs($user);
         $this->assertSame($this->entity('HERBATECH')->id, app(EntityContext::class)->id());
+    }
+
+    public function test_the_demo_fills_all_four_pyramid_tiers(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        app(EntityContext::class)->use($this->entity('ERDIGMA')->id);
+
+        // T1: target 840 M difasing 70 M/bulan, realisasi Jan–Agu workbook → 540 ÷ 560.
+        $this->assertSame(96.43, RevenueTarget::cumulativeAchievement('2026-08'));
+        $this->assertNotNull(RevenueForecastPlan::where('year', '2027')->first());
+        // T2: F2 94,1.
+        $this->assertSame(94.1, RatioEngine::storedScore('2026-08'));
+        // T3: 8 KPI cascade, semuanya sudah diuji & lolos.
+        $this->assertSame(8, KpiTest::count());
+        $this->assertSame(8, KpiTest::whereIn('uji_a_result', ['LOLOS', 'LOLOS (guardrail)'])->count());
+        $this->assertSame(6, KpiTest::where('uji_b_result', 'LOLOS')->count()); // 6 Driver
+        // T4: program kerja untuk sasaran yang Waspada.
+        $this->assertSame(3, ActionPlan::count());
+        $this->assertSame(['SCM-01', 'SCM-03', 'BMK-02'], ActionPlan::with('objective')->get()->pluck('objective.kpi_code')->all());
+    }
+
+    public function test_the_demo_seeder_can_be_run_again_without_duplicates(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $this->seed(BscDataSeeder::class);
+        app(EntityContext::class)->use($this->entity('ERDIGMA')->id);
+
+        $this->assertSame(3, ActionPlan::count());
+        $this->assertSame(8, KpiCascade::count());
+        $this->assertSame(12, RevenueTarget::where('period', 'like', '2026-%')->count());
     }
 }

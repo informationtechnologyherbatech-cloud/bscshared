@@ -11,6 +11,12 @@ use App\Support\Bsc\RatioEngine;
 use App\Support\Bsc\WorkbookIllustration;
 use App\Models\DepartmentObjective;
 use App\Models\KpiCascade;
+use App\Models\KpiTest;
+use App\Models\RevenueForecastPlan;
+use App\Models\RevenuePlan;
+use App\Models\RevenueTarget;
+use App\Support\Bsc\AccountPosts;
+use App\Support\Bsc\IndicatorTest;
 use App\Models\ActionPlan;
 use App\Models\StagingLog;
 use App\Models\WorkUnit;
@@ -18,7 +24,8 @@ use App\Support\EntityContext;
 use RuntimeException;
 
 /**
- * Data contoh (periode 2026-08, pos akun & 19 rasio, sasaran mutu, log staging) untuk
+ * Data contoh keempat tingkat piramida (revenue 2026 & perencanaan 2027, pos akun &
+ * 19 rasio, KPI cascade + uji indikator + sasaran mutu, program kerja, log staging) untuk
  * entitas bawaan instalasi — BSC_DEFAULT_ENTITY, bawaan ERDIGMA.
  *
  * Kode departemen contoh ditulis dalam istilah manufaktur (OPS, MKT, PROD,
@@ -54,6 +61,16 @@ class BscDataSeeder extends Seeder
         'OPS-06' => [KpiCascade::DRIVER, 'REV', 'PA01', 'Menaikkan', 15],
         'MKT-01' => [KpiCascade::DRIVER, 'REV', 'PA01', 'Menaikkan', 60],
         'MKT-02' => [KpiCascade::DRIVER, 'REV', 'PA01', 'Menaikkan', 40],
+    ];
+
+    /** Target revenue 2026 contoh (Rp) — difasing rata 70 M/bulan. */
+    private const TARGET_2026 = 840e9;
+
+    /** Program kerja contoh: kode sasaran asal → [judul, progres %, status]. */
+    private const PROGRAM_KERJA = [
+        'OPS-01' => ['Perbaikan SLA fulfillment center & kurir', 60, 'On Progress'],
+        'OPS-03' => ['Cycle count mingguan & percepatan stok aging', 40, 'On Progress'],
+        'MKT-02' => ['Rekrutmen distributor wilayah baru', 100, 'Completed'],
     ];
 
     private array $peta = [];
@@ -135,6 +152,8 @@ class BscDataSeeder extends Seeder
 
     private function seed(): void
     {
+        $this->seedRevenue();
+
         // 1. Period
         $period = Period::updateOrCreate(
             ['period' => '2026-08'],
@@ -262,37 +281,14 @@ class BscDataSeeder extends Seeder
                 $objData
             );
 
-            // Action Plans for specific objectives
-            if ($kpiAsli === 'KPI-HRD-001') {
+            // Tingkat 4: program kerja perbaikan untuk sasaran yang belum tercapai.
+            if ($rencana = self::PROGRAM_KERJA[$kpiAsli] ?? null) {
                 ActionPlan::updateOrCreate(
-                    ['department_objective_id' => $obj->id, 'title' => 'Program Intensifikasi Pelatihan Teknis Produksi & K3'],
-                    [
-                        'owner_dept' => $this->unit('HRD'),
-                        'progress_pct' => 75,
-                        'status' => 'On Progress',
-                    ]
-                );
-            } elseif ($kpiAsli === 'KPI-PROD-001') {
-                ActionPlan::updateOrCreate(
-                    ['department_objective_id' => $obj->id, 'title' => 'Kalibrasi Ulang Mesin Utama Line 2'],
-                    [
-                        'owner_dept' => $this->unit('PROD'),
-                        'progress_pct' => 90,
-                        'status' => 'On Progress',
-                    ]
-                );
-            } elseif ($kpiAsli === 'KPI-MKT-001') {
-                ActionPlan::updateOrCreate(
-                    ['department_objective_id' => $obj->id, 'title' => 'Kampanye Digital Marketing Q3 Produk Herbal'],
-                    [
-                        'owner_dept' => $this->unit('MKT'),
-                        'progress_pct' => 100,
-                        'status' => 'Completed',
-                    ]
+                    ['department_objective_id' => $obj->id, 'title' => $rencana[0]],
+                    ['owner_dept' => $obj->dept_code, 'progress_pct' => $rencana[1], 'status' => $rencana[2]]
                 );
             }
         }
-
         // 4. Staging Logs
         StagingLog::updateOrCreate(
             ['idempotency_key' => 'IDEMP-PROD-202608-001'],
@@ -315,5 +311,80 @@ class BscDataSeeder extends Seeder
                 'message' => 'Data jam pelatihan diterima dari HRIS, dalam antrean skoring.',
             ]
         );
+
+        // Tingkat 3: bukti uji indikator untuk KPI contoh.
+        $this->seedIndicatorTests();
+    }
+
+    /**
+     * Tingkat 1 — revenue 2026 (target disahkan, fasing bulanan, realisasi Jan–Agu
+     * dari sheet L1 G) dan Perencanaan Target 2027 lengkap (sheet L1 A–F).
+     */
+    private function seedRevenue(): void
+    {
+        RevenuePlan::updateOrCreate(['year' => '2026'], ['approved_target' => self::TARGET_2026, 'revised_target' => null]);
+
+        foreach (WorkbookIllustration::REALISASI_BULANAN as $bulan => $realisasi) {
+            RevenueTarget::updateOrCreate(
+                ['period' => '2026-'.$bulan],
+                ['target' => self::TARGET_2026 / 12, 'actual' => $realisasi]
+            );
+        }
+
+        $digital = app(EntityContext::class)->entity()?->industry === Entity::DIGITAL_MARKETING;
+        RevenueForecastPlan::updateOrCreate(['year' => '2027'], [
+            'history' => WorkbookIllustration::REVENUE_HISTORIS,
+            'base_ytd' => null,      // otomatis dari realisasi 2026 di atas
+            'base_months' => null,
+            // Channel workbook milik Erdigma; entitas manufaktur memakai nama channel umum.
+            'channels' => $digital ? WorkbookIllustration::CHANNELS : ['Distributor', 'Modern Trade', 'Apotek', 'Online', 'Ekspor'],
+            'brands' => WorkbookIllustration::BRANDS,
+            'ansoff' => WorkbookIllustration::ANSOFF,
+            'swot' => WorkbookIllustration::SWOT,
+            'swot_adjustment' => 0,
+            'notes' => 'Data contoh ilustrasi workbook.',
+        ]);
+        // Target 2027 disahkan; fasing bulanannya sengaja dibiarkan untuk dicoba
+        // lewat tombol "Terapkan ke Target Revenue" di Perencanaan Target.
+        RevenuePlan::updateOrCreate(['year' => '2027'], ['approved_target' => 900e9, 'revised_target' => null]);
+    }
+
+    /**
+     * Uji Indikator untuk KPI contoh: Uji A (Driver 8 Ya, Guardrail Q5/Q7/Q8) dan,
+     * untuk Driver, Uji B dengan koefisien sederhana ke pos akun yang digerakkan —
+     * hasilnya dihitung mesin yang sama dengan menu Uji Indikator.
+     */
+    private function seedIndicatorTests(): void
+    {
+        $mesin = app(RatioEngine::class);
+        $dipakai = AccountPosts::usedValues($mesin->inputs('2026-08'), 8);
+        $target = $mesin->targetsFor('2026');
+
+        foreach (KpiCascade::where('year', '2026')->get() as $kpi) {
+            $guardrail = $kpi->isGuardrail();
+            $jawaban = [];
+            foreach (range(1, 8) as $q) {
+                $jawaban['q'.$q] = ! $guardrail || in_array($q, [5, 6, 7, 8], true);
+            }
+
+            $ujiB = [];
+            if (! $guardrail && $kpi->ratio_code && $kpi->post_code) {
+                $koef = [$kpi->post_code => $kpi->direction === 'Menurunkan' ? -0.5 : 0.5];
+                $sim = IndicatorTest::simulate($dipakai, 0.05, $koef, $kpi->ratio_code, $target);
+                $ujiB = [
+                    'uji_b_period' => '2026-08',
+                    'uji_b_improvement' => 0.05,
+                    'uji_b_coefficients' => $koef,
+                    'uji_b_notes' => [$kpi->post_code => 'Koefisien contoh'],
+                    'uji_b_result' => $sim['result'],
+                ];
+            }
+
+            KpiTest::updateOrCreate(['kpi_cascade_id' => $kpi->id], $jawaban + $ujiB + [
+                'uji_a_result' => $guardrail ? IndicatorTest::LOLOS_GUARDRAIL : IndicatorTest::LOLOS,
+                'notes' => 'Data contoh.',
+                'tested_at' => now(),
+            ]);
+        }
     }
 }
