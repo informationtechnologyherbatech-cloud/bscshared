@@ -92,8 +92,9 @@ class RatioEngine
      *
      * @param  array<string, float|null>  $dipakai
      * @param  array<string, float|null>  $targets
+     * @param  iterable<RatioDefinition>|null  $katalog  katalog rasio; bawaan = katalog entitas aktif
      */
-    public function evaluateUsed(array $dipakai, array $targets): array
+    public function evaluateUsed(array $dipakai, array $targets, ?iterable $katalog = null): array
     {
         $baris = [];
         $kelompok = [];
@@ -106,7 +107,7 @@ class RatioEngine
         $totalBobotTerskor = 0.0;
         $terskor = 0;
 
-        foreach (RatioDefinition::active()->get() as $definisi) {
+        foreach ($katalog ?? RatioDefinition::active()->get() as $definisi) {
             $meta = $definisi->meta();
             $aktual = RatioLibrary::compute($definisi->code, $dipakai);
             $target = $targets[$definisi->code] ?? null;

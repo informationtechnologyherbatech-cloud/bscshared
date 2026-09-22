@@ -6,6 +6,7 @@ tetap berada di [README utama](../README.md).
 
 | Dokumen | Isi |
 |---|---|
+| **[Panduan Pengisian](panduan-pengisian.md)** | **Mulai dari sini.** Langkah mengisi aplikasi dari nol per tingkat piramida (Revenue → Rasio → KPI → Program Kerja), siapa mengisi apa, dan pertanyaan umum. Juga tampil di aplikasi: menu *Dokumentasi Metode*. |
 | [Buku Panduan Lengkap](buku-panduan-lengkap.md) | Arsitektur sistem & operasional: filosofi BSC Kaplan–Norton, topologi 4 sistem (Odoo ERP → Finance → HRIS → BSC), hierarki piramida 4 level, panduan 12 menu modul, pipeline data 4-hop, formulasi matematika & polaritas, keamanan/kriptografi, dan panduan deployment. |
 | [Dokumentasi Integrasi HRIS & Finance](dokumentasi-integrasi-hris-finance.md) | Blueprint integrasi enterprise: perubahan yang dibutuhkan di sisi HRIS dan Finance, skema database, katalog master 64 sasaran mutu untuk 11 departemen, kontrak API gateway BSC, SOP bulanan, matriks RACI, dan panduan pemecahan masalah. |
 | [Panduan Dokumentasi API & Postman](panduan-dokumentasi-api-postman.md) | Standar penulisan dokumentasi API: struktur folder Postman collection, environment & variabel, header wajib, spesifikasi payload tiap endpoint, skrip otomasi Postman, format kode error, dan prosedur distribusi collection. |

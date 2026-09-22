@@ -23,6 +23,8 @@
         <!-- Tes multi-entitas berjalan sebagai instalasi holding; mode satu entitas diuji di SingleEntityInstallationTest. -->
         <env name="BSC_HOLDING_MODE" value="true"/>
         <env name="BSC_DEFAULT_ENTITY" value="ERDIGMA"/>
+        <!-- Tes yang memakai DatabaseSeeder mengharapkan data contoh workbook. -->
+        <env name="BSC_SEED_DEMO" value="true"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>

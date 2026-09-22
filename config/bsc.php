@@ -36,6 +36,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Data Contoh saat db:seed
+    |--------------------------------------------------------------------------
+    |
+    | false (bawaan) — db:seed hanya menyiapkan STRUKTUR: entitas, unit kerja,
+    |   katalog 19 rasio, peta pos akun, peran & akun admin. Seluruh angka
+    |   capaian (periode, pos akun, target rasio, sasaran mutu, program kerja)
+    |   diisi sendiri lewat menu — lihat Dokumentasi Metode › Panduan Pengisian.
+    | true — ikut memuat data ILUSTRASI workbook (periode 2026-08, pos akun &
+    |   target rasio sehingga F2 = 94,1, sasaran mutu & KPI cascade contoh)
+    |   untuk demo atau pengujian.
+    |
+    */
+
+    'seed_demo' => (bool) env('BSC_SEED_DEMO', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Bobot Skor Puncak (Apex)
     |--------------------------------------------------------------------------
     |

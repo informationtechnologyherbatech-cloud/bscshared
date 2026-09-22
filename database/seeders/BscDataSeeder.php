@@ -8,6 +8,7 @@ use App\Models\Period;
 use App\Models\AccountBalance;
 use App\Models\RatioTarget;
 use App\Support\Bsc\RatioEngine;
+use App\Support\Bsc\WorkbookIllustration;
 use App\Models\DepartmentObjective;
 use App\Models\KpiCascade;
 use App\Models\ActionPlan;
@@ -53,23 +54,6 @@ class BscDataSeeder extends Seeder
         'OPS-06' => [KpiCascade::DRIVER, 'REV', 'PA01', 'Menaikkan', 15],
         'MKT-01' => [KpiCascade::DRIVER, 'REV', 'PA01', 'Menaikkan', 60],
         'MKT-02' => [KpiCascade::DRIVER, 'REV', 'PA01', 'Menaikkan', 40],
-    ];
-
-    /** Sheet Asumsi bagian G — [nilai YTD / saldo akhir, saldo awal] (Rp; HRIS dalam orang/jam). */
-    private const POS_AKUN_ILUSTRASI = [
-        'PA01' => [540e9, null], 'PA02' => [351e9, null], 'PA03' => [135e9, null], 'PA04' => [81e9, null],
-        'PA05' => [117e9, 108e9], 'PA06' => [99e9, 90e9], 'PA07' => [67.5e9, 63e9], 'PA08' => [58.5e9, 54e9],
-        'PA09' => [333e9, 315e9], 'PA10' => [189e9, 180e9], 'PA11' => [756e9, 720e9], 'PA12' => [324e9, 315e9],
-        'PA13' => [432e9, 405e9], 'PA14' => [270e9, 270e9], 'PA15' => [320, null], 'PA16' => [450000, null],
-    ];
-
-    /** Sheet L2 kolom Target (persen ditulis dalam persen). */
-    private const TARGET_RASIO_ILUSTRASI = [
-        'P1' => 37, 'P2' => 11, 'P3' => 12, 'P4' => 20,
-        'A1' => 6, 'A2' => 1.2, 'A3' => 10, 'A4' => 60, 'A5' => 36, 'A6' => 45,
-        'D1' => 2.8e9, 'D2' => 1.3e6, 'D3' => 7, 'D4' => 0.7,
-        'L1' => 1.8, 'L2' => 1.2, 'L3' => 0.35,
-        'S1' => 0.7, 'S2' => 0.4,
     ];
 
     private array $peta = [];
@@ -165,13 +149,13 @@ class BscDataSeeder extends Seeder
         // (sheet Asumsi bagian G, 2026 YTD Jan–Agu = periode 2026-08; target dari
         // sheet L2), sehingga F2 contoh = 94,1 persis seperti Excel. Ganti dengan
         // data GL/HRIS aktual lewat menu Pos Akun & Katalog Rasio.
-        foreach (self::POS_AKUN_ILUSTRASI as $kode => [$nilai, $awal]) {
+        foreach (WorkbookIllustration::POS_AKUN as $kode => [$nilai, $awal]) {
             AccountBalance::updateOrCreate(
                 ['period' => '2026-08', 'code' => $kode],
                 ['amount' => $nilai, 'opening' => $awal]
             );
         }
-        foreach (self::TARGET_RASIO_ILUSTRASI as $kode => $target) {
+        foreach (WorkbookIllustration::TARGET_RASIO as $kode => $target) {
             RatioTarget::updateOrCreate(['year' => '2026', 'code' => $kode], ['target' => $target]);
         }
         app(RatioEngine::class)->materialize('2026-08');

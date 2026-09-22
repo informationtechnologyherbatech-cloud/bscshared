@@ -70,9 +70,8 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
     // 10 Skenario — view skenario
     Route::get('/skenario', \App\Livewire\ComingSoon::class)->middleware('permission:view skenario')->name('skenario')
         ->defaults('title', 'Skenario')->defaults('desc', 'Simpan/muat skenario, undo/redo 50 langkah.');
-    // 11 Dokumentasi Metode — view dokumentasi
-    Route::get('/dokumentasi', \App\Livewire\ComingSoon::class)->middleware('permission:view dokumentasi')->name('dokumentasi')
-        ->defaults('title', 'Dokumentasi Metode')->defaults('desc', 'Metodologi skoring polaritas/band/cap/agregasi + self-test 12s.');
+    // 11 Dokumentasi Metode — view dokumentasi: panduan pengisian, metode skoring, uji mandiri 12 pemeriksaan.
+    Route::get('/dokumentasi', \App\Livewire\MethodDocumentation::class)->middleware('permission:view dokumentasi')->name('dokumentasi');
     // 12 Gateway & Audit — view gateway (umbrella) + specific
     Route::get('/integration', SystemIntegration::class)->middleware('permission:view integration|view gateway')->name('system-integration');
     Route::get('/staging-logs', StagingLogs::class)->middleware('permission:view staging|view gateway')->name('staging-logs');
