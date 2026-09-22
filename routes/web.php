@@ -13,6 +13,9 @@ use App\Livewire\SystemIntegration;
 use App\Livewire\BscWiring;
 use App\Livewire\ManageUsers;
 use App\Livewire\AppSettings;
+use App\Livewire\RevenueTargets;
+use App\Livewire\WorkUnits;
+use App\Support\EntityContext;
 
 // Guest: Login 
 Route::middleware('guest')->group(function () {
@@ -69,4 +72,20 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
     // 13 Super Admin & Konfigurasi — manage users/settings/systeminfo/apikey
     Route::get('/manage-users', ManageUsers::class)->middleware('permission:manage users|can_manage_users')->name('manage-users');
     Route::get('/settings', AppSettings::class)->middleware('permission:manage settings|view systeminfo|manage apikey')->name('settings');
+
+    // Tingkat 1 — target & realisasi revenue bulanan (sumber F1 skor puncak).
+    Route::get('/revenue', RevenueTargets::class)->middleware('permission:manage revenue|view dashboard')->name('revenue');
+
+    // Struktur unit kerja per entitas — sumber daftar departemen.
+    Route::get('/unit-kerja', WorkUnits::class)->middleware('permission:manage units')->name('work-units');
+
+    // Pengalih entitas bagi pengguna level holding. Pengguna yang terikat satu
+    // entitas tidak dapat berpindah; permintaannya ditolak.
+    Route::post('/entitas/aktif', function (\Illuminate\Http\Request $request, EntityContext $context) {
+        $entityId = (int) $request->input('entity_id');
+
+        abort_unless($context->switchTo($request->user(), $entityId), 403, 'Anda tidak memiliki akses ke entitas tersebut.');
+
+        return redirect()->back()->with('message', 'Beralih ke entitas '.\App\Models\Entity::find($entityId)?->name.'.');
+    })->name('entity.switch');
 });

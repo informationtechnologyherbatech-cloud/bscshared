@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        $this->call(EntityStructureSeeder::class);
         $this->call(BscDataSeeder::class);
         $this->call(RolesAndPermissionsSeeder::class);
     }

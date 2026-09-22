@@ -83,6 +83,38 @@ menghasilkan satu query; cache otomatis dibersihkan setiap pengaturan disimpan.
 
 ---
 
+## Multi-Entitas
+
+Satu aplikasi dipakai empat entitas di bawah holding **Erhanesia Mulia Corpora**:
+Herbaemas, Herbatech, AEJ (manufaktur), dan Erdigma (digital marketing). Mesin
+penilaiannya sama; yang berbeda per entitas hanya konfigurasinya — unit kerja,
+target revenue, dan (menyusul) bobot rasio.
+
+- Seluruh data BSC bertanda `entity_id` dan otomatis dibatasi pada entitas yang
+  sedang dibuka lewat trait [`BelongsToEntity`](app/Models/Concerns/BelongsToEntity.php);
+  baris baru otomatis ditandai entitas aktif. Komponen tidak perlu menyaring sendiri.
+- Entitas aktif ditentukan [`EntityContext`](app/Support/EntityContext.php):
+  pengguna yang ditautkan ke satu entitas selalu berada di entitas itu; pengguna
+  **level holding** (tanpa entitas) berpindah lewat pengalih di navbar.
+- Tautkan pengguna ke entitasnya di **Manage User → Entitas**.
+- Kelola struktur organisasi tiap entitas di **Administrasi → Unit Kerja**.
+
+Metodologi lengkap dan tahapan penerapannya:
+[docs/penerapan-metodologi-excel.md](docs/penerapan-metodologi-excel.md).
+
+### Skor puncak
+
+Mengikuti workbook `Cascading_Revenue_Rasio_KPI_Erdigma_2026.xlsx`:
+
+```
+Skor puncak = 0,45 × F1 (pencapaian revenue kumulatif) + 0,55 × F2 (skor rasio keuangan)
+```
+
+F1 diisi lewat menu **Target Revenue**. Bila salah satu belum punya data, bobotnya
+dinormalisasi ke yang tersedia. Bobot diatur di `config/bsc.php`.
+
+---
+
 ## Versi Aplikasi
 
 Versi aplikasi diambil dari helper `app_version()` pada
@@ -244,6 +276,7 @@ Seluruh dokumen blueprint dikumpulkan di folder [`docs/`](docs/README.md):
 - [Buku Panduan Lengkap](docs/buku-panduan-lengkap.md) — arsitektur & 12 modul
 - [Dokumentasi Integrasi HRIS & Finance](docs/dokumentasi-integrasi-hris-finance.md) — blueprint integrasi
 - [Panduan Dokumentasi API & Postman](docs/panduan-dokumentasi-api-postman.md) — standar dokumentasi API
+- [Penerapan Metodologi Excel](docs/penerapan-metodologi-excel.md) — peta workbook → aplikasi & tahapannya
 
 > Catatan: ketiga dokumen di atas menjelaskan API Gateway 4-hop
 > (`/api/bsc/sync/*`) yang **belum diimplementasikan** pada basis kode ini.

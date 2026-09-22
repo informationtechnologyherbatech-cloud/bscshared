@@ -6,6 +6,7 @@ use App\Livewire\Concerns\AuthorizesWrites;
 use Livewire\Component;
 use Livewire\Attributes\Url;
 use App\Models\Period;
+use App\Models\RevenueTarget;
 use App\Support\ScoreStatus;
 use App\Models\FinancialRatio;
 use App\Models\DepartmentObjective;
@@ -216,9 +217,8 @@ class BscDashboard extends Component
     {
         $weights = config('bsc.apex_weights', []);
         $label = [
+            'revenue' => 'Revenue',
             'ratios' => 'Rasio Keuangan',
-            'objectives' => 'Sasaran Mutu',
-            'action_plans' => 'Program Kerja',
         ];
 
         $aktif = [];
@@ -309,10 +309,13 @@ class BscDashboard extends Component
         // Apex Score = rata-rata terbobot Tingkat 2 (rasio), Tingkat 3 (sasaran
         // mutu) dan Tingkat 4 (program kerja), seluruhnya dari data nyata.
         // Bobot diatur di config/bsc.php.
+        // F1: pencapaian revenue kumulatif (Tingkat 1). Null = belum ada target.
+        $revenueScore = RevenueTarget::cumulativeAchievement($this->selectedPeriod);
+
+        // Skor puncak = 0,45 × F1 + 0,55 × F2 (config/bsc.php).
         $tierScores = [
+            'revenue' => $revenueScore,
             'ratios' => $ratios->count() > 0 ? $avgRatioScore : null,
-            'objectives' => $objectives->count() > 0 ? $avgObjScore : null,
-            'action_plans' => $actionPlans->count() > 0 ? $avgActionProgress : null,
         ];
         $apexScore = $this->calculateApexScore($tierScores);
         $apexBreakdown = $this->apexBreakdown($tierScores);
@@ -320,7 +323,7 @@ class BscDashboard extends Component
         // Status tiap tingkat piramida. Tingkat tanpa data ditandai "belum lengkap",
         // bukan diberi nilai nol — keduanya berbeda arti.
         $tierStatus = [
-            1 => ScoreStatus::for($apexScore, $apexBreakdown !== []),
+            1 => ScoreStatus::for($revenueScore, $revenueScore !== null),
             2 => ScoreStatus::for($avgRatioScore, $ratios->count() > 0),
             3 => ScoreStatus::for($avgObjScore, $objectives->count() > 0),
             4 => ScoreStatus::for($avgActionProgress, $actionPlans->count() > 0),
@@ -389,6 +392,7 @@ class BscDashboard extends Component
             'lastSyncTime' => $lastSyncTime,
             'apexScore' => $apexScore,
             'apexBreakdown' => $apexBreakdown,
+            'revenueScore' => $revenueScore,
             'tierStatus' => $tierStatus,
             'statusLegend' => ScoreStatus::legend(),
             'objectiveCount' => $objectives->count(),

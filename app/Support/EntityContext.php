@@ -1,0 +1,140 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\Entity;
+use App\Models\User;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Entitas yang sedang aktif untuk permintaan ini.
+ *
+ * Diselesaikan secara malas dari pengguna yang login, bukan dari middleware,
+ * supaya berlaku pula pada permintaan pembaruan Livewire — yang tidak
+ * melewati middleware rute — dan tidak berlaku di konsol atau antrean yang
+ * memang tidak punya pengguna.
+ *
+ * Aturannya:
+ *   - pengguna yang terikat satu entitas selalu berada di entitas itu;
+ *   - pengguna tanpa entitas (level holding) memilih entitas lewat pengalih,
+ *     disimpan di sesi; bila belum memilih, dipakai entitas yang datanya paling
+ *     baru diperbarui.
+ */
+class EntityContext
+{
+    public const SESSION_KEY = 'active_entity_id';
+
+    /** false = belum diganti manual; null/int = diganti (dipakai tes & konsol). */
+    private int|null|false $override = false;
+
+    /** @var array<int, Collection<int, Entity>> */
+    private array $accessible = [];
+
+    private ?int $default = null;
+
+    private bool $defaultResolved = false;
+
+    public function id(): ?int
+    {
+        if ($this->override !== false) {
+            return $this->override;
+        }
+
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (! $user) {
+            return null;
+        }
+
+        if ($user->entity_id) {
+            return (int) $user->entity_id;
+        }
+
+        $dariSesi = (int) session(self::SESSION_KEY);
+
+        if ($dariSesi && $this->accessibleFor($user)->contains('id', $dariSesi)) {
+            return $dariSesi;
+        }
+
+        return $this->defaultId();
+    }
+
+    public function entity(): ?Entity
+    {
+        $id = $this->id();
+
+        return $id ? Entity::find($id) : null;
+    }
+
+    /**
+     * Entitas yang boleh dibuka pengguna.
+     *
+     * @return Collection<int, Entity>
+     */
+    public function accessibleFor(User $user): Collection
+    {
+        return $this->accessible[$user->id] ??= $user->entity_id
+            ? Entity::whereKey($user->entity_id)->get()
+            : Entity::active()->get();
+    }
+
+    /** Pengguna level holding dapat berpindah antarentitas. */
+    public function canSwitch(User $user): bool
+    {
+        return ! $user->entity_id && $this->accessibleFor($user)->count() > 1;
+    }
+
+    public function switchTo(User $user, int $entityId): bool
+    {
+        if (! $this->accessibleFor($user)->contains('id', $entityId)) {
+            return false;
+        }
+
+        session([self::SESSION_KEY => $entityId]);
+
+        return true;
+    }
+
+    /** Paksa entitas tertentu (konsol, tes, atau proses latar). */
+    public function use(?int $entityId): void
+    {
+        $this->override = $entityId;
+    }
+
+    public function forget(): void
+    {
+        $this->override = false;
+        $this->accessible = [];
+        $this->default = null;
+        $this->defaultResolved = false;
+    }
+
+    /**
+     * Entitas bawaan bagi pengguna holding yang belum memilih: entitas yang
+     * datanya paling baru diperbarui, supaya pengguna mendarat di tempat
+     * datanya berada — bukan di entitas kosong.
+     */
+    private function defaultId(): ?int
+    {
+        if ($this->defaultResolved) {
+            return $this->default;
+        }
+
+        $this->defaultResolved = true;
+
+        // Kueri langsung ke tabel: model Period memakai pembatas entitas, yang
+        // memanggil kelas ini — lewat model akan berputar tanpa akhir.
+        $terbaru = DB::table('periods')
+            ->join('entities', 'entities.id', '=', 'periods.entity_id')
+            ->where('entities.is_active', true)
+            ->orderByDesc('periods.updated_at')
+            ->value('periods.entity_id');
+
+        return $this->default = $terbaru
+            ? (int) $terbaru
+            : Entity::active()->value('id');
+    }
+}

@@ -59,11 +59,16 @@
                         <i class="fas fa-list-check mr-1"></i> Daftar Sasaran Mutu Departemen
                     </h3>
                     <div class="card-tools d-flex flex-wrap align-items-center">
+                        @can('manage units')
+                            <a href="{{ route('work-units') }}" class="btn btn-outline-secondary btn-sm mr-2 mb-1 mb-md-0" title="Tambah atau ubah daftar departemen">
+                                <i class="fas fa-sitemap mr-1"></i> Kelola unit kerja
+                            </a>
+                        @endcan
                         <!-- Filter Dept -->
-                        <select wire:model.live="selectedDept" class="form-control form-control-sm mr-2 mb-1 mb-md-0" style="width: 160px;">
+                        <select wire:model.live="selectedDept" class="form-control form-control-sm mr-2 mb-1 mb-md-0" style="width: 220px;">
                             <option value="">Semua Departemen</option>
-                            @foreach($departments as $d)
-                                <option value="{{ $d }}">{{ $d }}</option>
+                            @foreach($departments as $kode => $nama)
+                                <option value="{{ $kode }}">{{ $kode }}{{ $nama !== $kode ? ' — '.$nama : '' }}</option>
                             @endforeach
                         </select>
                         <!-- Filter Status -->
@@ -94,7 +99,7 @@
                         <tbody>
                             @forelse($objectives as $obj)
                                 <tr>
-                                    <td><span class="badge badge-dark">{{ $obj->dept_code }}</span></td>
+                                    <td><span class="badge badge-dark" title="{{ $departments[$obj->dept_code] ?? $obj->dept_code }}">{{ $obj->dept_code }}</span></td>
                                     <td><code>{{ $obj->kpi_code }}</code></td>
                                     <td class="font-weight-normal">{{ $obj->kpi_name }}</td>
                                     <td class="text-center">

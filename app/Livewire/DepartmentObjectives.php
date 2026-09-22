@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\Attributes\Url;
 use App\Models\DepartmentObjective;
 use App\Models\Period;
+use App\Models\WorkUnit;
 
 class DepartmentObjectives extends Component
 {
@@ -126,7 +127,18 @@ class DepartmentObjectives extends Component
         }
 
         $objectives = $query->get();
-        $departments = DepartmentObjective::distinct()->pluck('dept_code')->toArray();
+
+        // Daftar departemen dari master Unit Kerja entitas aktif — sebelumnya hanya
+        // diturunkan dari DISTINCT dept_code, sehingga unit yang belum punya sasaran
+        // mutu tidak pernah muncul dan nama unitnya tidak diketahui.
+        $units = WorkUnit::active()->get();
+        $departments = $units->pluck('name', 'code')->toArray();
+
+        // Kode yang masih dipakai data lama tetapi unitnya sudah nonaktif/terhapus
+        // tetap dapat disaring, supaya datanya tidak "hilang" dari layar.
+        foreach ($objectives->pluck('dept_code')->unique() as $kode) {
+            $departments[$kode] ??= $kode;
+        }
         $periods = Period::pluck('period')->toArray();
 
         return view('livewire.department-objectives', [

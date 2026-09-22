@@ -451,8 +451,9 @@
                         <div class="pyramid-tier tier-1 {{ $activeLevel === 1 ? 'active-tier' : '' }}" wire:click="selectLevel(1)">
                             <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[1]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[1]) }}"></span>
                             <div class="tier-content">
-                                <div class="tier-title">Tingkat 1: Apex</div>
-                                <div class="tier-score">@if(count($apexBreakdown) > 0){{ number_format($apexScore, 1) }}%@else<span class="tier-empty">belum lengkap</span>@endif</div>
+                                {{-- Tingkat 1 = Revenue (L1). Skor puncak gabungan ada di kartu Apex di atas. --}}
+                                <div class="tier-title">Tingkat 1: Revenue</div>
+                                <div class="tier-score">@if($revenueScore !== null){{ number_format($revenueScore, 1) }}%@else<span class="tier-empty">belum ada target</span>@endif</div>
                             </div>
                             @if($activeLevel === 1)
                                 <div class="click-hint-badge"><i class="fas fa-check-circle text-warning"></i> Aktif Telusur</div>
@@ -537,7 +538,7 @@
                 <div class="card-header bg-teal text-white d-flex justify-content-between align-items-center">
                     <h4 class="card-title font-weight-bold mb-0">
                         @if($activeLevel === 1)
-                            <i class="fas fa-crown mr-2"></i> Telusur Detail Tingkat 1: Apex Keuangan & Revenue Puncak
+                            <i class="fas fa-crown mr-2"></i> Telusur Detail Tingkat 1: Revenue & Skor Puncak
                         @elseif($activeLevel === 2)
                             <i class="fas fa-chart-line mr-2"></i> Telusur Detail Tingkat 2: Rasio Keuangan Perusahaan
                         @elseif($activeLevel === 3)

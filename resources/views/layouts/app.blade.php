@@ -47,11 +47,49 @@
 
         <!-- Right navbar links -->
         <ul class="navbar-nav ml-auto">
+            @auth
+            @php($konteks = app(\App\Support\EntityContext::class))
+            @php($entitasAktif = $konteks->entity())
+            @if($entitasAktif)
             <li class="nav-item dropdown">
-                <a class="nav-link" data-toggle="dropdown" href="#">
-                    <i class="fas fa-calendar-alt mr-1"></i> Periode Aktif: <strong>2026-08</strong>
-                </a>
+                @if($konteks->canSwitch(auth()->user()))
+                    <a class="nav-link" data-toggle="dropdown" href="#" title="Pilih entitas yang ditampilkan">
+                        <i class="fas fa-building mr-1"></i>
+                        <strong>{{ $entitasAktif->name }}</strong>
+                        <i class="fas fa-caret-down ml-1 small"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right">
+                        <span class="dropdown-header">Tampilkan data entitas</span>
+                        @foreach($konteks->accessibleFor(auth()->user()) as $e)
+                            <form method="POST" action="{{ route('entity.switch') }}" class="m-0">
+                                @csrf
+                                <input type="hidden" name="entity_id" value="{{ $e->id }}">
+                                <button type="submit" class="dropdown-item {{ $e->id === $entitasAktif->id ? 'active' : '' }}">
+                                    <strong>{{ $e->name }}</strong>
+                                    <small class="d-block {{ $e->id === $entitasAktif->id ? '' : 'text-muted' }}">{{ $e->legal_name }} · {{ $e->industryLabel() }}</small>
+                                </button>
+                            </form>
+                        @endforeach
+                    </div>
+                @else
+                    <span class="nav-link" title="{{ $entitasAktif->legal_name }}">
+                        <i class="fas fa-building mr-1"></i><strong>{{ $entitasAktif->name }}</strong>
+                    </span>
+                @endif
             </li>
+            @endif
+            @endauth
+            @auth
+            {{-- Periode terbaru milik entitas aktif — sebelumnya ditulis mati "2026-08". --}}
+            @php($periodeAktif = \App\Models\Period::orderByDesc('period')->value('period'))
+            @if($periodeAktif)
+            <li class="nav-item d-none d-sm-block">
+                <span class="nav-link">
+                    <i class="fas fa-calendar-alt mr-1"></i> Periode: <strong>{{ $periodeAktif }}</strong>
+                </span>
+            </li>
+            @endif
+            @endauth
             @auth
             <li class="nav-item">
                 @php($peran = auth()->user()->getRoleNames()->first() ?? 'User')
@@ -98,6 +136,14 @@
                         </a>
                     </li>
                     @endcan
+                    @canany(['manage revenue','view dashboard'])
+                    <li class="nav-item">
+                        <a href="{{ route('revenue') }}" class="nav-link {{ request()->routeIs('revenue') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-bullseye"></i>
+                            <p>Target Revenue</p>
+                        </a>
+                    </li>
+                    @endcanany
                     @can('view ratios')
                     <li class="nav-item">
                         <a href="{{ route('financial-ratios') }}" class="nav-link {{ request()->routeIs('financial-ratios') ? 'active' : '' }}">
@@ -225,9 +271,17 @@
                         @endcannot
                     @endcan
 
-                    @canany(['manage users','manage settings','view systeminfo','manage apikey','can_manage_users'])
+                    @canany(['manage users','manage settings','view systeminfo','manage apikey','can_manage_users','manage units'])
                     <li class="nav-header">ADMINISTRASI</li>
                     @endcanany
+                    @can('manage units')
+                    <li class="nav-item">
+                        <a href="{{ route('work-units') }}" class="nav-link {{ request()->routeIs('work-units') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-sitemap"></i>
+                            <p>Unit Kerja</p>
+                        </a>
+                    </li>
+                    @endcan
                     @can('manage users')
                     <li class="nav-item">
                         <a href="{{ route('manage-users') }}" class="nav-link {{ request()->routeIs('manage-users') ? 'active' : '' }}">

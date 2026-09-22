@@ -13,7 +13,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Satu konteks entitas per siklus permintaan: memoisasinya berlaku untuk
+        // seluruh kueri dalam permintaan itu, dan penggantian manual (konsol/tes)
+        // tidak hilang di tengah jalan.
+        $this->app->scoped(\App\Support\EntityContext::class);
     }
 
     /**

@@ -43,7 +43,12 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Departemen Penanggung Jawab</label>
-                                    <input type="text" wire:model="ownerDept" class="form-control form-control-sm" placeholder="PROD / HRD / QC / FIN">
+                                    <select wire:model="ownerDept" class="form-control form-control-sm">
+                                        <option value="">— Pilih unit kerja —</option>
+                                        @foreach($units as $unit)
+                                            <option value="{{ $unit->code }}">{{ $unit->label() }}</option>
+                                        @endforeach
+                                    </select>
                                     @error('ownerDept') <small class="text-danger">{{ $message }}</small> @enderror
                                 </div>
                                 <div class="form-group">

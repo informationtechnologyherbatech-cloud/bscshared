@@ -6,11 +6,12 @@ use Livewire\Component;
 use Livewire\Attributes\Url;
 use App\Models\ActionPlan;
 use App\Models\DepartmentObjective;
+use App\Models\WorkUnit;
 
 class ActionPlans extends Component
 {
     public $title = '';
-    public $ownerDept = 'HRD';
+    public $ownerDept = '';
     public $objectiveId = null;
 
     #[Url(as: 'status')]
@@ -34,7 +35,9 @@ class ActionPlans extends Component
         }
         $this->validate([
             'title' => 'required|min:5|max:255',
-            'ownerDept' => 'required|string|max:30',
+            // Harus salah satu unit kerja aktif entitas ini — sebelumnya teks bebas,
+            // sehingga salah ketik membuat departemen "baru" yang tidak ada.
+            'ownerDept' => ['required', 'string', 'max:30', \Illuminate\Validation\Rule::in(WorkUnit::active()->pluck('code')->all())],
         ]);
 
         ActionPlan::create([
@@ -114,6 +117,7 @@ class ActionPlans extends Component
         return view('livewire.action-plans', [
             'actionPlans' => $actionPlans,
             'offTargetObjectives' => $offTargetObjectives,
+            'units' => WorkUnit::active()->get(),
         ])->layout('layouts.app', ['title' => 'Program Kerja']);
     }
 }

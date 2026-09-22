@@ -27,6 +27,9 @@ class ManageUsers extends Component
     public $password = '';
     public $role = 'Viewer';
     public $dept_code = '';
+
+    /** Kosong = pengguna level holding yang dapat berpindah antarentitas. */
+    public $entity_id = '';
     public $is_active = true;
 
     /** Paksa pengguna mengganti kata sandi pada login berikutnya. */
@@ -44,7 +47,13 @@ class ManageUsers extends Component
             'name' => 'required|string|min:3|max:255',
             'email' => ['required','email','max:255', Rule::unique('users','email')->ignore($this->userId)],
             'role' => 'required|exists:roles,name',
-            'dept_code' => 'nullable|string|max:30',
+            'entity_id' => ['nullable', 'integer', 'exists:entities,id'],
+            // Bila entitas dipilih, departemen harus salah satu unit kerjanya.
+            // Pengguna level holding tidak terikat unit entitas mana pun, jadi
+            // kode lamanya dibiarkan apa adanya.
+            'dept_code' => $this->entity_id
+                ? ['nullable', 'string', 'max:30', Rule::in($this->unitsForSelectedEntity()->pluck('code')->all())]
+                : ['nullable', 'string', 'max:30'],
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
         ];
@@ -76,6 +85,7 @@ class ManageUsers extends Component
         $this->password = '';
         $this->role = $user->getRoleNames()->first() ?? 'Viewer';
         $this->dept_code = $user->dept_code ?? '';
+        $this->entity_id = $user->entity_id ?? '';
         $this->is_active = (bool) $user->is_active;
         $this->must_change_password = (bool) $user->must_change_password;
         $this->isEdit = true;
@@ -96,6 +106,7 @@ class ManageUsers extends Component
         $this->password = '';
         $this->role = 'Viewer';
         $this->dept_code = '';
+        $this->entity_id = '';
         $this->is_active = true;
         $this->must_change_password = true;
         $this->resetErrorBag();
@@ -133,6 +144,7 @@ class ManageUsers extends Component
                 'name' => $this->name,
                 'email' => $this->email,
                 'dept_code' => $this->dept_code ?: null,
+                'entity_id' => $this->entity_id ?: null,
                 'is_active' => $this->is_active,
                 'must_change_password' => $this->must_change_password,
             ];
@@ -149,6 +161,7 @@ class ManageUsers extends Component
                 'email' => $this->email,
                 'password' => Hash::make($this->password),
                 'dept_code' => $this->dept_code ?: null,
+                'entity_id' => $this->entity_id ?: null,
                 'is_active' => $this->is_active,
                 'must_change_password' => $this->must_change_password,
                 'password_changed_at' => now(),
@@ -228,9 +241,32 @@ class ManageUsers extends Component
     public function updatingFilterRole() { $this->resetPage(); }
     public function updatingFilterStatus() { $this->resetPage(); }
 
+    /** Ganti entitas → departemen lama belum tentu ada di entitas baru. */
+    public function updatedEntityId(): void
+    {
+        $this->dept_code = '';
+    }
+
+    /**
+     * Unit kerja aktif milik entitas yang dipilih pada formulir — bukan entitas
+     * yang sedang dibuka Super Admin, karena ia dapat mengatur pengguna entitas lain.
+     */
+    private function unitsForSelectedEntity(): \Illuminate\Support\Collection
+    {
+        if (! $this->entity_id) {
+            return collect();
+        }
+
+        return \App\Models\WorkUnit::withoutGlobalScopes()
+            ->where('entity_id', $this->entity_id)
+            ->where('is_active', true)
+            ->orderBy('sort')
+            ->get();
+    }
+
     public function render()
     {
-        $query = User::with('roles');
+        $query = User::with(['roles', 'entity']);
 
         if ($this->search) {
             $query->where(function($q) {
@@ -255,6 +291,8 @@ class ManageUsers extends Component
             'passwordHint' => PasswordPolicy::hint(),
             'users' => $users,
             'roles' => $roles,
+            'entities' => \App\Models\Entity::active()->get(),
+            'units' => $this->unitsForSelectedEntity(),
         ])->layout('layouts.app', ['title' => 'Manage User']);
     }
 }

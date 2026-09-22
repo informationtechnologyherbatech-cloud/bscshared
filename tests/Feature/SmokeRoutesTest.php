@@ -43,6 +43,8 @@ class SmokeRoutesTest extends TestCase
             'staging log' => ['staging-logs'],
             'manajemen pengguna' => ['manage-users'],
             'pengaturan' => ['settings'],
+            'target revenue' => ['revenue'],
+            'unit kerja' => ['work-units'],
         ];
     }
 

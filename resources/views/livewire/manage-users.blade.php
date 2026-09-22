@@ -62,7 +62,7 @@
                         <table class="table table-hover table-striped mb-0">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>#</th><th>Nama</th><th>Email</th><th>Role</th><th>Dept</th><th>Status</th><th class="text-center">Aksi</th>
+                                    <th>#</th><th>Nama</th><th>Email</th><th>Role</th><th>Entitas</th><th>Dept</th><th>Status</th><th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -83,6 +83,13 @@
                                                 ">{{ $rl->name }}</span>
                                             @endforeach
                                         </td>
+                                        <td>
+                                            @if($u->entity)
+                                                <span class="badge badge-info">{{ $u->entity->name }}</span>
+                                            @else
+                                                <span class="badge badge-light border" title="Dapat berpindah antarentitas">Holding</span>
+                                            @endif
+                                        </td>
                                         <td>{{ $u->dept_code ?? '-' }}</td>
                                         <td>
                                             @if($u->is_active)
@@ -102,7 +109,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="7" class="text-center py-4 text-muted">Tidak ada pengguna.</td></tr>
+                                    <tr><td colspan="8" class="text-center py-4 text-muted">Tidak ada pengguna.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -188,9 +195,28 @@
                             </select>
                             @error('role') <span class="invalid-feedback">{{ $message }}</span> @enderror
                         </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-6 form-group">
-                            <label>Dept Code</label>
-                            <input type="text" wire:model="dept_code" placeholder="OPS, FIN, HRD..." class="form-control">
+                            <label>Entitas</label>
+                            <select wire:model.live="entity_id" class="form-control @error('entity_id') is-invalid @enderror">
+                                <option value="">Semua entitas (level holding)</option>
+                                @foreach($entities as $e)
+                                    <option value="{{ $e->id }}">{{ $e->name }} — {{ $e->legal_name }}</option>
+                                @endforeach
+                            </select>
+                            @error('entity_id') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                            <small class="text-muted">Pengguna level holding dapat berpindah antarentitas; selainnya hanya melihat entitasnya sendiri.</small>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Unit kerja</label>
+                            <select wire:model="dept_code" class="form-control @error('dept_code') is-invalid @enderror" @disabled(! $entity_id)>
+                                <option value="">{{ $entity_id ? '— Pilih unit kerja —' : 'Pilih entitas lebih dulu' }}</option>
+                                @foreach($units as $unit)
+                                    <option value="{{ $unit->code }}">{{ $unit->label() }}</option>
+                                @endforeach
+                            </select>
+                            @error('dept_code') <span class="invalid-feedback">{{ $message }}</span> @enderror
                         </div>
                     </div>
                     <div class="form-group">
