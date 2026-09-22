@@ -5,7 +5,7 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-bullseye text-warning mr-2"></i> Objective Departemen (Level 3)
+                        <i class="fas fa-crosshairs text-teal mr-2"></i> Objective Departemen (Level 3)
                     </h1>
                 </div>
                 <div class="col-sm-6 text-right">
@@ -59,11 +59,16 @@
                         <i class="fas fa-list-check mr-1"></i> Daftar Sasaran Mutu Departemen
                     </h3>
                     <div class="card-tools d-flex flex-wrap align-items-center">
+                        @can('manage units')
+                            <a href="{{ route('work-units') }}" class="btn btn-outline-secondary btn-sm mr-2 mb-1 mb-md-0" title="Tambah atau ubah daftar departemen">
+                                <i class="fas fa-sitemap mr-1"></i> Kelola unit kerja
+                            </a>
+                        @endcan
                         <!-- Filter Dept -->
-                        <select wire:model.live="selectedDept" class="form-control form-control-sm mr-2 mb-1 mb-md-0" style="width: 160px;">
+                        <select wire:model.live="selectedDept" class="form-control form-control-sm mr-2 mb-1 mb-md-0" style="width: 220px;">
                             <option value="">Semua Departemen</option>
-                            @foreach($departments as $d)
-                                <option value="{{ $d }}">{{ $d }}</option>
+                            @foreach($departments as $kode => $nama)
+                                <option value="{{ $kode }}">{{ $kode }}{{ $nama !== $kode ? ' — '.$nama : '' }}</option>
                             @endforeach
                         </select>
                         <!-- Filter Status -->
@@ -94,8 +99,13 @@
                         <tbody>
                             @forelse($objectives as $obj)
                                 <tr>
-                                    <td><span class="badge badge-dark">{{ $obj->dept_code }}</span></td>
-                                    <td><code>{{ $obj->kpi_code }}</code></td>
+                                    <td><span class="badge badge-dark" title="{{ $departments[$obj->dept_code] ?? $obj->dept_code }}">{{ $obj->dept_code }}</span></td>
+                                    <td>
+                                        <code>{{ $obj->kpi_code }}</code>
+                                        @if (! $obj->kpi_cascade_id)
+                                            <small class="d-block text-warning" title="Belum tertaut ke Cascade KPI — tautkan lewat tombol Ambil dari Objective Departemen"><i class="fas fa-unlink"></i> belum di cascade</small>
+                                        @endif
+                                    </td>
                                     <td class="font-weight-normal">{{ $obj->kpi_name }}</td>
                                     <td class="text-center">
                                         @if($obj->polarity === 'Turun')
@@ -125,13 +135,7 @@
                                             {{ number_format($obj->achievement_pct, 1) }}%
                                         </td>
                                         <td class="text-center">
-                                            @if($obj->status === 'Tercapai')
-                                                <span class="badge badge-tercapai px-2 py-1"><i class="fas fa-check-circle"></i> Tercapai</span>
-                                            @elseif($obj->status === 'Waspada')
-                                                <span class="badge badge-waspada px-2 py-1"><i class="fas fa-exclamation-circle"></i> Waspada</span>
-                                            @else
-                                                <span class="badge badge-dibawah px-2 py-1"><i class="fas fa-times-circle"></i> Off-Target</span>
-                                            @endif
+                                            <x-status-badge :status="$obj->status" />
                                         </td>
                                         <td class="text-center">
                                             <button wire:click="editObjective({{ $obj->id }})" class="btn btn-xs {{ $isClosed ? 'btn-secondary' : 'btn-primary' }}" {{ $isClosed ? 'disabled' : '' }} title="{{ $isClosed ? 'Terkunci' : 'Edit' }}">

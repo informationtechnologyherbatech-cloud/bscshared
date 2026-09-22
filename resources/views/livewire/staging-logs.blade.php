@@ -5,7 +5,7 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-network-wired text-info mr-2"></i> Staging & Audit Log Integrasi Hop 4
+                        <i class="fas fa-clipboard-list text-teal mr-2"></i> Staging & Audit Log Integrasi Hop 4
                     </h1>
                 </div>
             </div>
@@ -80,12 +80,11 @@
                             <div class="form-group">
                                 <label>Pilih Departemen Pengirim</label>
                                 <select wire:model="simulatedDept" class="form-control form-control-sm">
-                                    <option value="PROD">PROD - Produksi</option>
-                                    <option value="QC">QC - Quality Control</option>
-                                    <option value="FIN">FIN - Keuangan & Akuntansi</option>
-                                    <option value="HRD">HRD - Human Resources</option>
-                                    <option value="MKT">MKT - Pemasaran</option>
+                                    @foreach($units as $u)
+                                        <option value="{{ $u->code }}">{{ $u->code }} - {{ \Illuminate\Support\Str::limit($u->name, 40) }}</option>
+                                    @endforeach
                                 </select>
+                                @error('simulatedDept') <small class="text-danger">{{ $message }}</small> @enderror
                             </div>
                             @can('manage integration')
                             <button wire:click="simulateInbound" class="btn btn-info btn-sm btn-block">
@@ -147,6 +146,12 @@
                                 </tbody>
                             </table>
                         </div>
+                        @if($logs->hasPages())
+                            <div class="d-flex justify-content-between align-items-center flex-wrap px-3 pt-3">
+                                <small class="text-muted mb-2">Menampilkan {{ $logs->firstItem() }}–{{ $logs->lastItem() }} dari {{ $logs->total() }}</small>
+                                {{ $logs->links() }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

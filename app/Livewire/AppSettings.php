@@ -20,7 +20,7 @@ class AppSettings extends Component
     use WithFileUploads;
 
     #[Url]
-    public $activeTab = 'identity'; // identity, security, api, system
+    public $activeTab = 'identity'; // identity, entity, security, api, system
 
     // Keamanan — Google reCAPTCHA v2 (kotak centang)
     public $recaptcha_enabled = false;
@@ -62,6 +62,7 @@ class AppSettings extends Component
     {
         return [
             'identity' => 'manage settings',
+            'entity' => 'manage settings',
             'security' => 'manage settings',
             'api' => 'manage apikey',
             'system' => 'view systeminfo',
@@ -157,21 +158,22 @@ class AppSettings extends Component
         session()->flash('message', 'Secret key reCAPTCHA dihapus dan reCAPTCHA dimatikan.');
     }
 
+    /** Kunci tab Identitas Aplikasi (branding). */
+    private function appKeys(): array
+    {
+        return config('entity.app_keys');
+    }
+
+    /** Kunci tab Entitas (perusahaan pemilik data). */
+    private function entityKeys(): array
+    {
+        return config('entity.entity_keys');
+    }
+
     /** Daftar kunci pengaturan identitas yang dikelola halaman ini. */
     private function identityKeys(): array
     {
-        return [
-            'app_name',
-            'app_tagline',
-            'app_year',
-            'app_primary_color',
-            'entity_name',
-            'company_name',
-            'company_address',
-            'company_phone',
-            'company_email',
-            'company_website',
-        ];
+        return array_merge($this->appKeys(), $this->entityKeys());
     }
 
     private function loadIdentity()
@@ -186,7 +188,48 @@ class AppSettings extends Component
         $this->activeTab = $this->firstAllowedTab((string) $tab);
     }
 
-    public function saveIdentity()
+    /** activeTab dapat diubah langsung dari peramban — tetap disaring izinnya. */
+    public function updatedActiveTab($tab): void
+    {
+        $this->activeTab = $this->firstAllowedTab((string) $tab);
+    }
+
+    /** Tab Entitas: identitas perusahaan pemilik data. */
+    public function saveEntity()
+    {
+        if ($this->lacksPermission('manage settings')) {
+            return;
+        }
+
+        $this->validate([
+            'entity_name' => 'required|string|min:2|max:150',
+            'company_name' => 'required|string|min:2|max:200',
+            'company_address' => 'nullable|string|max:500',
+            'company_phone' => 'nullable|string|max:50',
+            'company_email' => 'nullable|email|max:150',
+            // url:http,https menutup URL berskema javascript: yang lolos
+            // validasi url biasa dan menjadi XSS saat dipasang di atribut href.
+            'company_website' => 'nullable|url:http,https|max:200',
+        ], [], [
+            'entity_name' => 'nama entitas',
+            'company_name' => 'nama perusahaan',
+            'company_address' => 'alamat perusahaan',
+            'company_phone' => 'nomor kontak',
+            'company_email' => 'email kontak',
+            'company_website' => 'situs web',
+        ]);
+
+        $values = [];
+        foreach ($this->entityKeys() as $key) {
+            $values[$key] = trim((string) $this->{$key});
+        }
+        AppSetting::setMany($values);
+
+        session()->flash('message', 'Identitas entitas berhasil diperbarui!');
+    }
+
+    /** Tab Identitas Aplikasi: nama aplikasi, tagline, warna, logo & favicon. */
+    public function saveApp()
     {
         if ($this->lacksPermission('manage settings')) {
             return;
@@ -197,14 +240,6 @@ class AppSettings extends Component
             'app_tagline' => 'nullable|string|max:255',
             'app_year' => 'required|digits:4',
             'app_primary_color' => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
-            'entity_name' => 'required|string|min:2|max:150',
-            'company_name' => 'required|string|min:2|max:200',
-            'company_address' => 'nullable|string|max:500',
-            'company_phone' => 'nullable|string|max:50',
-            'company_email' => 'nullable|email|max:150',
-            // url:http,https menutup URL berskema javascript: yang lolos
-            // validasi url biasa dan menjadi XSS saat dipasang di atribut href.
-            'company_website' => 'nullable|url:http,https|max:200',
             // SVG sengaja tidak diterima: berkas SVG dapat memuat <script> dan
             // menjadi stored XSS ketika dibuka langsung dari /storage.
             'logoUpload' => [
@@ -217,16 +252,13 @@ class AppSettings extends Component
                 'max:1024',
             ],
         ], [], [
-            'entity_name' => 'nama entitas',
-            'company_name' => 'nama perusahaan',
-            'company_address' => 'alamat perusahaan',
-            'company_phone' => 'nomor kontak',
-            'company_email' => 'email kontak',
-            'company_website' => 'situs web',
+            'app_name' => 'nama aplikasi',
+            'app_year' => 'tahun',
+            'app_primary_color' => 'warna primary',
         ]);
 
         $values = [];
-        foreach ($this->identityKeys() as $key) {
+        foreach ($this->appKeys() as $key) {
             $values[$key] = trim((string) $this->{$key});
         }
         AppSetting::setMany($values);
@@ -241,7 +273,7 @@ class AppSettings extends Component
         $this->logoUpload = null;
         $this->faviconUpload = null;
 
-        session()->flash('message', 'Identitas entitas & aplikasi berhasil diperbarui!');
+        session()->flash('message', 'Identitas aplikasi berhasil diperbarui!');
     }
 
     /** Simpan berkas branding baru dan hapus berkas lama agar disk tidak menumpuk. */
@@ -256,14 +288,25 @@ class AppSettings extends Component
         AppSetting::setValue($key, $newPath);
     }
 
-    public function resetIdentity()
+    public function resetApp()
+    {
+        $this->resetKeys($this->appKeys(), 'Identitas aplikasi dikembalikan ke nilai default!');
+    }
+
+    /** Kembali ke identitas entitas instalasi (BSC_DEFAULT_ENTITY / BSC_HOLDING_MODE). */
+    public function resetEntity()
+    {
+        $this->resetKeys($this->entityKeys(), 'Identitas entitas dikembalikan sesuai .env: '.config('entity.defaults.company_name').'.');
+    }
+
+    private function resetKeys(array $keys, string $pesan): void
     {
         if ($this->lacksPermission('manage settings')) {
             return;
         }
 
         $defaults = [];
-        foreach ($this->identityKeys() as $key) {
+        foreach ($keys as $key) {
             $defaults[$key] = (string) config('entity.defaults.'.$key, '');
         }
 
@@ -271,7 +314,7 @@ class AppSettings extends Component
         $this->loadIdentity();
         $this->resetValidation();
 
-        session()->flash('message', 'Identitas dikembalikan ke nilai default!');
+        session()->flash('message', $pesan);
     }
 
     public function generateApiKey()
@@ -324,6 +367,9 @@ class AppSettings extends Component
 
     public function revealKey($id)
     {
+        if (! auth()->user()?->can('manage apikey')) {
+            return;
+        }
         $this->showKeyId = $this->showKeyId === $id ? null : $id;
     }
 
@@ -355,6 +401,13 @@ class AppSettings extends Component
             'recaptchaSecretTersimpan' => $recaptchaSecretTersimpan,
             'logoPath' => $logoPath,
             'systemInfo' => $systemInfo,
+            'installation' => [
+                'holding' => (bool) config('bsc.holding_mode'),
+                'code' => config('bsc.default_entity'),
+                'entity' => \App\Models\Entity::configuredDefault(),
+                'defaults' => ['entity_name' => config('entity.defaults.entity_name'), 'company_name' => config('entity.defaults.company_name')],
+                'entities' => \App\Models\Entity::active()->get(),
+            ],
         ])->layout('layouts.app', ['title' => 'Setting Sistem']);
     }
 }

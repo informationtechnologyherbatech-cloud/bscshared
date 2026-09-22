@@ -5,8 +5,11 @@ namespace Tests\Feature;
 use App\Livewire\BscDashboard;
 use App\Models\ActionPlan;
 use App\Models\DepartmentObjective;
+use App\Models\Entity;
 use App\Models\FinancialRatio;
 use App\Models\Period;
+use App\Models\RevenueTarget;
+use App\Support\EntityContext;
 use App\Support\ScoreStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +19,17 @@ use Tests\TestCase;
 class BscDashboardScoringTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * Seluruh data BSC milik satu entitas. Tes ini tidak login, jadi entitasnya
+     * ditetapkan langsung — meniru pengguna yang sedang membuka satu entitas.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        app(EntityContext::class)->use(Entity::where('code', 'HERBATECH')->value('id'));
+    }
 
     private function period(string $period = '2026-08'): Period
     {
@@ -54,23 +68,66 @@ class BscDashboardScoringTest extends TestCase
         ]);
     }
 
-    public function test_apex_score_is_a_weighted_average_of_the_three_tiers(): void
+    private function revenue(string $period, float $target, ?float $actual): void
     {
+        RevenueTarget::create(['period' => $period, 'target' => $target, 'actual' => $actual]);
+    }
+
+    public function test_apex_score_follows_the_workbook_formula(): void
+    {
+        // Cascading_Revenue_Rasio_KPI_Erdigma_2026.xlsx, sheet Asumsi:
+        // "skor puncak = 0,45 × F1 + 0,55 × F2".
+        $this->period();
+        $this->ratio('2026-08', 80);          // F2 = 80
+        $this->revenue('2026-08', 100, 90);   // F1 = 90
+
+        // 0,45 × 90 + 0,55 × 80 = 40,5 + 44 = 84,5
+        Livewire::test(BscDashboard::class)->assertViewHas('apexScore', 84.5);
+    }
+
+    public function test_objectives_and_action_plans_do_not_enter_the_apex_formula(): void
+    {
+        // Menurut metodologinya, keduanya menggerakkan rasio lewat pos akun —
+        // memasukkannya lagi ke skor puncak berarti menghitung dua kali.
         $this->period();
         $this->ratio('2026-08', 80);
-        $objective = $this->objective('2026-08', 60);
-        // Ditautkan ke sasaran mutu periode ini; program kerja tanpa tautan tidak
-        // berperiode sehingga tidak ikut diskor.
+        $this->revenue('2026-08', 100, 90);
+        $objective = $this->objective('2026-08', 10);
         ActionPlan::create([
             'department_objective_id' => $objective->id,
             'title' => 'Perbaikan lini produksi',
             'owner_dept' => 'PRO',
-            'progress_pct' => 50,
+            'progress_pct' => 5,
             'status' => 'On Progress',
         ]);
 
-        // 0.45*80 + 0.35*60 + 0.20*50 = 67.00
-        Livewire::test(BscDashboard::class)->assertViewHas('apexScore', 67.0);
+        Livewire::test(BscDashboard::class)->assertViewHas('apexScore', 84.5);
+    }
+
+    public function test_revenue_achievement_is_cumulative_from_january(): void
+    {
+        // Sheet L1 bagian G: pencapaian kumulatif = Σ realisasi ÷ Σ target Jan s.d. bulan berjalan.
+        $this->period('2026-03');
+        $this->revenue('2026-01', 100, 120);
+        $this->revenue('2026-02', 100, 60);
+        $this->revenue('2026-03', 100, 90);
+
+        // (120 + 60 + 90) ÷ 300 = 90%
+        $this->assertSame(90.0, RevenueTarget::cumulativeAchievement('2026-03'));
+        // Tidak menarik bulan dari tahun lain maupun bulan sesudahnya.
+        $this->assertSame(90.0, RevenueTarget::cumulativeAchievement('2026-02'));
+    }
+
+    public function test_revenue_achievement_is_capped_at_one_hundred_percent(): void
+    {
+        $this->revenue('2026-08', 100, 150);
+
+        $this->assertSame(100.0, RevenueTarget::cumulativeAchievement('2026-08'));
+    }
+
+    public function test_revenue_without_any_target_is_not_scored_as_zero(): void
+    {
+        $this->assertNull(RevenueTarget::cumulativeAchievement('2026-08'));
     }
 
     public function test_apex_score_renormalises_when_a_tier_has_no_data(): void
@@ -115,16 +172,28 @@ class BscDashboardScoringTest extends TestCase
     {
         $this->period();
         $this->ratio('2026-08', 90);
-        $this->objective('2026-08', 70);
+        $this->revenue('2026-08', 100, 95);
 
         $html = Livewire::test(BscDashboard::class)->html();
 
-        // Label lama menyebut rumus yang sudah tidak dipakai lagi.
-        $this->assertStringNotContainsString('45% Revenue', $html);
         $this->assertStringContainsString('Rata-rata terbobot', $html);
-        // Tanpa program kerja, bobot 45/35 dinormalisasi menjadi 56/44.
-        $this->assertStringContainsString('56% Rasio Keuangan', $html);
-        $this->assertStringContainsString('44% Sasaran Mutu', $html);
+        $this->assertStringContainsString('45% Revenue', $html);
+        $this->assertStringContainsString('55% Rasio Keuangan', $html);
+        // Label lama tidak lagi muncul: angka revenue "IDR 115.2M" tidak berasal dari data.
+        $this->assertStringNotContainsString('115.2M', $html);
+    }
+
+    public function test_without_a_revenue_target_the_ratio_score_carries_the_full_weight(): void
+    {
+        $this->period();
+        $this->ratio('2026-08', 90);
+
+        $html = Livewire::test(BscDashboard::class)->html();
+
+        // Belum ada target revenue: F1 dikeluarkan, bobotnya dibagi ke F2.
+        $this->assertStringContainsString('100% Rasio Keuangan', $html);
+        $this->assertStringContainsString('belum ada target', $html);
+        Livewire::test(BscDashboard::class)->assertViewHas('apexScore', 90.0);
     }
 
     public function test_the_pyramid_keeps_its_shape_and_offers_short_labels_for_narrow_screens(): void

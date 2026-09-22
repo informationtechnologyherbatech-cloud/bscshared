@@ -26,7 +26,7 @@ class SecurityTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
 
         $this->actingAs(
-            User::where('email', 'superadmin@herbatech.co.id')->firstOrFail()
+            User::where('email', 'superadmin@emc.co.id')->firstOrFail()
         );
     }
 
@@ -244,7 +244,7 @@ class SecurityTest extends TestCase
 
         Livewire::test(AppSettings::class)
             ->set('logoUpload', UploadedFile::fake()->create('jahat.svg', 8, 'image/svg+xml'))
-            ->call('saveIdentity')
+            ->call('saveApp')
             ->assertHasErrors('logoUpload');
 
         $this->assertEmpty(AppSetting::getValue('app_logo'));
@@ -270,7 +270,7 @@ class SecurityTest extends TestCase
 
         Livewire::test(AppSettings::class)
             ->set('company_website', 'javascript://kosong%0aalert(document.cookie)')
-            ->call('saveIdentity')
+            ->call('saveEntity')
             ->assertHasErrors('company_website');
     }
 

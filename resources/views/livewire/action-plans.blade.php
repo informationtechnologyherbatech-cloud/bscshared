@@ -5,7 +5,7 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-tasks text-danger mr-2"></i> Program Kerja / Action Plan (Level 4)
+                        <i class="fas fa-list-check text-teal mr-2"></i> Program Kerja / Action Plan (Level 4)
                     </h1>
                 </div>
             </div>
@@ -43,7 +43,12 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Departemen Penanggung Jawab</label>
-                                    <input type="text" wire:model="ownerDept" class="form-control form-control-sm" placeholder="PROD / HRD / QC / FIN">
+                                    <select wire:model="ownerDept" class="form-control form-control-sm">
+                                        <option value="">— Pilih unit kerja —</option>
+                                        @foreach($units as $unit)
+                                            <option value="{{ $unit->code }}">{{ $unit->label() }}</option>
+                                        @endforeach
+                                    </select>
                                     @error('ownerDept') <small class="text-danger">{{ $message }}</small> @enderror
                                 </div>
                                 <div class="form-group">
@@ -134,6 +139,12 @@
                                 </tbody>
                             </table>
                         </div>
+                        @if($actionPlans->hasPages())
+                            <div class="d-flex justify-content-between align-items-center flex-wrap px-3 pt-3">
+                                <small class="text-muted mb-2">Menampilkan {{ $actionPlans->firstItem() }}–{{ $actionPlans->lastItem() }} dari {{ $actionPlans->total() }}</small>
+                                {{ $actionPlans->links() }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

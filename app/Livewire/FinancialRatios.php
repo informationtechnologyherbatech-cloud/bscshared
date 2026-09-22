@@ -2,20 +2,23 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Livewire\Attributes\Url;
+use App\Livewire\Concerns\FollowsActivePeriod;
 use App\Models\FinancialRatio;
 use App\Models\Period;
+use Livewire\Attributes\Url;
+use Livewire\Component;
 
 class FinancialRatios extends Component
 {
+    use FollowsActivePeriod;
+
     public $selectedCategory = '';
 
     #[Url(as: 'status')]
     public $selectedStatus = '';
 
     #[Url(as: 'period')]
-    public $selectedPeriod = '2026-08';
+    public $selectedPeriod = '';
 
     public $editingRatioId = null;
     public $editTarget = 0;
@@ -23,12 +26,19 @@ class FinancialRatios extends Component
 
     public function mount()
     {
-        if (request()->query('status')) {
+        if (request()->query('status') && request()->query('status') !== 'all') {
             $this->selectedStatus = request()->query('status');
         }
-        if (request()->query('period')) {
-            $this->selectedPeriod = request()->query('period');
+        if ($this->selectedStatus === 'all') {
+            $this->selectedStatus = ''; // "Semua" dari dashboard = tanpa saringan
         }
+        // Bawaan: periode aktif di navbar; ?period= dari tautan halaman lain menggantikannya.
+        $this->selectedPeriod = $this->initialPeriod(request()->query('period') ?: $this->selectedPeriod);
+    }
+
+    public function updatedSelectedPeriod(): void
+    {
+        $this->shareActivePeriod((string) $this->selectedPeriod);
     }
 
     public function editRatio($id)
@@ -37,13 +47,16 @@ class FinancialRatios extends Component
             session()->flash('error', 'Akses ditolak: peran Anda tidak berwenang mengelola rasio (butuh manage ratios / Admin FAT / Super Admin).');
             return;
         }
-        $periodObj = Period::where('period', $this->selectedPeriod)->first();
-        if ($periodObj && $periodObj->isClosed()) {
-            session()->flash('error', 'Periode ' . $this->selectedPeriod . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
+        // Kunci CLOSED mengikuti periode milik rasio itu sendiri.
+        $ratio = FinancialRatio::findOrFail($id);
+        if (Period::where('period', $ratio->period)->first()?->isClosed()) {
+            session()->flash('error', 'Periode ' . $ratio->period . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
             return;
         }
-
-        $ratio = FinancialRatio::findOrFail($id);
+        if ($ratio->isComputed()) {
+            session()->flash('error', 'Rasio '.$ratio->ratio_name.' dihitung otomatis dari pos akun. Ubah lewat menu Pos Akun atau Katalog Rasio.');
+            return;
+        }
         $this->editingRatioId = $ratio->id;
         $this->editTarget = $ratio->target;
         $this->editActual = $ratio->actual;
@@ -58,20 +71,22 @@ class FinancialRatios extends Component
             return;
         }
 
-        $periodObj = Period::where('period', $this->selectedPeriod)->first();
-        if ($periodObj && $periodObj->isClosed()) {
-            session()->flash('error', 'Periode ' . $this->selectedPeriod . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
+        $ratio = FinancialRatio::findOrFail($this->editingRatioId);
+        if (Period::where('period', $ratio->period)->first()?->isClosed()) {
+            session()->flash('error', 'Periode ' . $ratio->period . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
             $this->editingRatioId = null;
             return;
         }
-
-        $ratio = FinancialRatio::findOrFail($this->editingRatioId);
+        if ($ratio->isComputed()) {
+            session()->flash('error', 'Rasio hasil hitungan pos akun tidak dapat diubah langsung.');
+            $this->editingRatioId = null;
+            return;
+        }
         $target = floatval($this->editTarget);
         $actual = floatval($this->editActual);
 
-        // Simple percentage calculation
-        $ach = $target > 0 ? round(($actual / $target) * 100, 2) : 100;
-        if ($ach > 100) $ach = 100.00;
+        // Capaian menurut polaritas rasio (mis. DER: makin kecil makin baik), 0–100.
+        $ach = \App\Support\Bsc\RatioLibrary::objectiveAchievement($actual, $target, $ratio->polarity);
         
         $status = 'Waspada';
         if ($ach >= 100) {
@@ -108,14 +123,16 @@ class FinancialRatios extends Component
         if ($this->selectedStatus) {
             if ($this->selectedStatus === 'bermasalah') {
                 $query->whereIn('status', ['Waspada', 'Di Bawah Target', 'Off-Target']);
-            } else {
+            } elseif ($this->selectedStatus === 'Di Bawah Target') {
+                $query->whereIn('status', ['Di Bawah Target', 'Off-Target']);
+            } elseif ($this->selectedStatus !== 'all') {
                 $query->where('status', $this->selectedStatus);
             }
         }
-        $ratios = $query->get();
+        $ratios = $query->orderBy('id')->get(); // urutan input, tidak bergantung indeks
 
         $categories = FinancialRatio::distinct()->pluck('category')->toArray();
-        $periods = Period::pluck('period')->toArray();
+        $periods = Period::list();
 
         return view('livewire.financial-ratios', [
             'ratios' => $ratios,

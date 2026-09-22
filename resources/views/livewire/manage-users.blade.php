@@ -2,7 +2,7 @@
     <section class="content-header">
         <div class="container-fluid">
             <div class="row mb-2">
-                <div class="col-sm-6"><h1><i class="fas fa-users-cog mr-2"></i>Manage User</h1></div>
+                <div class="col-sm-6"><h1><i class="fas fa-users-gear mr-2"></i>Manage User</h1></div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Home</a></li>
@@ -62,7 +62,7 @@
                         <table class="table table-hover table-striped mb-0">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>#</th><th>Nama</th><th>Email</th><th>Role</th><th>Dept</th><th>Status</th><th class="text-center">Aksi</th>
+                                    <th>#</th><th>Nama</th><th>Email</th><th>Role</th><th>Entitas</th><th>Dept</th><th>Status</th><th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -83,6 +83,13 @@
                                                 ">{{ $rl->name }}</span>
                                             @endforeach
                                         </td>
+                                        <td>
+                                            @if($u->entity)
+                                                <span class="badge badge-info">{{ $u->entity->name }}</span>
+                                            @else
+                                                <span class="badge badge-light border" title="Dapat berpindah antarentitas">Holding</span>
+                                            @endif
+                                        </td>
                                         <td>{{ $u->dept_code ?? '-' }}</td>
                                         <td>
                                             @if($u->is_active)
@@ -102,7 +109,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="7" class="text-center py-4 text-muted">Tidak ada pengguna.</td></tr>
+                                    <tr><td colspan="8" class="text-center py-4 text-muted">Tidak ada pengguna.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -124,12 +131,16 @@
 
     {{-- Create/Edit Modal --}}
     @if($showModal)
-    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+    <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-primary">
-                    <h5 class="modal-title">{{ $isEdit ? 'Ubah Pengguna' : 'Tambah Pengguna Baru' }}</h5>
-                    <button type="button" class="close text-white" wire:click="closeModal"><span>&times;</span></button>
+                <div class="modal-hd">
+                    <span class="modal-hd-icon"><i class="fas {{ $isEdit ? 'fa-user-pen' : 'fa-user-plus' }}"></i></span>
+                    <div>
+                        <h5 class="modal-title">{{ $isEdit ? 'Ubah Pengguna' : 'Tambah Pengguna Baru' }}</h5>
+                        <small>Akun, peran, unit kerja, dan entitas</small>
+                    </div>
+                    <button type="button" class="modal-close" wire:click="closeModal" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
@@ -188,9 +199,36 @@
                             </select>
                             @error('role') <span class="invalid-feedback">{{ $message }}</span> @enderror
                         </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-6 form-group">
-                            <label>Dept Code</label>
-                            <input type="text" wire:model="dept_code" placeholder="OPS, FIN, HRD..." class="form-control">
+                            <label>Entitas</label>
+                            <select wire:model.live="entity_id" class="form-control @error('entity_id') is-invalid @enderror">
+                                @if($holdingMode)
+                                    <option value="">Semua entitas (level holding)</option>
+                                @endif
+                                @foreach($entities as $e)
+                                    <option value="{{ $e->id }}">{{ $e->name }} — {{ $e->legal_name }}</option>
+                                @endforeach
+                            </select>
+                            @error('entity_id') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                            <small class="text-muted">
+                                @if($holdingMode)
+                                    Pengguna level holding dapat berpindah antarentitas; selainnya hanya melihat entitasnya sendiri.
+                                @else
+                                    Instalasi ini khusus satu entitas (BSC_HOLDING_MODE=false).
+                                @endif
+                            </small>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Unit kerja</label>
+                            <select wire:model="dept_code" class="form-control @error('dept_code') is-invalid @enderror" @disabled(! $entity_id)>
+                                <option value="">{{ $entity_id ? '— Pilih unit kerja —' : 'Pilih entitas lebih dulu' }}</option>
+                                @foreach($units as $unit)
+                                    <option value="{{ $unit->code }}">{{ $unit->label() }}</option>
+                                @endforeach
+                            </select>
+                            @error('dept_code') <span class="invalid-feedback">{{ $message }}</span> @enderror
                         </div>
                     </div>
                     <div class="form-group">
@@ -212,9 +250,9 @@
                         </small>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button wire:click="closeModal" class="btn btn-secondary">Batal</button>
-                    <button wire:click="saveUser" class="btn btn-primary">{{ $isEdit ? 'Perbarui' : 'Simpan' }}</button>
+                <div class="modal-ft">
+                    <button wire:click="closeModal" class="btn btn-ghost">Batal</button>
+                    <button wire:click="saveUser" class="btn btn-teal"><i class="fas fa-save mr-1"></i> {{ $isEdit ? 'Perbarui' : 'Simpan' }}</button>
                 </div>
             </div>
         </div>
@@ -223,19 +261,18 @@
 
     {{-- Delete Confirm --}}
     @if($showDeleteModal)
-    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger">
-                    <h5 class="modal-title">Konfirmasi Hapus</h5>
-                    <button type="button" class="close text-white" wire:click="cancelDelete"><span>&times;</span></button>
-                </div>
+    <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-confirm">
+                <button type="button" class="modal-close modal-close--float" wire:click="cancelDelete" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                 <div class="modal-body">
-                    <p>Yakin ingin menghapus pengguna ini? Aksi tidak dapat dibatalkan.</p>
+                    <div class="modal-confirm-icon"><i class="fas fa-trash-can"></i></div>
+                    <h5>Hapus pengguna ini?</h5>
+                    <p>Akun ini tidak bisa lagi dipakai untuk masuk. Aksi ini tidak dapat dibatalkan.</p>
                 </div>
-                <div class="modal-footer">
-                    <button wire:click="cancelDelete" class="btn btn-secondary">Batal</button>
-                    <button wire:click="deleteUser" class="btn btn-danger">Ya, Hapus</button>
+                <div class="modal-ft">
+                    <button type="button" wire:click="cancelDelete" class="btn btn-ghost">Batal</button>
+                    <button type="button" wire:click="deleteUser" class="btn btn-danger"><i class="fas fa-trash-can mr-1"></i> Ya, hapus</button>
                 </div>
             </div>
         </div>

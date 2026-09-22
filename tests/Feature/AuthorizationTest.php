@@ -114,7 +114,7 @@ class AuthorizationTest extends TestCase
         Livewire::test(AppSettings::class)
             ->set('entity_name', 'Entitas Bajakan')
             ->set('company_name', 'PT Bajakan')
-            ->call('saveIdentity');
+            ->call('saveEntity');
 
         $this->assertNotSame('PT Bajakan', AppSetting::getValue('company_name'));
     }
@@ -150,7 +150,7 @@ class AuthorizationTest extends TestCase
         Livewire::test(AppSettings::class)
             ->set('entity_name', 'Entitas Sah')
             ->set('company_name', 'PT Entitas Sah')
-            ->call('saveIdentity')
+            ->call('saveEntity')
             ->assertHasNoErrors();
 
         $this->assertSame('PT Entitas Sah', AppSetting::getValue('company_name'));

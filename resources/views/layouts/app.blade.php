@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="{{ asset('css/custom-app.css') }}">
 
     @livewireStyles
+    @include('partials.input-rupiah-script')
 </head>
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
 <div class="wrapper">
@@ -40,27 +41,135 @@
         <!-- Left navbar links -->
         <ul class="navbar-nav">
             <li class="nav-item">
-                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+                <a class="nav-link nb-toggle" data-widget="pushmenu" href="#" role="button" title="Buka/tutup menu"><i class="fas fa-bars-staggered"></i></a>
             </li>
             {{-- Nama aplikasi tidak diulang di sini: sudah tampil pada brand sidebar. --}}
         </ul>
 
-        <!-- Right navbar links -->
-        <ul class="navbar-nav ml-auto">
+        <!-- Right navbar links: tiap info tampil sebagai "chip" — ikon berbingkai + keterangan kecil + nilai. -->
+        <ul class="navbar-nav ml-auto align-items-center">
+            @auth
+            @php($entitasAktif = active_entity())
+            @php($logoAktif = entity_logo_of($entitasAktif?->code))
+            @if($entitasAktif)
             <li class="nav-item dropdown">
-                <a class="nav-link" data-toggle="dropdown" href="#">
-                    <i class="fas fa-calendar-alt mr-1"></i> Periode Aktif: <strong>2026-08</strong>
-                </a>
+                @if(can_switch_entity())
+                    <a class="nav-link nb-chip nb-entity-chip" data-toggle="dropdown" href="#" title="Pilih entitas yang ditampilkan">
+                        @if($logoAktif)<span class="nb-chip-icon nb-chip-logo"><img src="{{ $logoAktif }}" alt="{{ $entitasAktif->name }}"></span>@else<span class="nb-chip-icon"><i class="fas fa-building"></i></span>@endif
+                        <span class="nb-chip-text">
+                            <small>Entitas</small>
+                            <strong>{{ $entitasAktif->name }}</strong>
+                        </span>
+                        <i class="fas fa-chevron-down nb-chip-caret"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right nb-entity-menu">
+                        <div class="nb-entity-menu-head">
+                            <i class="fas fa-arrow-right-arrow-left mr-2"></i>Tampilkan data entitas
+                        </div>
+                        @foreach(switchable_entities() as $e)
+                            @php($aktif = $e->id === $entitasAktif->id)
+                            @php($logoEntitas = entity_logo_of($e->code))
+                            <form method="POST" action="{{ route('entity.switch') }}" class="m-0">
+                                @csrf
+                                <input type="hidden" name="entity_id" value="{{ $e->id }}">
+                                <button type="submit" class="dropdown-item nb-entity-item {{ $aktif ? 'is-active' : '' }}" @if($aktif) aria-current="true" @endif>
+                                    <span class="nb-entity-logo">
+                                        @if($logoEntitas)
+                                            <img src="{{ $logoEntitas }}" alt="">
+                                        @else
+                                            {{ mb_substr($e->name, 0, 2) }}
+                                        @endif
+                                    </span>
+                                    <span class="nb-entity-text">
+                                        <strong>{{ $e->name }}</strong>
+                                        <small>{{ $e->legal_name }}</small>
+                                        <span class="nb-entity-tag">{{ $e->industryLabel() }}</span>
+                                    </span>
+                                    <i class="fas {{ $aktif ? 'fa-circle-check' : 'fa-chevron-right' }} nb-entity-mark"></i>
+                                </button>
+                            </form>
+                        @endforeach
+                    </div>
+                @else
+                    <span class="nav-link nb-chip nb-entity-chip" title="{{ $entitasAktif->legal_name }}">
+                        @if($logoAktif)<span class="nb-chip-icon nb-chip-logo"><img src="{{ $logoAktif }}" alt="{{ $entitasAktif->name }}"></span>@else<span class="nb-chip-icon"><i class="fas fa-building"></i></span>@endif
+                        <span class="nb-chip-text">
+                            <small>Entitas</small>
+                            <strong>{{ $entitasAktif->name }}</strong>
+                        </span>
+                    </span>
+                @endif
             </li>
+            @endif
+            @endauth
+            @auth
+            {{-- Periode aktif: berlaku di semua halaman (disimpan di sesi, per entitas).
+                 Bawaannya bulan berjalan; memilih periode di halaman juga mengubahnya. --}}
+            @php($daftarPeriode = periods_with_status())
+            @if($daftarPeriode->isNotEmpty())
+            @php($periodeAktif = active_period())
+            @php($bulanIni = now()->format('Y-m'))
+            <li class="nav-item dropdown">
+                <a class="nav-link nb-chip" data-toggle="dropdown" href="#" title="Periode yang ditampilkan di semua halaman">
+                    {{-- Mini kalender: tahun di pita atas, singkatan bulan di badan. --}}
+                    <span class="nb-cal" aria-hidden="true">
+                        <span class="nb-cal-year" data-cal-year>{{ substr($periodeAktif, 0, 4) }}</span>
+                        <span class="nb-cal-month" data-cal-month>{{ month_short($periodeAktif) }}</span>
+                    </span>
+                    <span class="nb-chip-text">
+                        <small>Periode</small>
+                        <strong data-periode-aktif="{{ $periodeAktif }}">{{ period_label($periodeAktif) }}</strong>
+                    </span>
+                    <i class="fas fa-chevron-down nb-chip-caret"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right nb-entity-menu nb-period-menu">
+                    <div class="nb-entity-menu-head">
+                        <i class="fas fa-calendar-check mr-2"></i>Periode untuk semua halaman
+                    </div>
+                    <div class="nb-period-scroll">
+                        @foreach($daftarPeriode->groupBy(fn ($p) => substr($p->period, 0, 4)) as $tahun => $periodeTahun)
+                            <div class="nb-period-year">{{ $tahun }}</div>
+                            <div class="nb-period-grid">
+                                @foreach($periodeTahun->sortBy('period') as $p)
+                                    @php($pilih = $p->period === $periodeAktif)
+                                    <form method="POST" action="{{ route('period.switch') }}" class="m-0">
+                                        @csrf
+                                        <input type="hidden" name="period" value="{{ $p->period }}">
+                                        <button type="submit" data-periode="{{ $p->period }}"
+                                                class="nb-period-item {{ $pilih ? 'is-active' : '' }}"
+                                                title="{{ period_label($p->period) }}{{ period_closed($p->status) ? ' · ditutup' : '' }}">
+                                            <strong>{{ month_abbr($p->period) }}</strong>
+                                            <small>
+                                                @if(period_closed($p->status))<i class="fas fa-lock"></i>@endif
+                                                {{ $p->period === $bulanIni ? 'bulan ini' : $p->period }}
+                                            </small>
+                                        </button>
+                                    </form>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="nb-period-foot">
+                        <i class="fas fa-circle-info mr-1"></i>
+                        Revenue (F1) dan rasio (F2) dihitung kumulatif sejak Januari. Untuk melihat capaian setahun, pilih bulan terakhir tahun itu.
+                    </div>
+                </div>
+            </li>
+            @endif
+            @endauth
             @auth
             <li class="nav-item">
                 @php($peran = auth()->user()->getRoleNames()->first() ?? 'User')
                 @php($dept = auth()->user()->dept_code)
-                <a id="navLogoutTrigger" class="nav-link d-flex align-items-center" href="javascript:void(0)" onclick="event.preventDefault(); if(window.jQuery){ jQuery('#logoutModal').modal('show'); } return false;" title="Klik untuk logout — {{ auth()->user()->name }} ({{ $peran }}{{ $dept ? ' · '.$dept : '' }})" style="cursor:pointer;">
-                    <i class="fas fa-user-circle mr-1"></i>
-                    <span class="d-none d-md-inline">{{ Str::limit(auth()->user()->name, 18) }}</span>
+                @php($inisial = collect(preg_split('/\s+/', trim(auth()->user()->name)))->filter()->take(2)->map(fn ($k) => mb_strtoupper(mb_substr($k, 0, 1)))->implode(''))
+                <a id="navLogoutTrigger" class="nav-link nb-chip nb-user" href="javascript:void(0)" onclick="event.preventDefault(); if(window.jQuery){ jQuery('#logoutModal').modal('show'); } return false;" title="Klik untuk logout — {{ auth()->user()->name }} ({{ $peran }}{{ $dept ? ' · '.$dept : '' }})">
+                    <span class="nb-avatar">{{ $inisial ?: 'U' }}</span>
                     {{-- Peran &amp; departemen: satu-satunya info yang dulu hanya ada di panel sidebar. --}}
-                    <small class="badge badge-light ml-2 d-none d-lg-inline">{{ $peran }}{{ $dept ? ' · '.$dept : '' }}</small>
+                    <span class="nb-chip-text d-none d-md-flex">
+                        <strong>{{ Str::limit(auth()->user()->name, 18) }}</strong>
+                        <small>{{ $peran }}{{ $dept ? ' · '.$dept : '' }}</small>
+                    </span>
+                    <i class="fas fa-right-from-bracket nb-chip-caret d-none d-md-inline"></i>
                 </a>
             </li>
             @endauth
@@ -72,8 +181,10 @@
     <aside class="main-sidebar sidebar-dark-teal elevation-4">
         <!-- Brand Logo -->
         <a href="{{ route('dashboard') }}" class="brand-link bg-teal" title="{{ company_name() }}">
-            @if(entity_logo())
-                <img src="{{ entity_logo() }}" alt="{{ entity_name() }}" class="brand-image elevation-3 bg-white p-1"
+            {{-- Brand sidebar = logo grup EMC; logo entitas aktif tampil di chip navbar. --}}
+            @php($logoBrand = public_image_url(config('entity.holding.logo')) ?? entity_logo())
+            @if($logoBrand)
+                <img src="{{ $logoBrand }}" alt="{{ config('entity.holding.name') }}" class="brand-image elevation-3 bg-white p-1"
                      style="max-height:33px; width:auto; max-width:120px; object-fit:contain; border-radius:6px;">
             @else
                 <i class="fas fa-chart-line brand-image img-circle elevation-3 p-2 bg-white text-teal"></i>
@@ -89,44 +200,113 @@
             <!-- Sidebar Menu — RBAC 13 Menu PRD Tabel 4 (hanya tampil sesuai permission) -->
             <nav class="mt-2">
                 <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu" data-accordion="false">
-                    <li class="nav-header">KONSOLIDASI KINERJA</li>
+                    {{-- Menu dikelompokkan mengikuti tingkat piramida BSC; di tiap kelompok
+                         urutannya mengikuti alur kerja: atur → isi → lihat hasil. --}}
+                    @php($menuHolding = auth()->user()?->can('view consolidation') && can_switch_entity())
+                    @if(auth()->user()?->can('view dashboard') || auth()->user()?->can('view wiring') || $menuHolding)
+                    <li class="nav-header">RINGKASAN KINERJA</li>
+                    @endif
                     @can('view dashboard')
                     <li class="nav-item">
                         <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-tachometer-alt"></i>
+                            <i class="nav-icon fas fa-layer-group"></i>
                             <p>Piramida BSC</p>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view ratios')
-                    <li class="nav-item">
-                        <a href="{{ route('financial-ratios') }}" class="nav-link {{ request()->routeIs('financial-ratios') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-coins"></i>
-                            <p>Rasio Keuangan</p>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view objectives')
-                    <li class="nav-item">
-                        <a href="{{ route('department-objectives') }}" class="nav-link {{ request()->routeIs('department-objectives') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-bullseye"></i>
-                            <p>Objective Departemen</p>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view actionplans')
-                    <li class="nav-item">
-                        <a href="{{ route('action-plans') }}" class="nav-link {{ request()->routeIs('action-plans') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-tasks"></i>
-                            <p>Program Kerja (Action)</p>
                         </a>
                     </li>
                     @endcan
                     @can('view wiring')
                     <li class="nav-item">
                         <a href="{{ route('bsc-wiring') }}" class="nav-link {{ request()->routeIs('bsc-wiring') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-project-diagram"></i>
+                            <i class="nav-icon fas fa-diagram-project"></i>
                             <p>Wiring / Peta Hubungan</p>
+                        </a>
+                    </li>
+                    @endcan
+                    @if($menuHolding)
+                    <li class="nav-item">
+                        <a href="{{ route('consolidation') }}" class="nav-link {{ request()->routeIs('consolidation') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-city"></i>
+                            <p>Konsolidasi Holding</p>
+                        </a>
+                    </li>
+                    @endif
+
+                    @canany(['manage revenue','view dashboard'])
+                    <li class="nav-header">TINGKAT 1 · REVENUE</li>
+                    <li class="nav-item">
+                        <a href="{{ route('revenue-planning') }}" class="nav-link {{ request()->routeIs('revenue-planning') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-chart-line"></i>
+                            <p>Perencanaan Target</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('revenue') }}" class="nav-link {{ request()->routeIs('revenue') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-bullseye"></i>
+                            <p>Target & Realisasi</p>
+                        </a>
+                    </li>
+                    @endcanany
+
+                    @can('view ratios')
+                    <li class="nav-header">TINGKAT 2 · RASIO KEUANGAN</li>
+                    <li class="nav-item">
+                        <a href="{{ route('ratio-catalog') }}" class="nav-link {{ request()->routeIs('ratio-catalog') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-scale-balanced"></i>
+                            <p>Katalog Rasio</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('account-balances') }}" class="nav-link {{ request()->routeIs('account-balances') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-file-invoice-dollar"></i>
+                            <p>Pos Akun</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('financial-ratios') }}" class="nav-link {{ request()->routeIs('financial-ratios') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-percent"></i>
+                            <p>Rasio Keuangan</p>
+                        </a>
+                    </li>
+                    @endcan
+
+                    @canany(['view objectives','manage ratios','view ratios'])
+                    <li class="nav-header">TINGKAT 3 · KPI & SASARAN MUTU</li>
+                    <li class="nav-item">
+                        <a href="{{ route('account-post-map') }}" class="nav-link {{ request()->routeIs('account-post-map') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-table-cells"></i>
+                            <p>Peta Pos Akun</p>
+                        </a>
+                    </li>
+                    @endcanany
+                    @canany(['view objectives','manage ratios'])
+                    <li class="nav-item">
+                        <a href="{{ route('kpi-cascades') }}" class="nav-link {{ request()->routeIs('kpi-cascades') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-sitemap"></i>
+                            <p>Cascade KPI</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('indicator-tests') }}" class="nav-link {{ request()->routeIs('indicator-tests') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-vial-circle-check"></i>
+                            <p>Uji Indikator</p>
+                        </a>
+                    </li>
+                    @endcanany
+                    @can('view objectives')
+                    <li class="nav-item">
+                        <a href="{{ route('department-objectives') }}" class="nav-link {{ request()->routeIs('department-objectives') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-crosshairs"></i>
+                            <p>Objective Departemen</p>
+                        </a>
+                    </li>
+                    @endcan
+
+                    @can('view actionplans')
+                    <li class="nav-header">TINGKAT 4 · PROGRAM KERJA</li>
+                    <li class="nav-item">
+                        <a href="{{ route('action-plans') }}" class="nav-link {{ request()->routeIs('action-plans') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-list-check"></i>
+                            <p>Program Kerja (Action)</p>
                         </a>
                     </li>
                     @endcan
@@ -153,7 +333,7 @@
                     @can('view sensitivity')
                     <li class="nav-item">
                         <a href="{{ route('sensitivity') }}" class="nav-link {{ request()->routeIs('sensitivity') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-chart-area"></i>
+                            <i class="nav-icon fas fa-sliders"></i>
                             <p>Sensitivitas</p>
                         </a>
                     </li>
@@ -161,7 +341,7 @@
                     @can('view skenario')
                     <li class="nav-item">
                         <a href="{{ route('skenario') }}" class="nav-link {{ request()->routeIs('skenario') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-layer-group"></i>
+                            <i class="nav-icon fas fa-code-branch"></i>
                             <p>Skenario</p>
                         </a>
                     </li>
@@ -181,7 +361,7 @@
                     <li class="nav-header">DOKUMENTASI</li>
                     <li class="nav-item">
                         <a href="{{ route('dokumentasi') }}" class="nav-link {{ request()->routeIs('dokumentasi') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-book"></i>
+                            <i class="nav-icon fas fa-book-open"></i>
                             <p>Dokumentasi Metode</p>
                         </a>
                     </li>
@@ -201,7 +381,7 @@
                     @can('view staging')
                     <li class="nav-item">
                         <a href="{{ route('staging-logs') }}" class="nav-link {{ request()->routeIs('staging-logs') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-network-wired"></i>
+                            <i class="nav-icon fas fa-clipboard-list"></i>
                             <p>Staging & Audit Log</p>
                         </a>
                     </li>
@@ -218,20 +398,28 @@
                         @cannot('view staging')
                         <li class="nav-item">
                             <a href="{{ route('staging-logs') }}" class="nav-link {{ request()->routeIs('staging-logs') ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-network-wired"></i>
+                                <i class="nav-icon fas fa-clipboard-list"></i>
                                 <p>Staging & Audit Log</p>
                             </a>
                         </li>
                         @endcannot
                     @endcan
 
-                    @canany(['manage users','manage settings','view systeminfo','manage apikey','can_manage_users'])
+                    @canany(['manage users','manage settings','view systeminfo','manage apikey','can_manage_users','manage units'])
                     <li class="nav-header">ADMINISTRASI</li>
                     @endcanany
+                    @can('manage units')
+                    <li class="nav-item">
+                        <a href="{{ route('work-units') }}" class="nav-link {{ request()->routeIs('work-units') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-building-user"></i>
+                            <p>Unit Kerja</p>
+                        </a>
+                    </li>
+                    @endcan
                     @can('manage users')
                     <li class="nav-item">
                         <a href="{{ route('manage-users') }}" class="nav-link {{ request()->routeIs('manage-users') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-users-cog"></i>
+                            <i class="nav-icon fas fa-users-gear"></i>
                             <p>Manage User</p>
                         </a>
                     </li>
@@ -239,7 +427,7 @@
                     @canany(['manage settings','view systeminfo','manage apikey'])
                     <li class="nav-item">
                         <a href="{{ route('settings') }}" class="nav-link {{ request()->routeIs('settings') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-cogs"></i>
+                            <i class="nav-icon fas fa-gear"></i>
                             <p>Setting</p>
                         </a>
                     </li>
@@ -279,29 +467,60 @@
 @auth
 <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="logoutModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content border-0 shadow-lg" style="border-radius:14px; overflow:hidden;">
-      <div class="modal-header bg-danger text-white border-0">
-        <h5 class="modal-title font-weight-bold" id="logoutModalLabel"><i class="fas fa-sign-out-alt mr-2"></i> Konfirmasi Logout</h5>
-        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+    <div class="modal-content modal-confirm">
+      <button type="button" class="modal-close modal-close--float" data-dismiss="modal" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
+      <div class="modal-body">
+        <div class="modal-confirm-icon"><i class="fas fa-right-from-bracket"></i></div>
+        <h5 id="logoutModalLabel">Keluar dari aplikasi?</h5>
+        <p>Anda akan keluar dari sesi <strong>{{ auth()->user()->name }}</strong>. Sesi diakhiri dan Anda diarahkan ke halaman login.</p>
       </div>
-      <div class="modal-body text-center py-4">
-        <div class="mx-auto bg-light rounded-circle d-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px;">
-            <i class="fas fa-user-times text-danger" style="font-size:28px;"></i>
-        </div>
-        <p class="mb-1">Anda akan keluar dari sesi <strong>{{ auth()->user()->name }}</strong></p>
-        <p class="text-muted small mb-0">Sesi akan diakhiri dan Anda akan diarahkan ke halaman login. Lanjutkan?</p>
-      </div>
-      <div class="modal-footer bg-light border-0 d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary px-4" data-dismiss="modal"><i class="fas fa-times mr-1"></i> Batal</button>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-ghost" data-dismiss="modal">Batal</button>
         <form method="POST" action="{{ route('logout') }}" class="mb-0">
             @csrf
-            <button type="submit" class="btn btn-danger px-4 font-weight-bold"><i class="fas fa-sign-out-alt mr-1"></i> Ya, Logout</button>
+            <button type="submit" class="btn btn-danger"><i class="fas fa-right-from-bracket mr-1"></i> Ya, Logout</button>
         </form>
       </div>
     </div>
   </div>
 </div>
 @endauth
+
+{{-- Periode dipilih dari dalam halaman → perbarui chip & tanda aktif di navbar. --}}
+<script>
+    window.addEventListener('periode-aktif', (e) => {
+        const periode = e.detail?.period;
+        if (!periode) return;
+        if (document.querySelector('.nb-period-menu') && !document.querySelector('.nb-period-item[data-periode="' + periode + '"]')) {
+            window.location.reload();
+            return;
+        }
+        const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        const nama = BULAN[Number(periode.slice(5, 7)) - 1] || periode;
+        document.querySelectorAll('[data-periode-aktif]').forEach((el) => {
+            el.dataset.periodeAktif = periode;
+            el.textContent = nama + ' ' + periode.slice(0, 4);
+        });
+        document.querySelectorAll('[data-cal-year]').forEach((el) => { el.textContent = periode.slice(0, 4); });
+        document.querySelectorAll('[data-cal-month]').forEach((el) => { el.textContent = nama.slice(0, 3).toUpperCase(); });
+        document.querySelectorAll('.nb-period-item').forEach((el) => el.classList.toggle('is-active', el.dataset.periode === periode));
+    });
+</script>
+{{-- Modal Livewire (.modal-lw): Esc menutupnya lewat tombol ✕-nya; klik latar gelap hanya untuk modal konfirmasi. --}}
+<script>
+    (() => {
+        const tutupModal = (modal) => modal && modal.querySelector('.modal-close')?.click();
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('.ss-panel')) return;
+            const semua = document.querySelectorAll('.modal-lw');
+            tutupModal(semua[semua.length - 1]);
+        });
+        document.addEventListener('mousedown', (e) => {
+            // Hanya modal konfirmasi: formulir panjang tidak hilang karena salah klik.
+            if (e.target.classList?.contains('modal-lw') && e.target.querySelector('.modal-confirm')) tutupModal(e.target);
+        });
+    })();
+</script>
 
 <!-- REQUIRED SCRIPTS (Local with CDN fallback) -->
 @if(file_exists(public_path('vendor/jquery/jquery.min.js')))
@@ -323,6 +542,8 @@
 @endif
 
 @livewireScripts
+@include('partials.livewire-feedback')
+@include('partials.smart-select')
 <script>
 // FR-15 fallback: pastikan klik profil selalu buka #logoutModal meski data-toggle terhalang Livewire/AdminLTE (fix # -> /# )
 document.addEventListener('DOMContentLoaded', function(){

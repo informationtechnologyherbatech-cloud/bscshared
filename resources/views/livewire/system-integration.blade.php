@@ -5,7 +5,7 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-plug text-primary mr-2"></i> Integrasi Sistem & Gateway Inbound (Hop 4)
+                        <i class="fas fa-plug text-teal mr-2"></i> Integrasi Sistem & Gateway Inbound (Hop 4)
                     </h1>
                 </div>
             </div>
@@ -86,7 +86,7 @@
                                 <span class="info-box-icon bg-info"><i class="fas fa-shopping-cart"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text font-weight-bold text-uppercase">4101 · Penjualan</span>
-                                    <span class="info-box-number text-info">Rp {{ number_format($salesPayload) }} JT</span>
+                                    <span class="info-box-number text-info">{{ rupiah($salesPayload) }} JT</span>
                                     <small class="text-muted">Pendapatan Operasional</small>
                                 </div>
                             </div>
@@ -96,7 +96,7 @@
                                 <span class="info-box-icon bg-danger"><i class="fas fa-boxes"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text font-weight-bold text-uppercase">5101 · HPP</span>
-                                    <span class="info-box-number text-danger">Rp {{ number_format($hppPayload) }} JT</span>
+                                    <span class="info-box-number text-danger">{{ rupiah($hppPayload) }} JT</span>
                                     <small class="text-muted">Beban Pokok Penjualan</small>
                                 </div>
                             </div>
@@ -106,7 +106,7 @@
                                 <span class="info-box-icon bg-warning"><i class="fas fa-file-invoice"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text font-weight-bold text-uppercase">6101 · Beban Opex</span>
-                                    <span class="info-box-number text-warning">Rp {{ number_format($opexPayload) }} JT</span>
+                                    <span class="info-box-number text-warning">{{ rupiah($opexPayload) }} JT</span>
                                     <small class="text-muted">Beban Operasional & Distribusi</small>
                                 </div>
                             </div>
@@ -116,7 +116,7 @@
                                 <span class="info-box-icon bg-white text-success"><i class="fas fa-coins"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text font-weight-bold text-uppercase">Laba Bersih Operasional</span>
-                                    <span class="info-box-number text-white">Rp {{ number_format($netProfitCalculated) }} JT</span>
+                                    <span class="info-box-number text-white">{{ rupiah($netProfitCalculated) }} JT</span>
                                     <small class="text-white-50">Laba = Penjualan - HPP - Opex</small>
                                 </div>
                             </div>
@@ -132,37 +132,52 @@
                             <div class="form-row">
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">Periode Laporan</label>
-                                    <input type="text" wire:model="financePeriod" class="form-control form-control-sm font-weight-bold" placeholder="2026-08">
+                                    <input type="month" wire:model.live="financePeriod" class="form-control form-control-sm font-weight-bold @error('financePeriod') is-invalid @enderror">
+                                    @error('financePeriod') <span class="invalid-feedback">{{ $message }}</span> @enderror
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">4101 · Penjualan (JT)</label>
-                                    <input type="number" step="100" wire:model="salesPayload" class="form-control form-control-sm font-weight-bold text-primary">
+                                    <x-input-rupiah wire:model="salesPayload" class="form-control form-control-sm font-weight-bold text-primary text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">5101 · HPP (JT)</label>
-                                    <input type="number" step="100" wire:model="hppPayload" class="form-control form-control-sm font-weight-bold text-danger">
+                                    <x-input-rupiah wire:model="hppPayload" class="form-control form-control-sm font-weight-bold text-danger text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">6101 · Beban Operasional (JT)</label>
-                                    <input type="number" step="100" wire:model="opexPayload" class="form-control form-control-sm font-weight-bold text-warning">
+                                    <x-input-rupiah wire:model="opexPayload" class="form-control form-control-sm font-weight-bold text-warning text-right" />
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">1101 · Kas & Bank (JT)</label>
-                                    <input type="number" step="100" wire:model="kasPayload" class="form-control form-control-sm font-weight-bold">
+                                    <x-input-rupiah wire:model="kasPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">1201 · Piutang Usaha (JT)</label>
-                                    <input type="number" step="100" wire:model="piutangPayload" class="form-control form-control-sm font-weight-bold">
+                                    <x-input-rupiah wire:model="piutangPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">1301 · Persediaan Barang (JT)</label>
-                                    <input type="number" step="100" wire:model="persediaanPayload" class="form-control form-control-sm font-weight-bold">
+                                    <x-input-rupiah wire:model="persediaanPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">2101 · Hutang Usaha (JT)</label>
-                                    <input type="number" step="100" wire:model="hutangPayload" class="form-control form-control-sm font-weight-bold">
+                                    <x-input-rupiah wire:model="hutangPayload" class="form-control form-control-sm font-weight-bold text-right" />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <label class="small font-weight-bold">3101 · Modal / Ekuitas (JT)</label>
+                                    <x-input-rupiah wire:model="modalPayload" class="form-control form-control-sm font-weight-bold text-right" />
+                                </div>
+                                <div class="col-md-9 small text-muted d-flex align-items-center">
+                                    <span>
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Saldo masuk ke <a href="{{ route('account-balances', ['period' => $financePeriod]) }}">Pos Akun</a>
+                                        (Penjualan→PA01, HPP→PA02, Beban→PA03, Persediaan→PA05, Piutang→PA06, Hutang→PA07, Kas→PA08, Ekuitas→PA13),
+                                        lalu 19 rasio dihitung ulang dengan target dari Katalog Rasio. Aliran = nilai YTD; neraca = saldo akhir.
+                                    </span>
                                 </div>
                             </div>
                             <div class="text-right">
@@ -185,7 +200,7 @@
                                         <th>Kelompok Rasio</th>
                                         <th>Nama Rasio Keuangan</th>
                                         <th>Target</th>
-                                        <th>Realisasi Aktual Diterima</th>
+                                        <th>Realisasi</th>
                                         <th>Pencapaian (%)</th>
                                         <th>Status Kinerja</th>
                                     </tr>
@@ -195,9 +210,9 @@
                                         <tr>
                                             <td><span class="badge badge-info">{{ $fr->category }}</span></td>
                                             <td class="font-weight-bold">{{ $fr->ratio_name }}</td>
-                                            <td><code>{{ $fr->target }}</code></td>
-                                            <td class="font-weight-bold text-primary">{{ $fr->actual }}</td>
-                                            <td><span class="badge badge-pill badge-primary">{{ $fr->achievement_pct }}%</span></td>
+                                            <td><code>{{ $fr->display($fr->target) }}</code></td>
+                                            <td class="font-weight-bold text-primary">{{ $fr->display($fr->actual) }}</td>
+                                            <td><span class="badge badge-pill badge-primary">{{ number_format((float) $fr->achievement_pct, 1, ',', '.') }}%</span></td>
                                             <td>
                                                 <span class="badge badge-{{ $fr->status == 'Tercapai' ? 'success' : ($fr->status == 'Waspada' ? 'warning' : 'danger') }}">
                                                     {{ $fr->status }}
@@ -296,11 +311,22 @@
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
                                         <label>Departemen Pengirim</label>
-                                        <input type="text" wire:model="deptPayload" class="form-control form-control-sm" placeholder="PROD / QC / HRD">
+                                        <select wire:model.live="deptPayload" class="form-control form-control-sm @error('deptPayload') is-invalid @enderror">
+                                            @foreach($units as $u)
+                                                <option value="{{ $u->code }}">{{ $u->code }} — {{ \Illuminate\Support\Str::limit($u->name, 30) }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="form-group col-md-6">
-                                        <label>Kode KPI Acuan</label>
-                                        <input type="text" wire:model="kpiCodePayload" class="form-control form-control-sm" placeholder="KPI-PROD-001">
+                                        <label>Kode KPI Acuan <small class="text-muted">(periode {{ $currentPeriod }})</small></label>
+                                        <select wire:model.live="kpiCodePayload" class="form-control form-control-sm @error('kpiCodePayload') is-invalid @enderror">
+                                            @forelse($kpiOptions as $k)
+                                                <option value="{{ $k->kpi_code }}">{{ $k->kpi_code }} — {{ \Illuminate\Support\Str::limit($k->kpi_name, 30) }}</option>
+                                            @empty
+                                                <option value="">belum ada sasaran di unit ini</option>
+                                            @endforelse
+                                        </select>
+                                        @error('kpiCodePayload') <span class="invalid-feedback">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
                                 <div class="form-row">
@@ -315,7 +341,8 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Tautan URL Bukti Evidensi (S3 / Cloud PDF)</label>
-                                    <input type="url" wire:model="evidenceUrlPayload" class="form-control form-control-sm">
+                                    <input type="url" wire:model="evidenceUrlPayload" class="form-control form-control-sm @error('evidenceUrlPayload') is-invalid @enderror" placeholder="https://…">
+                                    <small class="text-muted">Target KPI yang tertaut Cascade KPI tidak diubah oleh payload.</small>
                                 </div>
                                 @can('manage integration')
                                 <button type="submit" class="btn btn-primary btn-sm btn-block">

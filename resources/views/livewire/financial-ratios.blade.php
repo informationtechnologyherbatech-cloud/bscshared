@@ -5,7 +5,7 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-coins text-success mr-2"></i> Rasio Keuangan (Level 2)
+                        <i class="fas fa-percent text-teal mr-2"></i> Rasio Keuangan (Level 2)
                     </h1>
                 </div>
                 <div class="col-sm-6 text-right">
@@ -56,7 +56,7 @@
             <div class="card card-outline card-success">
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
                     <h3 class="card-title font-weight-bold mb-2 mb-md-0">
-                        <i class="fas fa-list mr-1"></i> Daftar 7 Rasio Keuangan Utama (5 Kategori)
+                        <i class="fas fa-list mr-1"></i> Daftar Rasio Keuangan
                     </h3>
                     <div class="card-tools d-flex flex-wrap align-items-center">
                         <select wire:model.live="selectedCategory" class="form-control form-control-sm mr-2 mb-1 mb-md-0" style="width: 160px;">
@@ -109,24 +109,24 @@
                                             <button wire:click="cancelEdit" class="btn btn-xs btn-secondary" title="Batal"><i class="fas fa-times"></i></button>
                                         </td>
                                     @else
-                                        <td class="text-center">{{ number_format($r->target, 2) }}</td>
-                                        <td class="text-center font-weight-bold">{{ number_format($r->actual, 2) }}</td>
+                                        <td class="text-center">{{ $r->display($r->target) }}</td>
+                                        <td class="text-center font-weight-bold">{{ $r->display($r->actual) }}</td>
                                         <td class="text-center font-weight-bold text-teal">
                                             {{ number_format($r->achievement_pct, 1) }}%
                                         </td>
                                         <td class="text-center">
-                                            @if($r->status === 'Tercapai')
-                                                <span class="badge badge-tercapai px-2 py-1"><i class="fas fa-check-circle"></i> Tercapai</span>
-                                            @elseif($r->status === 'Waspada')
-                                                <span class="badge badge-waspada px-2 py-1"><i class="fas fa-exclamation-circle"></i> Waspada</span>
-                                            @else
-                                                <span class="badge badge-dibawah px-2 py-1"><i class="fas fa-times-circle"></i> Off-Target</span>
-                                            @endif
+                                            <x-status-badge :status="$r->status" />
                                         </td>
                                         <td class="text-center">
+                                            @if($r->isComputed())
+                                                <a href="{{ route('account-balances', ['period' => $selectedPeriod]) }}" class="btn btn-xs btn-outline-info" title="Dihitung dari pos akun — ubah lewat menu Pos Akun">
+                                                    <i class="fas fa-calculator"></i> Otomatis
+                                                </a>
+                                            @else
                                             <button wire:click="editRatio({{ $r->id }})" class="btn btn-xs {{ $isClosed ? 'btn-secondary' : 'btn-primary' }}" {{ $isClosed ? 'disabled' : '' }} title="{{ $isClosed ? 'Terkunci' : 'Edit' }}">
                                                 <i class="fas {{ $isClosed ? 'fa-lock' : 'fa-edit' }}"></i> Edit
                                             </button>
+                                            @endif
                                         </td>
                                     @endif
                                 </tr>

@@ -205,7 +205,7 @@ class ForcePasswordChangeTest extends TestCase
     public function test_a_new_user_is_asked_to_change_the_password_by_default(): void
     {
         $this->seed(RolesAndPermissionsSeeder::class);
-        $this->actingAs(User::where('email', 'superadmin@herbatech.co.id')->firstOrFail());
+        $this->actingAs(User::where('email', 'superadmin@emc.co.id')->firstOrFail());
 
         Livewire::test(ManageUsers::class)
             ->call('openCreate')
@@ -222,7 +222,7 @@ class ForcePasswordChangeTest extends TestCase
     public function test_the_super_admin_can_turn_the_requirement_off(): void
     {
         $this->seed(RolesAndPermissionsSeeder::class);
-        $this->actingAs(User::where('email', 'superadmin@herbatech.co.id')->firstOrFail());
+        $this->actingAs(User::where('email', 'superadmin@emc.co.id')->firstOrFail());
 
         Livewire::test(ManageUsers::class)
             ->call('openCreate')

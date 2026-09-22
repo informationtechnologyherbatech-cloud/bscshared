@@ -142,6 +142,494 @@ h1, h2, h3, h4, h5, h6 {
     padding: 12px 16px 4px;
 }
 
+/* Ikon menu sidebar dalam bingkai (tile) — tetap rapi saat sidebar diciutkan. */
+.sidebar-dark-teal .nav-sidebar .nav-link > .nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin-right: 0.55rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #85bdbc;
+    background: rgba(255, 255, 255, 0.06);
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-dark-teal .nav-sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+}
+
+.sidebar-dark-teal .nav-sidebar .nav-link:hover > .nav-icon {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.sidebar-dark-teal .nav-sidebar .nav-link.active > .nav-icon {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.sidebar-mini.sidebar-collapse .main-sidebar:not(:hover) .nav-sidebar .nav-link > .nav-icon {
+    margin-right: 0;
+}
+
+/* Ikon judul halaman: bingkai lembut, warna seragam dengan menu. */
+.content-header h1 > i.fas:first-child {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    margin-right: 0.6rem !important;
+    border-radius: 10px;
+    font-size: 1.15rem;
+    vertical-align: middle;
+    color: var(--c-teal) !important;
+    background: var(--c-teal-soft);
+    box-shadow: inset 0 0 0 1px rgba(0, 128, 128, 0.12);
+}
+
+/* ==========================================================================
+   Navbar chip: ikon berbingkai + keterangan kecil + nilai
+   ========================================================================== */
+.navbar-teal .nb-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0 !important;
+    border-radius: 10px;
+    transition: background-color 0.15s ease;
+}
+
+.navbar-teal .nb-toggle:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.navbar-teal .nb-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    height: 44px;
+    margin-left: 0.4rem;
+    padding: 0 0.75rem 0 0.35rem !important;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.navbar-teal a.nb-chip:hover,
+.navbar-teal .show > a.nb-chip {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.24);
+}
+
+.nb-chip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    font-size: 0.9rem;
+    color: #003535;
+    background: linear-gradient(135deg, #99d1d0 0%, #75f6f6 100%);
+}
+
+/* Chip entitas: logo entitas aktif di bingkai putih. */
+.nb-chip-logo {
+    padding: 3px;
+    background: #ffffff;
+}
+
+.nb-chip-logo img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.nb-chip-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+}
+
+.nb-chip-text small {
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.nb-chip-text strong {
+    font-size: 0.92rem;
+    color: #ffffff;
+}
+
+.nb-user .nb-chip-text small {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.72rem;
+}
+
+.nb-chip-caret {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.nb-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: linear-gradient(135deg, #1cb5b5 0%, #006a6a 100%);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+/* Dropdown pilih entitas */
+.nb-entity-menu {
+    min-width: 330px;
+    padding: 0.4rem;
+    margin-top: 0.5rem !important;
+    border: 0;
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 34, 34, 0.22), 0 0 0 1px rgba(0, 53, 53, 0.06);
+}
+
+.nb-entity-menu-head {
+    padding: 0.45rem 0.7rem 0.55rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--c-text-muted);
+}
+
+.nb-entity-item {
+    display: flex !important;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0.65rem !important;
+    border-radius: 10px;
+    white-space: normal;
+    transition: background-color 0.12s ease;
+}
+
+.nb-entity-item + .nb-entity-item,
+.nb-entity-menu form + form {
+    margin-top: 2px;
+}
+
+.nb-entity-item:hover,
+.nb-entity-item:focus {
+    background: var(--c-surface);
+}
+
+.nb-entity-item.is-active,
+.nb-entity-item.is-active:hover {
+    color: var(--c-text-primary);
+    background: var(--c-teal-soft);
+    box-shadow: inset 0 0 0 1px rgba(0, 128, 128, 0.25);
+}
+
+.nb-entity-logo {
+    flex: 0 0 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 4px;
+    border-radius: 10px;
+    font-weight: 700;
+    color: var(--c-teal);
+    background: #ffffff;
+    box-shadow: 0 0 0 1px var(--c-outline-variant);
+}
+
+.nb-entity-logo img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.nb-entity-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.nb-entity-text strong {
+    font-size: 0.95rem;
+}
+
+.nb-entity-text small {
+    color: var(--c-text-muted);
+}
+
+.nb-entity-tag {
+    align-self: flex-start;
+    margin-top: 0.25rem;
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--c-teal-dark);
+    background: rgba(0, 128, 128, 0.1);
+}
+
+.nb-entity-mark {
+    font-size: 0.8rem;
+    color: var(--c-outline-variant);
+}
+
+.nb-entity-item.is-active .nb-entity-mark {
+    font-size: 1.1rem;
+    color: var(--c-teal);
+}
+
+/* ==========================================================================
+   Kartu Skor Puncak (Apex)
+   ========================================================================== */
+.apex-card {
+    --apex-accent: #99d1d0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 1.25rem;
+    padding: 1.25rem 1.4rem;
+    border-radius: 16px;
+    color: #ffffff;
+    background:
+        radial-gradient(circle at 12% 20%, rgba(117, 246, 246, 0.16), transparent 45%),
+        linear-gradient(120deg, #002b2b 0%, #004d4d 55%, #006a6a 100%);
+    box-shadow: 0 10px 28px rgba(0, 43, 43, 0.25);
+}
+
+.apex-good { --apex-accent: #4ade80; }
+.apex-warn { --apex-accent: #fbbf24; }
+.apex-bad  { --apex-accent: #f87171; }
+.apex-none { --apex-accent: rgba(255, 255, 255, 0.45); }
+
+.apex-main {
+    display: flex;
+    flex: 1 1 380px;
+    align-items: center;
+    gap: 1.25rem;
+    min-width: 0;
+}
+
+.apex-gauge {
+    position: relative;
+    flex: 0 0 128px;
+    width: 128px;
+    height: 128px;
+}
+
+.apex-gauge svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.apex-gauge circle {
+    fill: none;
+    stroke-width: 10;
+}
+
+.apex-gauge-track {
+    stroke: rgba(255, 255, 255, 0.12);
+}
+
+.apex-gauge-value {
+    stroke: var(--apex-accent);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s ease;
+    filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.25));
+}
+
+.apex-gauge-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.apex-gauge-label strong {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.9rem;
+    font-weight: 800;
+}
+
+.apex-gauge-label strong small {
+    font-size: 0.95rem;
+    font-weight: 700;
+    opacity: 0.8;
+}
+
+.apex-gauge-label span {
+    margin-top: 0.3rem;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.apex-eyebrow {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fcd34d;
+}
+
+.apex-status {
+    display: inline-flex;
+    align-items: center;
+    margin: 0.4rem 0 0.55rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--apex-accent);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 0 0 1px var(--apex-accent);
+}
+
+.apex-formula {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.apex-formula strong {
+    color: #ffffff;
+}
+
+.apex-parts {
+    display: flex;
+    flex: 1 1 380px;
+    gap: 0.75rem;
+}
+
+.apex-part {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    text-align: left;
+    color: inherit;
+    background: rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.apex-part:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+}
+
+.apex-part:focus-visible {
+    outline: 2px solid #75f6f6;
+    outline-offset: 2px;
+}
+
+.apex-part-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.8rem;
+}
+
+.apex-part-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    font-size: 0.7rem;
+    color: #003535;
+    background: #99d1d0;
+}
+
+.apex-part-name {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.apex-part-weight {
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.75);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.apex-part-score {
+    margin: 0.45rem 0 0.4rem;
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 800;
+}
+
+.apex-part-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+}
+
+.apex-part-bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #1cb5b5, #75f6f6);
+}
+
+.apex-part.is-empty .apex-part-score {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.apex-part-note {
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    color: #fcd34d;
+}
+
+@media (max-width: 575.98px) {
+    .apex-main {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .apex-parts {
+        flex-direction: column;
+    }
+}
+
 /* ==========================================================================
    Button System
    ========================================================================== */
@@ -423,6 +911,25 @@ h1, h2, h3, h4, h5, h6 {
         padding-right: 0.5rem;
     }
 
+    .navbar-teal .nb-chip {
+        margin-left: 0.25rem;
+        padding-right: 0.5rem !important;
+    }
+
+    .nb-chip-text small {
+        display: none;
+    }
+
+    /* HP: chip entitas cukup logonya; periode & avatar tetap tampil. */
+    .nb-entity-chip .nb-chip-text,
+    .navbar-teal .nb-chip-caret {
+        display: none;
+    }
+
+    .nb-period-menu {
+        min-width: min(320px, calc(100vw - 24px));
+    }
+
     /* ---- Tombol aksi berjajar pada kepala kartu ---- */
     .card-header .btn-group {
         width: 100%;
@@ -439,4 +946,366 @@ h1, h2, h3, h4, h5, h6 {
         padding-left: 0.75rem;
         padding-right: 0.75rem;
     }
+}
+
+/* ==========================================================================
+   Pilihan (select): tampilan pemicu; panel pencariannya di partials/smart-select
+   ========================================================================== */
+select.form-control:not([multiple]):not([size]),
+select.custom-select:not([multiple]):not([size]) {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 2.1rem;
+    border-radius: 9px;
+    border-color: #cbd5e1;
+    background-color: #ffffff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23008080' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 14px 14px;
+    cursor: pointer;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+select.form-control:not([multiple]):not([size]):hover,
+select.custom-select:not([multiple]):not([size]):hover {
+    border-color: #1cb5b5;
+}
+
+select.form-control:not([multiple]):not([size]):focus,
+select.custom-select:not([multiple]):not([size]):focus {
+    border-color: #1cb5b5;
+    box-shadow: 0 0 0 3px rgba(28, 181, 181, 0.18);
+}
+
+select.form-control:disabled,
+select.custom-select:disabled {
+    cursor: not-allowed;
+    background-color: #f1f5f9;
+}
+
+select.form-control.is-invalid:not([multiple]):not([size]) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23dc3545' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.7rem center;
+    background-size: 14px 14px;
+}
+
+/* ==========================================================================
+   Modal: kepala putih berikon, kaki rata kanan; varian konfirmasi di tengah
+   ========================================================================== */
+.modal-content {
+    border: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 34, 34, 0.28);
+}
+
+.modal-backdrop.show {
+    opacity: 1;
+    background-color: rgba(0, 34, 34, 0.45);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+}
+
+/* Modal yang dirender Livewire (tanpa JS Bootstrap) memakai latar yang sama. */
+.modal-lw {
+    overflow-y: auto;
+    background: rgba(0, 34, 34, 0.45);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    animation: modal-latar 0.15s ease-out;
+}
+
+.modal-lw .modal-dialog {
+    animation: modal-masuk 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes modal-latar { from { opacity: 0; } }
+@keyframes modal-masuk { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+
+.modal-hd {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 1.1rem 1.4rem;
+    background: #ffffff;
+    border-bottom: 1px solid #edf2f2;
+}
+
+.modal-hd-icon {
+    flex: 0 0 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    color: var(--c-teal);
+    background: var(--c-teal-soft);
+    box-shadow: inset 0 0 0 1px rgba(0, 128, 128, 0.12);
+}
+
+.modal-hd .modal-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--c-text-primary);
+}
+
+.modal-hd small {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.8rem;
+    color: var(--c-text-muted);
+}
+
+.modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    font-size: 1rem;
+    color: #64748b;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.modal-close:hover {
+    color: var(--c-text-primary);
+    background: #f1f5f9;
+}
+
+.modal-close--float {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 1;
+}
+
+.modal-content > .modal-body {
+    padding: 1.25rem 1.4rem;
+}
+
+.modal-ft {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.9rem 1.4rem;
+    background: #f8fafb;
+    border-top: 1px solid #edf2f2;
+}
+
+.modal-ft .btn {
+    min-width: 100px;
+    border-radius: 9px;
+    font-weight: 600;
+}
+
+.btn-ghost {
+    color: #475569;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+}
+
+.btn-ghost:hover,
+.btn-ghost:focus {
+    color: var(--c-text-primary);
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+/* Konfirmasi: ikon besar di tengah, dua tombol selebar kartu. */
+.modal-confirm .modal-body {
+    padding: 2rem 1.75rem 1.25rem !important;
+    text-align: center;
+}
+
+.modal-confirm-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    font-size: 1.75rem;
+    color: #dc3545;
+    background: #fdecee;
+    box-shadow: 0 0 0 8px #fef6f7;
+}
+
+.modal-confirm h5 {
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--c-text-primary);
+}
+
+.modal-confirm p {
+    margin-bottom: 0;
+    font-size: 0.92rem;
+    color: var(--c-text-secondary);
+}
+
+.modal-confirm .modal-ft {
+    flex-wrap: nowrap;
+    padding: 0.5rem 1.75rem 1.75rem;
+    background: #ffffff;
+    border-top: 0;
+}
+
+.modal-confirm .modal-ft > .btn,
+.modal-confirm .modal-ft > form {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.modal-confirm .modal-ft > form .btn {
+    width: 100%;
+}
+
+/* Dropdown periode aktif (navbar) */
+.nb-period-menu {
+    min-width: 320px;
+}
+
+.nb-period-scroll {
+    max-height: 320px;
+    padding: 0 0.3rem;
+    overflow-y: auto;
+}
+
+.nb-period-year {
+    padding: 0.5rem 0.4rem 0.3rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--c-teal-dark);
+}
+
+.nb-period-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-bottom: 0.3rem;
+}
+
+.nb-period-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 0.4rem 0.2rem;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    line-height: 1.15;
+    color: var(--c-text-primary);
+    background: var(--c-surface);
+    cursor: pointer;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.nb-period-item:hover {
+    border-color: rgba(0, 128, 128, 0.35);
+    background: #ffffff;
+}
+
+.nb-period-item strong {
+    font-size: 0.9rem;
+}
+
+.nb-period-item small {
+    font-size: 0.66rem;
+    color: var(--c-text-muted);
+    white-space: nowrap;
+}
+
+.nb-period-item.is-active {
+    color: #ffffff;
+    background: linear-gradient(135deg, #006a6a 0%, #1cb5b5 100%);
+    box-shadow: 0 3px 10px rgba(0, 106, 106, 0.3);
+}
+
+.nb-period-item.is-active small {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.nb-period-foot {
+    margin: 0.4rem 0.3rem 0.2rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 9px;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--c-text-secondary);
+    background: var(--c-teal-soft);
+}
+
+/* Isian rupiah (<x-input-rupiah>) di dalam .input-group: pembungkus Alpine-nya
+   harus ikut melebar seperti .form-control, dan sudut kanannya menyambung tombol. */
+.input-group > [x-data] {
+    position: relative;
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+}
+
+.input-group > [x-data]:not(:last-child) > .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* Chip periode: ikon mini kalender (pita tahun + singkatan bulan). */
+.nb-cal {
+    display: inline-flex;
+    flex: 0 0 34px;
+    flex-direction: column;
+    width: 34px;
+    height: 36px;
+    overflow: hidden;
+    border-radius: 8px;
+    text-align: center;
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(0, 53, 53, 0.08);
+}
+
+.nb-cal-year {
+    display: block;
+    padding: 1px 0;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    color: #ffffff;
+    background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+}
+
+.nb-cal-month {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #003535;
+}
+
+.navbar-teal a.nb-chip:hover .nb-cal {
+    transform: translateY(-1px) rotate(-3deg);
+}
+
+.nb-cal {
+    transition: transform 0.15s ease;
 }

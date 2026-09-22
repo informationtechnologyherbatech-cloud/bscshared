@@ -345,39 +345,48 @@
         }
     </style>
 
+    @php
+        // Skor perspektif & F1 berskala 0–100; ditampilkan sebagai indeks 0–1 seperti wiring versi lama.
+        $skor = fn ($n) => $n === null ? '—' : number_format($n / 100, 3, ',', '.');
+        $rp = fn ($n) => $n === null ? '—' : 'Rp '.number_format((float) $n, 0, ',', '.');
+        $angka = fn ($n) => rtrim(rtrim(number_format((float) $n, 4, ',', '.'), '0'), ',');
+        $warnaSkor = fn ($n) => $n === null ? '#94a3b8' : ($n >= 90 ? '#10b981' : ($n >= 80 ? '#f59e0b' : '#e11d48'));
+    @endphp
+
     <div x-data="{ darkTheme: true }" :class="darkTheme ? 'wiring-theme-dark' : 'wiring-theme-light'">
-        
+
         <!-- Content Header -->
         <div class="content-header p-2">
             <div class="container-fluid">
                 <div class="row mb-2 align-items-center">
-                    <div class="col-sm-6">
+                    <div class="col-lg-6">
                         <h1 class="m-0 font-weight-bold" :class="darkTheme ? 'text-white' : 'text-dark'">
-                            <i class="fas fa-project-diagram text-teal mr-2"></i> Wiring / Peta Hubungan Transmisi Kaskade
+                            <i class="fas fa-diagram-project text-teal mr-2"></i> Wiring / Peta Hubungan Transmisi Kaskade
                         </h1>
+                        <small class="text-muted">{{ $entity?->legal_name ?? 'Entitas aktif' }} — target revenue → perspektif rasio → unit kerja, ditarik dari Cascade KPI.</small>
                     </div>
-                    <div class="col-sm-6 text-right">
-                        <div class="form-inline float-right">
-                            <!-- Theme Toggle Button -->
-                            <button type="button" @click="darkTheme = !darkTheme" class="btn btn-sm mr-3 font-weight-bold shadow-sm" :class="darkTheme ? 'btn-outline-warning' : 'btn-outline-dark'">
+                    <div class="col-lg-6 text-lg-right mt-2 mt-lg-0">
+                        <div class="form-inline justify-content-lg-end">
+                            <button type="button" @click="darkTheme = !darkTheme" class="btn btn-sm mr-3 mb-1 font-weight-bold shadow-sm" :class="darkTheme ? 'btn-outline-warning' : 'btn-outline-dark'">
                                 <i class="fas" :class="darkTheme ? 'fa-sun mr-1' : 'fa-moon mr-1'"></i>
                                 <span x-text="darkTheme ? 'Light Theme' : 'Dark Theme'"></span>
                             </button>
 
                             <label for="periodSelW" class="mr-2 font-weight-bold" :class="darkTheme ? 'text-light' : 'text-dark'">Periode:</label>
-                            <select wire:model.live="selectedPeriod" id="periodSelW" class="form-control form-control-sm border-teal mr-3" :class="darkTheme ? 'bg-dark text-white' : ''">
-                                @foreach($periods as $p)
+                            <select wire:model.live="selectedPeriod" id="periodSelW" class="form-control form-control-sm border-teal mr-3 mb-1" :class="darkTheme ? 'bg-dark text-white' : ''">
+                                @forelse($periods as $p)
                                     <option value="{{ $p }}">{{ $p }}</option>
-                                @endforeach
+                                @empty
+                                    <option value="{{ $selectedPeriod }}">{{ $selectedPeriod }}</option>
+                                @endforelse
                             </select>
 
-                            <!-- Navigation Pills -->
-                            <div class="btn-group btn-group-sm shadow-sm" role="group">
+                            <div class="btn-group btn-group-sm shadow-sm mb-1" role="group">
                                 <button type="button" wire:click="switchTab('flow')" class="btn {{ $activeTab === 'flow' ? 'btn-teal font-weight-bold' : 'btn-outline-secondary' }}">
                                     <i class="fas fa-layer-group mr-1"></i> Wiring Rasio (Makro)
                                 </button>
                                 <button type="button" wire:click="switchTab('cascade')" class="btn {{ $activeTab === 'cascade' ? 'btn-teal font-weight-bold' : 'btn-outline-secondary' }}">
-                                    <i class="fas fa-list-check mr-1"></i> Wiring Sasaran Mutu (64 KPI)
+                                    <i class="fas fa-list-check mr-1"></i> Wiring Sasaran Mutu ({{ $objectiveCount }} KPI)
                                 </button>
                             </div>
                         </div>
@@ -389,63 +398,73 @@
         <section class="content">
             <div class="container-fluid">
 
-                <!-- TOP FILTER BAR (PERSPECTIVES & UNIT WORK SELECT) -->
+                <!-- FILTER: PERSPEKTIF & UNIT KERJA -->
                 <div class="card mb-4 border-0 elevation-1" :class="darkTheme ? 'bg-dark text-white' : ''" style="border-radius: 14px;">
                     <div class="card-body p-3">
                         <div class="row align-items-center">
-                            <div class="col-lg-8 mb-2 mb-lg-0">
+                            <div class="col-lg-7 mb-2 mb-lg-0">
                                 @foreach($perspectives as $p)
-                                    <div class="category-pill-item" style="border-color: {{ $p['border'] }};">
+                                    <div class="category-pill-item" style="border-color: {{ $p['color'] }};">
                                         <span class="dot-indicator-sm" style="background-color: {{ $p['color'] }};"></span>
                                         <span>{{ $p['name'] }}</span>
-                                        <span class="text-muted ml-2" style="font-size: 11px;">{{ $p['score'] }}</span>
+                                        <span class="ml-2 font-weight-bold" style="font-size: 11px; color: {{ $warnaSkor($p['score']) }};">{{ $skor($p['score']) }}</span>
                                     </div>
                                 @endforeach
                             </div>
-                            
-                            <div class="col-lg-4 text-lg-right">
-                                <div class="d-inline-flex align-items-center gap-2">
+
+                            <div class="col-lg-5 text-lg-right">
+                                <div class="d-inline-flex align-items-center">
                                     <label for="unitSelect" class="mr-2 font-weight-bold small text-muted mb-0">UNIT KERJA:</label>
-                                    <select wire:model.live="selectedUnit" id="unitSelect" class="form-control form-control-sm border-teal d-inline-block" :class="darkTheme ? 'bg-dark text-white' : ''" style="width: auto;">
+                                    <select wire:model.live="selectedUnit" id="unitSelect" class="form-control form-control-sm border-teal d-inline-block" :class="darkTheme ? 'bg-dark text-white' : ''" style="width: auto; max-width: 240px;">
                                         <option value="all">Semua unit</option>
                                         @foreach($departments as $d)
-                                            <option value="{{ $d['code'] }}">{{ $d['name'] }}</option>
+                                            <option value="{{ $d['code'] }}">{{ $d['code'] }} — {{ \Illuminate\Support\Str::limit($d['name'], 28) }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="form-check d-inline-block ml-3">
-                                    <input type="checkbox" wire:model.live="hanyaBergeser" class="form-check-input" id="checkBergeser">
-                                    <label class="form-check-label small text-muted font-weight-bold" for="checkBergeser">hanya yang bergeser</label>
+                                <div class="d-block mt-1">
+                                    <div class="form-check d-inline-block">
+                                        <input type="checkbox" wire:model.live="hanyaBergeser" class="form-check-input" id="checkBergeser">
+                                        <label class="form-check-label small text-muted font-weight-bold" for="checkBergeser">hanya yang bergeser</label>
+                                    </div>
+                                    @if($activeTab === 'flow')
+                                        <div class="form-check d-inline-block ml-3">
+                                            <input type="checkbox" wire:model.live="showPotential" class="form-check-input" id="checkPotensial">
+                                            <label class="form-check-label small text-muted font-weight-bold" for="checkPotensial">jalur potensial (Peta Pos Akun)</label>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- TAB 1: CURVED BEZIER FLOW DIAGRAM (EXACT ORIGINAL DYNAMIC WIRING) -->
                 @if($activeTab === 'flow')
-                    <div class="wiring-container-base position-relative overflow-hidden mb-4" id="wiringContainer">
-                        
-                        <!-- DYNAMIC SVG BEZIER OVERLAY -->
-                        <svg class="svg-flow-overlay" id="bezierSvgLayer" xmlns="http://www.w3.org/2000/svg" style="z-index: 1;"></svg>
+                    <!-- TAB 1: DIAGRAM ALUR -->
+                    <div class="wiring-container-base position-relative overflow-hidden mb-4" id="wiringContainer" wire:key="wiring-flow">
 
-                        <!-- 3-COLUMN BEZIER GRID -->
+                        <svg class="svg-flow-overlay" id="bezierSvgLayer" xmlns="http://www.w3.org/2000/svg" style="z-index: 1;" wire:ignore></svg>
+
                         <div class="bezier-grid-col">
-                            
-                            <!-- COLUMN 1: TARGET REVENUE -->
+
+                            <!-- KOLOM 1: TARGET REVENUE -->
                             <div>
                                 <div class="revenue-node-box position-relative" id="targetRevenueNode">
-                                    <div class="node-dot-right bg-indigo" id="revDotRight" style="background-color: #6366f1;"></div>
-                                    <small class="text-emerald font-weight-bold d-block mb-1" style="color: #10b981;">Target revenue</small>
-                                    <h2 class="font-weight-bold mb-1" style="font-size: 30px; color: #10b981; font-family: monospace;">Rp {{ number_format($cascadeValue * 1000, 0, ',', '.') }} JT</h2>
-                                    <small class="text-muted d-block" style="font-family: monospace;">k 1,000 &middot; +0.0%</small>
+                                    <div class="node-dot-right" id="revDotRight" style="background-color: #6366f1;"></div>
+                                    <small class="font-weight-bold d-block mb-1" style="color: #10b981;">Target revenue {{ substr($selectedPeriod, 0, 4) }}{{ $revenue['approved'] ? ' (disahkan)' : '' }}</small>
+                                    <h2 class="font-weight-bold mb-1" style="font-size: 22px; color: #10b981; font-family: monospace;">{{ $rp($revenue['annual']) }}</h2>
+                                    <small class="text-muted d-block" style="font-family: monospace;">YTD {{ $rp($revenue['actual_ytd']) }} / {{ $rp($revenue['target_ytd']) }}</small>
+                                    <small class="d-block font-weight-bold" style="font-family: monospace; color: {{ $warnaSkor($revenue['f1']) }};">F1 {{ $skor($revenue['f1']) }}</small>
+                                    @if(! $revenue['annual'])
+                                        <small class="text-muted d-block mt-1">Isi di menu Target Revenue / Perencanaan Target.</small>
+                                    @endif
                                 </div>
                             </div>
 
-                            <!-- COLUMN 2: 6 PERSPECTIVES -->
+                            <!-- KOLOM 2: PERSPEKTIF -->
                             <div class="d-flex flex-column justify-content-between h-100 py-2" id="perspectivesCol" style="min-height: 740px;">
-                                @foreach($perspectives as $index => $p)
-                                    <div class="wiring-node-card perspective-node-item" data-index="{{ $index }}" data-color="{{ $p['color'] }}" style="border-color: {{ $p['border'] }}; margin-bottom: 0;">
+                                @foreach($perspectives as $p)
+                                    <div class="wiring-node-card perspective-node-item" data-id="{{ $p['id'] }}" data-color="{{ $p['color'] }}" style="border-color: {{ $p['color'] }}; margin-bottom: 0;" wire:key="p-{{ $p['id'] }}">
                                         <div class="node-dot-left dot-p-left" style="background-color: {{ $p['color'] }};"></div>
                                         <div class="node-dot-right dot-p-right" style="background-color: {{ $p['color'] }};"></div>
                                         <div class="d-flex justify-content-between align-items-center">
@@ -453,195 +472,183 @@
                                                 <h6 class="font-weight-bold mb-0" style="color: {{ $p['color'] }}; font-size: 13.5px;">{{ $p['name'] }}</h6>
                                                 <small class="text-muted d-block" style="font-size: 11px;">{{ $p['detail'] }}</small>
                                             </div>
-                                            <div class="font-weight-bold h6 mb-0" :class="darkTheme ? 'text-light' : 'text-dark'" style="font-size: 13.5px;">{{ $p['score'] }}</div>
+                                            <div class="font-weight-bold h6 mb-0" style="font-size: 13.5px; color: {{ $warnaSkor($p['score']) }};">{{ $skor($p['score']) }}</div>
                                         </div>
                                     </div>
                                 @endforeach
                             </div>
 
-                            <!-- COLUMN 3: DEPARTMENTS -->
-                            <div class="d-flex flex-column justify-content-between h-100 py-2" id="departmentsCol" style="min-height: 740px;">
-                                @foreach($filteredDepartments as $index => $dept)
-                                    <div class="wiring-node-card dept-node-item d-flex justify-content-between align-items-center" data-index="{{ $index }}" style="margin-bottom: 0;">
+                            <!-- KOLOM 3: UNIT KERJA -->
+                            <div class="d-flex flex-column h-100 py-2" id="departmentsCol" style="min-height: 740px; gap: 8px;">
+                                @forelse($filteredDepartments as $dept)
+                                    <div class="wiring-node-card dept-node-item d-flex justify-content-between align-items-center"
+                                         data-links="{{ implode('|', $dept['links']) }}"
+                                         data-potential="{{ $showPotential ? implode('|', $dept['potential']) : '' }}"
+                                         style="margin-bottom: 0;" wire:key="d-{{ $dept['code'] }}">
                                         <div class="node-dot-left dot-d-left bg-secondary"></div>
                                         <div>
-                                            <h6 class="font-weight-bold mb-0" :class="darkTheme ? 'text-white' : 'text-dark'" style="font-size: 13px;">{{ $dept['name'] }}</h6>
-                                            <small class="text-muted" style="font-size: 11px;">{{ $dept['sasaran'] }} sasaran &middot; {{ $dept['bergeser'] }} bergeser</small>
+                                            <h6 class="font-weight-bold mb-0" :class="darkTheme ? 'text-white' : 'text-dark'" style="font-size: 13px;">
+                                                <span class="text-muted" style="font-size: 11px;">{{ $dept['code'] }}</span> {{ \Illuminate\Support\Str::limit($dept['name'], 34) }}
+                                            </h6>
+                                            <small class="text-muted" style="font-size: 11px;">
+                                                {{ $dept['sasaran'] }} sasaran · {{ $dept['bergeser'] }} bergeser · {{ $dept['kpi'] }} KPI cascade
+                                            </small>
                                         </div>
-                                        <div>
+                                        <div class="text-nowrap">
                                             @foreach($dept['dots'] as $dotColor)
                                                 <span class="dot-indicator-sm" style="background-color: {{ $dotColor }}; margin-right: 3px;"></span>
                                             @endforeach
                                         </div>
                                     </div>
-                                @endforeach
+                                @empty
+                                    <div class="text-muted small p-3">Tidak ada unit kerja yang cocok dengan filter.</div>
+                                @endforelse
                             </div>
-
                         </div>
-
                     </div>
 
-                    <!-- DYNAMIC BEZIER CURVE CALCULATION SCRIPT -->
-                    <script>
-                        (function() {
-                            function autoTuneWiringCurves() {
-                                const container = document.getElementById('wiringContainer');
-                                const svg = document.getElementById('bezierSvgLayer');
-                                if (!container || !svg) return;
-
-                                const cRect = container.getBoundingClientRect();
-                                svg.setAttribute('width', cRect.width);
-                                svg.setAttribute('height', cRect.height);
-
-                                const revDot = document.getElementById('revDotRight');
-                                const pNodes = document.querySelectorAll('.perspective-node-item');
-                                const dNodes = document.querySelectorAll('.dept-node-item');
-
-                                if (!revDot || pNodes.length === 0 || dNodes.length === 0) return;
-
-                                let paths = '';
-                                const rRect = revDot.getBoundingClientRect();
-                                const rx = rRect.left + rRect.width/2 - cRect.left;
-                                const ry = rRect.top + rRect.height/2 - cRect.top;
-
-                                // Connect Target Revenue to 6 Perspective input dots
-                                pNodes.forEach((pItem) => {
-                                    const pDotLeft = pItem.querySelector('.dot-p-left');
-                                    if (!pDotLeft) return;
-                                    const pRect = pDotLeft.getBoundingClientRect();
-                                    const px = pRect.left + pRect.width/2 - cRect.left;
-                                    const py = pRect.top + pRect.height/2 - cRect.top;
-                                    const color = pDotLeft.style.backgroundColor || '#10b981';
-                                    const dx = (px - rx) * 0.45;
-                                    paths += `<path d="M ${rx} ${ry} C ${rx + dx} ${ry}, ${px - dx} ${py}, ${px} ${py}" stroke="${color}" stroke-width="2.5" fill="none" opacity="0.85" />`;
-                                });
-
-                                // Connect 6 Perspectives output dots to Department input dots
-                                pNodes.forEach((pItem, pIdx) => {
-                                    const pDotRight = pItem.querySelector('.dot-p-right');
-                                    const color = pItem.getAttribute('data-color') || '#10b981';
-                                    if (!pDotRight) return;
-                                    const pRect = pDotRight.getBoundingClientRect();
-                                    const px = pRect.left + pRect.width/2 - cRect.left;
-                                    const py = pRect.top + pRect.height/2 - cRect.top;
-
-                                    dNodes.forEach((dItem, dIdx) => {
-                                        if ((pIdx === 0 && [0,1,2].includes(dIdx)) ||
-                                            (pIdx === 1 && [0,1,2,6,10].includes(dIdx)) ||
-                                            (pIdx === 2 && [0,2,3,5,7,10].includes(dIdx)) ||
-                                            (pIdx === 3 && [2,3,6,9].includes(dIdx)) ||
-                                            (pIdx === 4 && [6,9].includes(dIdx)) ||
-                                            (pIdx === 5 && [7,8,9].includes(dIdx))) {
-
-                                            const dDot = dItem.querySelector('.dot-d-left');
-                                            if (!dDot) return;
-                                            const dRect = dDot.getBoundingClientRect();
-                                            const dx = dRect.left + dRect.width/2 - cRect.left;
-                                            const dy = dRect.top + dRect.height/2 - cRect.top;
-                                            const offset = (dx - px) * 0.45;
-                                            paths += `<path d="M ${px} ${py} C ${px + offset} ${py}, ${dx - offset} ${dy}, ${dx} ${dy}" stroke="${color}" stroke-width="1.8" fill="none" opacity="0.75" />`;
-                                        }
-                                    });
-                                });
-
-                                if (paths) {
-                                    svg.innerHTML = paths;
-                                }
-                            }
-
-                            setTimeout(autoTuneWiringCurves, 100);
-                            setTimeout(autoTuneWiringCurves, 300);
-                            window.addEventListener('resize', autoTuneWiringCurves);
-                        })();
-                    </script>
-
-                <!-- TAB 2: INTERACTIVE CASCADE TESTING & DEPARTMENT KPI CARDS (IMAGE 1 & IMAGE 2 REPRODUCTION) -->
+                    <div class="small text-muted mb-4">
+                        <span class="mr-3"><svg width="28" height="6"><line x1="0" y1="3" x2="28" y2="3" stroke="#10b981" stroke-width="2.5"/></svg> KPI cascade unit mengklaim perspektif ini</span>
+                        <span><svg width="28" height="6"><line x1="0" y1="3" x2="28" y2="3" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3"/></svg> jalur potensial — unit Pemilik/Kontributor pos akun pembentuknya (Peta), belum ada KPI</span>
+                    </div>
                 @else
+                    <!-- TAB 2: SASARAN MUTU PER UNIT + UJI KASKADE REVENUE -->
                     <div class="wiring-container-base mb-4">
-                        
-                        <!-- SIMULATOR CONTROLS HEADER -->
                         <div class="row align-items-center mb-4">
                             <div class="col-md-4 mb-3 mb-md-0">
-                                <div class="revenue-node-box d-inline-block" style="min-width: 200px;">
-                                    <small class="text-emerald font-weight-bold d-block" style="color: #10b981;">Target revenue</small>
-                                    <small class="text-muted" style="font-family: monospace;">k 1,000 &middot; +0.0%</small>
+                                <div class="revenue-node-box d-inline-block" style="min-width: 220px;">
+                                    <small class="font-weight-bold d-block" style="color: #10b981;">Target revenue {{ substr($selectedPeriod, 0, 4) }}</small>
+                                    <span class="font-weight-bold" style="font-family: monospace; color: #10b981;">{{ $rp($revenue['simulated']) }}</span>
+                                    <small class="text-muted d-block" style="font-family: monospace;">
+                                        k {{ number_format($factor, 3, ',', '.') }} · {{ sprintf('%+.1f', ($factor - 1) * 100) }}%
+                                    </small>
                                 </div>
                             </div>
-                            
                             <div class="col-md-8">
                                 <div class="cascade-simulator-container">
                                     <span class="font-weight-bold text-teal"><i class="fas fa-sliders-h mr-2"></i> Uji Kaskade Revenue:</span>
-                                    <input type="range" wire:model.live="cascadeValue" min="50" max="150" step="1" class="form-control-range mx-3" style="max-width: 280px;">
-                                    <span class="badge badge-pill badge-light border text-teal px-3 py-2 font-weight-bold" style="font-size: 15px;">
-                                        Rp {{ number_format($cascadeValue * 1000, 0, ',', '.') }} JT
-                                    </span>
+                                    <input type="range" wire:model.live.debounce.150ms="cascadeValue" min="50" max="150" step="1" class="form-control-range mx-3" style="max-width: 280px;" aria-label="Revenue revisi (% dari target)">
+                                    <span class="badge badge-pill badge-light border text-teal px-3 py-2 font-weight-bold" style="font-size: 15px;">{{ $cascadeValue }}%</span>
                                 </div>
+                                <small class="text-muted d-block mt-2">
+                                    Simulasi revisi revenue: target tiap KPI menyesuaikan diri = target × (1 + e × (k − 1)).
+                                    KPI dikunci (guardrail, e = 0) tidak berubah. Tidak menyimpan apa pun — revisi resmi diisi di menu Target Revenue.
+                                </small>
                             </div>
                         </div>
 
-                        <!-- DEPARTMENT KPI TABLES (IMAGE 1 & IMAGE 2 EXACT MATCH) -->
                         <div class="row">
                             <div class="col-12">
-                                
-                                @foreach($filteredDeptCards as $card)
-                                    <div class="dept-card-wrapper">
-                                        
-                                        <!-- CARD HEADER -->
-                                        <div class="dept-card-header" style="background-color: {{ $card['header_bg'] }};">
-                                            <h5>{{ $card['title'] }}</h5>
-                                            <span class="dept-header-badge" style="color: {{ $card['badge_color'] }};">
-                                                {{ $card['sasaran_count'] }}
-                                            </span>
+                                @forelse($deptCards as $card)
+                                    <div class="dept-card-wrapper" wire:key="card-{{ $card['code'] }}">
+                                        <div class="dept-card-header" style="background-color: #0b192c;">
+                                            <h5>{{ $card['code'] }} — {{ $card['title'] }}</h5>
+                                            <span class="dept-header-badge" style="color: #0b192c;">{{ count($card['kpis']) }} sasaran</span>
                                         </div>
-
-                                        <!-- CARD TABLE -->
                                         <div class="table-responsive">
                                             <table class="kpi-table-custom">
                                                 <tbody>
                                                     @foreach($card['kpis'] as $kpi)
                                                         <tr class="dept-row-item">
-                                                            <!-- Left Accent Bar & Code -->
-                                                            <td class="left-indicator-bar" style="--bar-color: {{ $kpi['left_accent'] }}; width: 90px;">
+                                                            <td class="left-indicator-bar" style="--bar-color: {{ $kpi['accent'] }}; width: 100px;">
                                                                 <span class="kpi-code-coral">{{ $kpi['code'] }}</span>
                                                             </td>
-
-                                                            <!-- Title / Name -->
                                                             <td>
                                                                 <span :class="darkTheme ? 'text-light' : 'text-dark'">{{ $kpi['name'] }}</span>
                                                             </td>
-
-                                                            <!-- Elasticity Badge -->
-                                                            <td class="text-center" style="width: 120px;">
-                                                                @if($kpi['elasticity_type'] === 'green')
-                                                                    <span class="badge-e-green">{{ $kpi['elasticity'] }}</span>
-                                                                @elseif($kpi['elasticity_type'] === 'yellow')
-                                                                    <span class="badge-e-yellow">{{ $kpi['elasticity'] }}</span>
-                                                                @else
-                                                                    <span class="badge-e-locked">{{ $kpi['elasticity'] }}</span>
+                                                            <td class="text-center" style="width: 140px;">
+                                                                <span class="{{ $kpi['elasticity_type'] === 'green' ? 'badge-e-green' : ($kpi['elasticity_type'] === 'yellow' ? 'badge-e-yellow' : 'badge-e-locked') }}">{{ $kpi['elasticity'] }}</span>
+                                                            </td>
+                                                            <td class="text-right" style="width: 190px;">
+                                                                <span class="small text-muted d-block">target {{ $angka($kpi['target']) }} {{ $kpi['unit_label'] }}</span>
+                                                                @if(abs($factor - 1) > 1e-9 && abs($kpi['adjusted'] - $kpi['target']) > 1e-9)
+                                                                    <span class="small d-block text-info">→ disesuaikan {{ $angka($kpi['adjusted']) }}</span>
                                                                 @endif
                                                             </td>
-
-                                                            <!-- Value / Result -->
-                                                            <td class="text-right font-weight-bold" style="width: 140px;" :class="$kpi['result_highlight'] ? 'text-teal' : (darkTheme ? 'text-white' : 'text-dark')">
-                                                                {{ $kpi['result'] }}
+                                                            <td class="text-right font-weight-bold" style="width: 150px; color: {{ $kpi['accent'] }};">
+                                                                {{ $angka($kpi['actual']) }} {{ $kpi['unit_label'] }}
+                                                                <small class="d-block text-muted font-weight-normal">{{ number_format($kpi['achievement'], 1, ',', '.') }}%</small>
                                                             </td>
                                                         </tr>
                                                     @endforeach
                                                 </tbody>
                                             </table>
                                         </div>
-
                                     </div>
-                                @endforeach
-
+                                @empty
+                                    <div class="text-muted p-3">Belum ada sasaran mutu pada periode {{ $selectedPeriod }}{{ $selectedUnit !== 'all' ? ' untuk unit '.$selectedUnit : '' }}.
+                                        Masukkan KPI Lolos lewat menu Cascade KPI.</div>
+                                @endforelse
                             </div>
                         </div>
-
                     </div>
                 @endif
 
             </div>
         </section>
-
     </div>
+
+    <script>
+        (function () {
+            // Garis bezier dihitung dari posisi simpul di layar. Pasangan unit →
+            // perspektif dibaca dari atribut data-links / data-potential, bukan
+            // ditulis mati, dan digambar ulang setiap kali Livewire memperbarui DOM.
+            function gambarWiring() {
+                const container = document.getElementById('wiringContainer');
+                const svg = document.getElementById('bezierSvgLayer');
+                if (!container || !svg) return;
+
+                const c = container.getBoundingClientRect();
+                svg.setAttribute('width', c.width);
+                svg.setAttribute('height', c.height);
+
+                const titik = (el) => {
+                    const r = el.getBoundingClientRect();
+                    return { x: r.left + r.width / 2 - c.left, y: r.top + r.height / 2 - c.top };
+                };
+                const kurva = (a, b, warna, tebal, putus) => {
+                    const dx = (b.x - a.x) * 0.45;
+                    return `<path d="M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}" stroke="${warna}" stroke-width="${tebal}" fill="none" opacity="${putus ? 0.45 : 0.85}"${putus ? ' stroke-dasharray="5 4"' : ''} />`;
+                };
+
+                const rev = document.getElementById('revDotRight');
+                const perspektif = {};
+                document.querySelectorAll('.perspective-node-item').forEach((p) => { perspektif[p.dataset.id] = p; });
+
+                let paths = '';
+                if (rev) {
+                    Object.values(perspektif).forEach((p) => {
+                        const kiri = p.querySelector('.dot-p-left');
+                        if (kiri) paths += kurva(titik(rev), titik(kiri), p.dataset.color, 2.5, false);
+                    });
+                }
+
+                document.querySelectorAll('.dept-node-item').forEach((d) => {
+                    const masuk = d.querySelector('.dot-d-left');
+                    if (!masuk) return;
+                    const tujuan = titik(masuk);
+                    const gambar = (daftar, putus) => (daftar || '').split('|').filter(Boolean).forEach((id) => {
+                        const p = perspektif[id];
+                        const kanan = p && p.querySelector('.dot-p-right');
+                        if (kanan) paths += kurva(titik(kanan), tujuan, putus ? '#94a3b8' : p.dataset.color, putus ? 1.2 : 2, putus);
+                    });
+                    gambar(d.dataset.potential, true);
+                    gambar(d.dataset.links, false);
+                });
+
+                svg.innerHTML = paths;
+            }
+
+            window.bscGambarWiring = gambarWiring;
+            setTimeout(gambarWiring, 100);
+            setTimeout(gambarWiring, 400);
+
+            if (!window.__bscWiringTerdaftar) {
+                window.__bscWiringTerdaftar = true;
+                window.addEventListener('resize', () => window.bscGambarWiring && window.bscGambarWiring());
+                const daftarkan = () => window.Livewire && window.Livewire.hook('morphed', () => requestAnimationFrame(() => window.bscGambarWiring && window.bscGambarWiring()));
+                window.Livewire ? daftarkan() : document.addEventListener('livewire:init', daftarkan);
+            }
+        })();
+    </script>
 </div>

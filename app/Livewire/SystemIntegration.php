@@ -3,31 +3,54 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
-use Livewire\Component;
-use Livewire\WithFileUploads;
-use App\Models\StagingLog;
+use App\Models\AccountBalance;
 use App\Models\DepartmentObjective;
 use App\Models\FinancialRatio;
+use App\Models\Period;
+use App\Models\StagingLog;
+use App\Models\WorkUnit;
+use App\Support\Bsc\MonitoringSync;
+use App\Support\Bsc\RatioEngine;
+use App\Support\Bsc\RatioLibrary;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class SystemIntegration extends Component
 {
     use AuthorizesWrites;
     use WithFileUploads;
 
+    /**
+     * Pemetaan akun CoA payload → pos akun (satuan payload: juta rupiah).
+     * Aliran = nilai YTD; neraca = saldo akhir periode.
+     */
+    private const COA_KE_POS = [
+        'salesPayload' => 'PA01',      // 4101 Penjualan
+        'hppPayload' => 'PA02',        // 5101 HPP
+        'opexPayload' => 'PA03',       // 6101 Beban operasional
+        'persediaanPayload' => 'PA05', // 1301 Persediaan
+        'piutangPayload' => 'PA06',    // 1201 Piutang usaha
+        'hutangPayload' => 'PA07',     // 2101 Hutang usaha
+        'kasPayload' => 'PA08',        // 1101 Kas & bank
+        'modalPayload' => 'PA13',      // 3101 Modal / ekuitas
+    ];
+
     public $apiKey = 'bsc_live_secret_key_2026_hop4';
-    public $inboundEndpoint = 'http://127.0.0.1:8000/api/v1/bsc/sync/finance-coa';
+    public $inboundEndpoint = '';
     public $csvFile;
-    
+
     // Department Objective Inbound Payload
-    public $deptPayload = 'PROD';
-    public $kpiCodePayload = 'KPI-PROD-001';
-    public $targetPayload = 98.00;
-    public $actualPayload = 98.50;
-    public $evidenceUrlPayload = 'https://docs.perusahaan.co.id/reports/2026-08-ba-qc.pdf';
+    public $deptPayload = '';
+    public $kpiCodePayload = '';
+    public $targetPayload = 0;
+    public $actualPayload = 0;
+    public $evidenceUrlPayload = '';
 
     // Finance ERP Inbound Payload (Wadah Penerimaan Finance)
-    public $financePeriod = '2026-08';
+    public $financePeriod = '';
     public $salesPayload = 96000.00;      // 4101 - Penjualan Produk
     public $hppPayload = 57600.00;        // 5101 - HPP
     public $opexPayload = 23400.00;       // 6101 - Beban Operasional
@@ -36,6 +59,36 @@ class SystemIntegration extends Component
     public $persediaanPayload = 14200.00; // 1301 - Persediaan
     public $hutangPayload = 8200.00;      // 2101 - Hutang Usaha
     public $modalPayload = 73300.00;      // 3101 - Modal / Ekuitas
+
+    public function mount()
+    {
+        // Periode, departemen, dan KPI bawaan dari data entitas aktif — sebelumnya
+        // dipatok 2026-08, PROD, dan KPI-PROD-001 milik Herbatech.
+        $this->financePeriod = Period::currentPeriod();
+        $this->inboundEndpoint = url('/api/v1/bsc/sync/finance-coa');
+        $this->deptPayload = (string) (DepartmentObjective::where('period', $this->financePeriod)->orderBy('dept_code')->value('dept_code')
+            ?? WorkUnit::active()->value('code') ?? '');
+        $this->updatedDeptPayload();
+    }
+
+    /** KPI pertama departemen itu pada periode berjalan. */
+    public function updatedDeptPayload()
+    {
+        $obj = DepartmentObjective::where('period', Period::currentPeriod())
+            ->where('dept_code', $this->deptPayload)->orderBy('kpi_code')->first();
+
+        $this->kpiCodePayload = (string) ($obj?->kpi_code ?? '');
+        $this->targetPayload = $obj ? (float) $obj->target : 0;
+        $this->actualPayload = $obj ? (float) $obj->actual : 0;
+    }
+
+    public function updatedKpiCodePayload()
+    {
+        $obj = DepartmentObjective::where('period', Period::currentPeriod())->where('kpi_code', $this->kpiCodePayload)->first();
+
+        $this->targetPayload = $obj ? (float) $obj->target : 0;
+        $this->actualPayload = $obj ? (float) $obj->actual : 0;
+    }
 
     public function generateApiKey()
     {
@@ -53,93 +106,112 @@ class SystemIntegration extends Component
             return;
         }
 
-        $idempotencyKey = 'IDEMP-' . strtoupper($this->deptPayload) . '-' . date('Ymd-His');
+        $periode = Period::currentPeriod();
+        $this->validate([
+            'deptPayload' => ['required', Rule::in(WorkUnit::pluck('code')->all())],
+            'kpiCodePayload' => ['required', 'string', 'max:50'],
+            'targetPayload' => ['required', 'numeric'],
+            'actualPayload' => ['required', 'numeric'],
+            'evidenceUrlPayload' => ['nullable', 'url:http,https', 'max:500'],
+        ], [], ['deptPayload' => 'departemen', 'kpiCodePayload' => 'kode KPI', 'actualPayload' => 'realisasi']);
 
-        // Update or Create Department Objective
-        $obj = DepartmentObjective::where('period', '2026-08')
+        $obj = DepartmentObjective::where('period', $periode)
+            ->where('dept_code', $this->deptPayload)
             ->where('kpi_code', $this->kpiCodePayload)
             ->first();
 
-        if ($obj) {
-            $ach = $this->targetPayload > 0 ? round(($this->actualPayload / $this->targetPayload) * 100, 2) : 100;
-            if ($ach > 100) $ach = 100.00;
-            $status = $ach >= 100 ? 'Tercapai' : ($ach >= 80 ? 'Waspada' : 'Di Bawah Target');
+        if (! $obj) {
+            $this->addError('kpiCodePayload', 'KPI ' . $this->kpiCodePayload . ' tidak ada di departemen ' . $this->deptPayload . ' pada periode ' . $periode . '.');
 
-            $obj->update([
-                'actual' => $this->actualPayload,
-                'target' => $this->targetPayload,
-                'achievement_pct' => $ach,
-                'status' => $status,
-            ]);
+            return;
         }
 
-        // Record Staging Log
+        if (Period::where('period', $periode)->first()?->isClosed()) {
+            session()->flash('error', 'Periode ' . $periode . ' telah DITUTUP (CLOSED). Payload ditolak.');
+
+            return;
+        }
+
+        // Target KPI yang tertaut cascade ditetapkan di Cascade KPI, bukan oleh payload.
+        // Capaian mengikuti polaritas (Naik/Turun/Rentang), sama dengan Objective Departemen.
+        $target = $obj->kpi_cascade_id ? (float) $obj->target : (float) $this->targetPayload;
+        $ach = RatioLibrary::objectiveAchievement((float) $this->actualPayload, $target, $obj->polarity);
+
+        $obj->update([
+            'actual' => $this->actualPayload,
+            'target' => $target,
+            'achievement_pct' => $ach,
+            'status' => MonitoringSync::status($ach),
+        ]);
+
+        $idempotencyKey = 'IDEMP-' . strtoupper($this->deptPayload) . '-' . date('Ymd-His');
+
         StagingLog::create([
-            'period' => '2026-08',
+            'period' => $periode,
             'dept_code' => strtoupper($this->deptPayload),
             'idempotency_key' => $idempotencyKey,
             'status' => 'SCORED',
             'source_version' => 1,
-            'message' => 'Integrasi API Manual Payload dari ' . $this->deptPayload . ' berhasil diproses & diskor.',
+            'message' => 'Integrasi API Manual Payload dari ' . $this->deptPayload . ' untuk ' . $obj->kpi_code . ' berhasil diproses & diskor.',
         ]);
 
         session()->flash('message', 'Payload integrasi dari ' . $this->deptPayload . ' berhasil diproses! (Idempotency Key: ' . $idempotencyKey . ')');
     }
 
+    /**
+     * Saldo CoA dari ERP masuk ke Pos Akun, lalu 19 rasio dihitung ulang oleh
+     * mesin yang sama dengan menu Pos Akun. Sebelumnya rasio dihitung sendiri di
+     * sini dengan target tetap dan ditulis langsung ke Rasio Keuangan, sehingga
+     * angkanya bisa berbeda dengan piramida.
+     */
     public function processFinancePayload()
     {
         if ($this->lacksPermission('manage integration')) {
             return;
         }
-
-        $idempotencyKey = 'IDEMP-FIN-COA-' . date('Ymd-His');
-
-        // Hitung Kinerja Finance dari Transaksi CoA yang Diterima
-        $netProfit = (float)$this->salesPayload - (float)$this->hppPayload - (float)$this->opexPayload;
-        $npm = (float)$this->salesPayload > 0 ? round(($netProfit / (float)$this->salesPayload) * 100, 2) : 0;
-        $roe = (float)$this->modalPayload > 0 ? round(($netProfit / (float)$this->modalPayload) * 100, 2) : 0;
-        $ito = (float)$this->persediaanPayload > 0 ? round((float)$this->hppPayload / (float)$this->persediaanPayload, 2) : 0;
-        $cr  = (float)$this->hutangPayload > 0 ? round(((float)$this->kasPayload + (float)$this->piutangPayload + (float)$this->persediaanPayload) / (float)$this->hutangPayload, 2) : 0;
-        $der = (float)$this->modalPayload > 0 ? round((float)$this->hutangPayload / (float)$this->modalPayload, 2) : 0;
-        $revEmp = round((float)$this->salesPayload / 100, 2);
-
-        // Update/Create Financial Ratio Records
-        $ratios = [
-            ['cat' => 'Likuiditas', 'name' => 'Current Ratio (CR)', 'target' => 2.0, 'actual' => $cr, 'ach' => $cr >= 2.0 ? 100 : round(($cr/2.0)*100, 2)],
-            ['cat' => 'Solvabilitas', 'name' => 'Debt to Equity (DER)', 'target' => 0.5, 'actual' => $der, 'ach' => $der <= 0.5 ? 100 : round((0.5/$der)*100, 2)],
-            ['cat' => 'Aktivitas', 'name' => 'Inventory Turnover (ITO)', 'target' => 5.0, 'actual' => $ito, 'ach' => $ito >= 5.0 ? 100 : round(($ito/5.0)*100, 2)],
-            ['cat' => 'Profitabilitas', 'name' => 'Net Profit Margin (NPM)', 'target' => 10.0, 'actual' => $npm, 'ach' => $npm >= 10.0 ? 100 : round(($npm/10.0)*100, 2)],
-            ['cat' => 'Profitabilitas', 'name' => 'Return on Equity (ROE)', 'target' => 15.0, 'actual' => $roe, 'ach' => $roe >= 15.0 ? 100 : round(($roe/15.0)*100, 2)],
-            ['cat' => 'Produktivitas', 'name' => 'Revenue per Employee (REV_EMP)', 'target' => 1000.0, 'actual' => $revEmp, 'ach' => $revEmp >= 1000 ? 100 : round(($revEmp/1000)*100, 2)],
-        ];
-
-        foreach ($ratios as $r) {
-            $ach = min(100.0, max(0.0, (float)$r['ach']));
-            $status = $ach >= 100 ? 'Tercapai' : ($ach >= 80 ? 'Waspada' : 'Di Bawah Target');
-
-            FinancialRatio::updateOrCreate(
-                ['period' => $this->financePeriod, 'ratio_name' => $r['name']],
-                [
-                    'category' => $r['cat'],
-                    'target' => $r['target'],
-                    'actual' => $r['actual'],
-                    'achievement_pct' => $ach,
-                    'status' => $status,
-                ]
-            );
+        // Menulis pos akun & menghitung ulang rasio: wajib juga berhak atas rasio
+        // (sama dengan menu Pos Akun) — Admin HRIS tidak boleh mengubah data keuangan.
+        if ($this->lacksPermission('manage ratios')) {
+            return;
         }
 
-        // Simpan Log Penerimaan Data Finance ke StagingLog
+        $aturan = ['financePeriod' => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/']];
+        foreach (array_keys(self::COA_KE_POS) as $kolom) {
+            $aturan[$kolom] = ['required', 'numeric'];
+        }
+        $this->validate($aturan, ['financePeriod.regex' => 'Periode harus YYYY-MM.'], ['financePeriod' => 'periode']);
+
+        if (Period::where('period', $this->financePeriod)->first()?->isClosed()) {
+            session()->flash('error', 'Periode ' . $this->financePeriod . ' telah DITUTUP (CLOSED). Data Finance ditolak.');
+
+            return;
+        }
+
+        DB::transaction(function () {
+            foreach (self::COA_KE_POS as $kolom => $pos) {
+                AccountBalance::updateOrCreate(
+                    ['period' => $this->financePeriod, 'code' => $pos],
+                    ['amount' => (float) $this->{$kolom} * 1_000_000]
+                );
+            }
+
+            app(RatioEngine::class)->materialize($this->financePeriod);
+        });
+
+        $netProfit = (float) $this->salesPayload - (float) $this->hppPayload - (float) $this->opexPayload;
+        $idempotencyKey = 'IDEMP-FIN-COA-' . date('Ymd-His');
+
         StagingLog::create([
             'period' => $this->financePeriod,
             'dept_code' => 'FIN',
             'idempotency_key' => $idempotencyKey,
             'status' => 'SCORED',
             'source_version' => 1,
-            'message' => 'Penerimaan Data Finance ERP (Penjualan: Rp ' . number_format($this->salesPayload) . ' JT, HPP: Rp ' . number_format($this->hppPayload) . ' JT, Laba Bersih: Rp ' . number_format($netProfit) . ' JT) Berhasil Disinkronkan.',
+            'message' => 'Penerimaan Data Finance ERP ke Pos Akun (Penjualan: ' . rupiah($this->salesPayload) . ' JT, HPP: ' . rupiah($this->hppPayload) . ' JT, Laba: ' . rupiah($netProfit) . ' JT); rasio keuangan dihitung ulang.',
         ]);
 
-        session()->flash('message', 'Wadah Penerimaan Finance: Data CoA ERP & Laba Bersih (Rp ' . number_format($netProfit) . ' JT) berhasil diterima dan memperbarui skor 5 kelompok rasio!');
+        session()->flash('message', 'Data CoA Finance ' . $this->financePeriod . ' masuk ke Pos Akun dan rasio keuangan dihitung ulang. '
+            . 'Pos akun lain (beban tenaga kerja, aset & liabilitas lancar, total aset/liabilitas, modal disetor, data HRIS) dilengkapi di menu Pos Akun.');
     }
 
     public function uploadCsv()
@@ -155,7 +227,7 @@ class SystemIntegration extends Component
         $idempotencyKey = 'IDEMP-CSV-' . date('Ymd-His');
 
         StagingLog::create([
-            'period' => '2026-08',
+            'period' => Period::currentPeriod(),
             'dept_code' => 'BATCH',
             'idempotency_key' => $idempotencyKey,
             'status' => 'SCORED',
@@ -171,16 +243,19 @@ class SystemIntegration extends Component
     {
         $recentLogs = StagingLog::latest()->take(8)->get();
         $financeLogs = StagingLog::where('dept_code', 'FIN')->latest()->take(5)->get();
-        $financialRatios = FinancialRatio::where('period', $this->financePeriod)->get();
+        $financialRatios = FinancialRatio::where('period', $this->financePeriod)->orderBy('ratio_code')->get();
 
         $netProfitCalculated = (float)$this->salesPayload - (float)$this->hppPayload - (float)$this->opexPayload;
+        $periode = Period::currentPeriod();
 
         return view('livewire.system-integration', [
             'recentLogs' => $recentLogs,
             'financeLogs' => $financeLogs,
             'financialRatios' => $financialRatios,
             'netProfitCalculated' => $netProfitCalculated,
+            'units' => WorkUnit::active()->get(),
+            'kpiOptions' => DepartmentObjective::where('period', $periode)->where('dept_code', $this->deptPayload)->orderBy('kpi_code')->get(),
+            'currentPeriod' => $periode,
         ])->layout('layouts.app', ['title' => 'Integrasi Sistem & Gateway']);
     }
 }
-

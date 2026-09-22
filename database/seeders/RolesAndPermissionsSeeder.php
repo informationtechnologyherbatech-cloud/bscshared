@@ -42,6 +42,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'view gateway',         // 12 alias umbrella
             'manage integration',   // 12 write: terima payload, simulasi inbound, unggah CSV
             // FR-13 Admin
+            'manage units',         // unit kerja per entitas
+            'manage revenue',       // target & realisasi revenue (L1)
+            'view consolidation',   // konsolidasi holding (pengguna level holding)
+            'manage consolidation', // eliminasi penjualan antarentitas
             'manage users',         // can_manage_users
             'manage settings',
             'manage apikey',
@@ -70,6 +74,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 'view ibp','view sensitivity','view skenario','manage skenario',
                 'view dokumentasi',
                 'view integration','view staging','view gateway','manage integration','manage apikey',
+                'manage revenue',
+                'view consolidation','manage consolidation',
             ],
             // 9/13 — Kelola Sasaran Mutu, pantau capaian, tindak lanjut program kerja (HRIS & Mutu)
             'Admin HRIS' => [
@@ -78,6 +84,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'view wiring',
                 'view actionplans','manage actionplans',
                 'view staging','view gateway','view integration','manage integration',
+                'manage units',
                 'view dokumentasi','view ibp',
             ],
             // 8/13 — Pantau skor unitnya, input realisasi KPI timnya, uji dampak
@@ -113,11 +120,14 @@ class RolesAndPermissionsSeeder extends Seeder
         // tidak memakai kata sandi yang mudah ditebak. Akun yang sudah ada
         // tidak diubah (firstOrCreate).
         $superAdmin = User::firstOrCreate(
-            ['email' => env('SUPERADMIN_EMAIL') ?: 'superadmin@herbatech.co.id'],
+            ['email' => env('SUPERADMIN_EMAIL') ?: 'superadmin@emc.co.id'],
             [
                 'name' => 'Super Admin',
                 'password' => bcrypt(env('SUPERADMIN_PASSWORD') ?: 'Bsc#Admin2026'),
                 'is_active' => true,
+                // Kata sandi bawaan tercantum di repositori → di server (bukan lokal/testing)
+                // wajib diganti saat login pertama.
+                'must_change_password' => ! env('SUPERADMIN_PASSWORD') && ! app()->environment(['local', 'testing']),
             ]
         );
         if (!$superAdmin->hasRole('Super Admin')) {

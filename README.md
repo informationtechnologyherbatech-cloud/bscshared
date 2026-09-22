@@ -42,7 +42,7 @@ npm install && npm run build
 php artisan serve
 ```
 
-Akun awal hasil seeder: `superadmin@herbatech.co.id` / `Bsc#Admin2026`
+Akun awal hasil seeder: `superadmin@emc.co.id` / `Bsc#Admin2026`
 — **segera ganti** pada menu *Manajemen Pengguna*. Keduanya dapat ditentukan
 sendiri lewat `SUPERADMIN_EMAIL` dan `SUPERADMIN_PASSWORD` di `.env` sebelum
 seeder dijalankan. Instalasi yang sudah ada tidak diubah oleh seeder.
@@ -83,10 +83,66 @@ menghasilkan satu query; cache otomatis dibersihkan setiap pengaturan disimpan.
 
 ---
 
+## Multi-Entitas
+
+Satu aplikasi dipakai empat entitas di bawah holding **Erhanesia Mulia Corpora**:
+Herbaemas, Herbatech, AEJ (manufaktur), dan Erdigma (digital marketing). Mesin
+penilaiannya sama; yang berbeda per entitas hanya konfigurasinya — unit kerja,
+target revenue, serta katalog rasio (rasio aktif, bobot, target).
+
+- Seluruh data BSC bertanda `entity_id` dan otomatis dibatasi pada entitas yang
+  sedang dibuka lewat trait [`BelongsToEntity`](app/Models/Concerns/BelongsToEntity.php);
+  baris baru otomatis ditandai entitas aktif. Komponen tidak perlu menyaring sendiri.
+- Entitas aktif ditentukan [`EntityContext`](app/Support/EntityContext.php):
+  pengguna yang ditautkan ke satu entitas selalu berada di entitas itu; pengguna
+  **level holding** (tanpa entitas) berpindah lewat pengalih di navbar.
+- Tautkan pengguna ke entitasnya di **Manage User → Entitas**.
+- Kelola struktur organisasi tiap entitas di **Administrasi → Unit Kerja**.
+- **Jenis instalasi** diatur di `.env`:
+
+  | Variabel | Nilai | Arti |
+  |---|---|---|
+  | `BSC_DEFAULT_ENTITY` | `HERBAEMAS` · `HERBATECH` · `AEJ` · `ERDIGMA` (bawaan) | Entitas instalasi & pemilik data contoh saat `php artisan migrate:fresh --seed` (kode departemen contoh disesuaikan dengan unit kerja entitas itu). |
+  | `BSC_SEED_DEMO` | `false` (bawaan) | `db:seed` hanya menyiapkan **struktur** (entitas, unit kerja, katalog 19 rasio, peta pos akun, peran, akun admin); seluruh periode, target, dan realisasi diisi sendiri — ikuti [Panduan Pengisian](docs/panduan-pengisian.md). |
+  | | `true` | Ikut memuat data **ilustrasi** workbook untuk **keempat tingkat**: T1 target 2026 + realisasi Jan–Agu & Perencanaan Target 2027 · T2 pos akun & target rasio (F2 94,1) · T3 8 KPI cascade + Uji Indikator + sasaran mutu · T4 program kerja. Untuk demo, pelatihan, atau pengujian. |
+  | `BSC_HOLDING_MODE` | `false` (bawaan) | **Instalasi satu entitas**: semua pengguna terkunci di `BSC_DEFAULT_ENTITY`; tidak ada pengalih entitas dan menu Konsolidasi Holding. |
+  | | `true` | **Instalasi holding**: pengguna level holding dapat berpindah antarentitas dan membuka Konsolidasi Holding; `BSC_DEFAULT_ENTITY` menjadi entitas yang dibuka pertama. |
+
+  Setelah mengubahnya, jalankan `php artisan config:clear` bila konfigurasi di-cache.
+
+Metodologi lengkap dan tahapan penerapannya:
+[docs/penerapan-metodologi-excel.md](docs/penerapan-metodologi-excel.md).
+
+### Skor puncak
+
+Mengikuti workbook `Cascading_Revenue_Rasio_KPI_Erdigma_2026.xlsx`:
+
+```
+Skor puncak = 0,45 × F1 (pencapaian revenue kumulatif) + 0,55 × F2 (skor rasio keuangan)
+```
+
+F1 diisi lewat menu **Target Revenue**; angka setahunnya disusun di menu
+**Perencanaan Target** (run-rate, CAGR, regresi, bottom-up brand × channel,
+Ansoff, SWOT → rekonsiliasi → sahkan → fasing musiman).
+F2 dihitung dari 16 pos akun yang diisi di
+menu **Pos Akun**, dengan rasio, bobot, dan target dari menu **Katalog Rasio**.
+KPI unit kerja disusun di menu **Cascade KPI** (Head → Supervisor → Staff) dan
+ditelusuri ke rasio lewat **Peta Pos Akun**; yang lolos validasi Keuangan
+masuk monitoring Objective Departemen. Keuangan memvalidasinya lewat menu
+**Uji Indikator** (Uji A & Uji B sheet L4).
+
+Pengguna level holding melihat keempat entitas berdampingan di menu
+**Konsolidasi Holding**, termasuk revenue grup setelah eliminasi penjualan
+antarentitas.
+Bila salah satu belum punya data, bobotnya
+dinormalisasi ke yang tersedia. Bobot diatur di `config/bsc.php`.
+
+---
+
 ## Versi Aplikasi
 
 Versi aplikasi diambil dari helper `app_version()` pada
-[`app/Helpers/helper.php`](app/Helpers/helper.php) — sesuai pola yang dipakai
+[`app/Http/Helpers/helper.php`](app/Http/Helpers/helper.php) — sesuai pola yang dipakai
 proyek *official-website*:
 
 ```php
@@ -99,6 +155,31 @@ sehingga versi dapat dinaikkan tanpa mengubah kode. Versi ditampilkan pada foote
 halaman login, dan menu *Setting Sistem → Informasi Sistem*.
 
 Helper dimuat otomatis lewat `autoload.files` di `composer.json`.
+
+---
+
+## Fungsi Bantu Blade
+
+Seluruh fungsi bantu ada di satu berkas,
+[`app/Http/Helpers/helper.php`](app/Http/Helpers/helper.php), sesuai pola proyek
+*warh*. Aturannya:
+
+- **View tidak menyebut nama kelas.** Tidak ada `\App\Support\...` atau `::class`
+  di dalam Blade — markup jadi sulit dibaca, dan memindahkan kelas berarti
+  menyisir puluhan berkas Blade.
+- **Fungsi di sini hanya meneruskan** ke kelas aslinya; logikanya tidak disalin,
+  supaya tetap satu sumber kebenaran.
+- Semuanya dibungkus `function_exists()` dan dimuat lewat `autoload.files`.
+
+Contoh yang tersedia: `active_entity()`, `can_switch_entity()`,
+`switchable_entities()`, `entity_logo_of()`, `active_period()`,
+`periods_with_status()`, `period_label()`, `month_short()`, `period_closed()`,
+`score_status()`, `score_color()`, `score_label()`, `ratio_format()`,
+`ratio_posts()`, `post_kind_label()`, `post_is_neraca()`, `post_is_hris()`,
+`post_role_label()`, `kpi_levels()`, `kpi_statuses()`, `rupiah()`.
+
+Aturan ini dijaga tes: `BladeHelpersTest` menolak berkas Blade yang memuat
+`\App\` atau `::class`, dan memastikan seluruh Blade tetap dapat dikompilasi.
 
 ---
 
@@ -244,6 +325,7 @@ Seluruh dokumen blueprint dikumpulkan di folder [`docs/`](docs/README.md):
 - [Buku Panduan Lengkap](docs/buku-panduan-lengkap.md) — arsitektur & 12 modul
 - [Dokumentasi Integrasi HRIS & Finance](docs/dokumentasi-integrasi-hris-finance.md) — blueprint integrasi
 - [Panduan Dokumentasi API & Postman](docs/panduan-dokumentasi-api-postman.md) — standar dokumentasi API
+- [Penerapan Metodologi Excel](docs/penerapan-metodologi-excel.md) — peta workbook → aplikasi & tahapannya
 
 > Catatan: ketiga dokumen di atas menjelaskan API Gateway 4-hop
 > (`/api/bsc/sync/*`) yang **belum diimplementasikan** pada basis kode ini.

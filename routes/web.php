@@ -13,6 +13,16 @@ use App\Livewire\SystemIntegration;
 use App\Livewire\BscWiring;
 use App\Livewire\ManageUsers;
 use App\Livewire\AppSettings;
+use App\Livewire\AccountBalances;
+use App\Livewire\AccountPostMap;
+use App\Livewire\HoldingConsolidation;
+use App\Livewire\IndicatorTests;
+use App\Livewire\KpiCascades;
+use App\Livewire\RatioCatalog;
+use App\Livewire\RevenuePlanning;
+use App\Livewire\RevenueTargets;
+use App\Livewire\WorkUnits;
+use App\Support\EntityContext;
 
 // Guest: Login 
 Route::middleware('guest')->group(function () {
@@ -60,13 +70,66 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
     // 10 Skenario — view skenario
     Route::get('/skenario', \App\Livewire\ComingSoon::class)->middleware('permission:view skenario')->name('skenario')
         ->defaults('title', 'Skenario')->defaults('desc', 'Simpan/muat skenario, undo/redo 50 langkah.');
-    // 11 Dokumentasi Metode — view dokumentasi
-    Route::get('/dokumentasi', \App\Livewire\ComingSoon::class)->middleware('permission:view dokumentasi')->name('dokumentasi')
-        ->defaults('title', 'Dokumentasi Metode')->defaults('desc', 'Metodologi skoring polaritas/band/cap/agregasi + self-test 12s.');
+    // 11 Dokumentasi Metode — view dokumentasi: panduan pengisian, metode skoring, uji mandiri 12 pemeriksaan.
+    Route::get('/dokumentasi', \App\Livewire\MethodDocumentation::class)->middleware('permission:view dokumentasi')->name('dokumentasi');
     // 12 Gateway & Audit — view gateway (umbrella) + specific
     Route::get('/integration', SystemIntegration::class)->middleware('permission:view integration|view gateway')->name('system-integration');
     Route::get('/staging-logs', StagingLogs::class)->middleware('permission:view staging|view gateway')->name('staging-logs');
     // 13 Super Admin & Konfigurasi — manage users/settings/systeminfo/apikey
     Route::get('/manage-users', ManageUsers::class)->middleware('permission:manage users|can_manage_users')->name('manage-users');
     Route::get('/settings', AppSettings::class)->middleware('permission:manage settings|view systeminfo|manage apikey')->name('settings');
+
+    // Tingkat 1 — target & realisasi revenue bulanan (sumber F1 skor puncak).
+    Route::get('/revenue', RevenueTargets::class)->middleware('permission:manage revenue|view dashboard')->name('revenue');
+    // Penyusunan target setahun (L1 bagian A–G): CAGR, regresi, bottom-up, Ansoff, SWOT, rekonsiliasi.
+    Route::get('/revenue/perencanaan', RevenuePlanning::class)->middleware('permission:manage revenue|view dashboard')->name('revenue-planning');
+
+    // Tingkat 2 — pos akun (sumber 19 rasio) dan katalog rasio per entitas.
+    Route::get('/pos-akun', AccountBalances::class)->middleware('permission:manage ratios|view ratios')->name('account-balances');
+    Route::get('/katalog-rasio', RatioCatalog::class)->middleware('permission:manage ratios|view ratios')->name('ratio-catalog');
+
+    // Tingkat 3 — peta pos akun × unit dan cascade KPI Head → Supervisor → Staff.
+    Route::get('/peta-pos-akun', AccountPostMap::class)->middleware('permission:manage ratios|view ratios|view objectives')->name('account-post-map');
+    Route::get('/cascade-kpi', KpiCascades::class)->middleware('permission:view objectives|manage ratios')->name('kpi-cascades');
+
+    // Tingkat 4 — uji indikator (Uji A & B) sebelum KPI masuk monitoring.
+    Route::get('/uji-indikator', IndicatorTests::class)->middleware('permission:manage ratios|view objectives')->name('indicator-tests');
+
+    // Konsolidasi holding — hanya pengguna level holding (dicek juga di komponen).
+    Route::get('/konsolidasi', HoldingConsolidation::class)->middleware('permission:view consolidation')->name('consolidation');
+
+    // Struktur unit kerja per entitas — sumber daftar departemen.
+    Route::get('/unit-kerja', WorkUnits::class)->middleware('permission:manage units')->name('work-units');
+
+    // Pengalih entitas bagi pengguna level holding. Pengguna yang terikat satu
+    // entitas tidak dapat berpindah; permintaannya ditolak.
+    Route::post('/entitas/aktif', function (\Illuminate\Http\Request $request, EntityContext $context) {
+        $entityId = (int) $request->input('entity_id');
+
+        abort_unless($context->switchTo($request->user(), $entityId), 403, 'Anda tidak memiliki akses ke entitas tersebut.');
+
+        return redirect()->back()->with('message', 'Beralih ke entitas '.\App\Models\Entity::find($entityId)?->name.'.');
+    })->name('entity.switch');
+
+    // Periode aktif (navbar) — berlaku di semua halaman. Parameter periode/tahun di
+    // URL halaman asal dibuang agar halaman mengikuti periode yang baru dipilih.
+    Route::post('/periode/aktif', function (\Illuminate\Http\Request $request) {
+        $periode = (string) $request->input('period');
+
+        if (! \App\Models\Period::setActive($periode)) {
+            return redirect()->back()->with('error', 'Periode '.$periode.' belum dibuat.');
+        }
+
+        // Hanya kembali ke halaman aplikasi ini (Referer dari host lain diabaikan).
+        $asal = url()->previous();
+        if (! in_array(parse_url($asal, PHP_URL_HOST), [$request->getHost(), parse_url((string) config('app.url'), PHP_URL_HOST)], true)) {
+            $asal = route('dashboard');
+        }
+        $bagian = parse_url($asal);
+        parse_str($bagian['query'] ?? '', $query);
+        unset($query['period'], $query['selectedPeriod'], $query['year']);
+        $tujuan = strtok($asal, '?').($query ? '?'.http_build_query($query) : '');
+
+        return redirect()->to($tujuan);
+    })->name('period.switch');
 });

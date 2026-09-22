@@ -333,7 +333,7 @@
             <div class="row mb-2 align-items-center">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-cubes text-teal mr-2"></i> Dashboard Piramida BSC
+                        <i class="fas fa-layer-group text-teal mr-2"></i> Dashboard Piramida BSC
                         <small class="text-muted d-block" style="font-size: 13px;">Interaktif & Telusur Kinerja 4 Tingkat Perusahaan</small>
                     </h1>
                 </div>
@@ -400,35 +400,64 @@
                 </div>
             @endif
 
-            <!-- APEX SCORE SUMMARY BAR -->
-            <div class="card bg-gradient-navy text-white shadow-sm mb-4">
-                <div class="card-body py-3">
-                    <div class="row align-items-center">
-                        <div class="col-md-7">
-                            <h5 class="font-weight-bold text-uppercase mb-1 text-warning">
-                                <i class="fas fa-crown mr-2"></i> Apex Score Hop 4 (Konsolidasi)
-                            </h5>
-                            <small class="text-white-50">
-                                @if(count($apexBreakdown) > 0)
-                                    Rata-rata terbobot:
-                                    @foreach($apexBreakdown as $bagian)
-                                        <strong>{{ $bagian['weight'] }}% {{ $bagian['label'] }}</strong>{{ ! $loop->last ? ' + ' : '' }}
-                                    @endforeach
-                                    @if(count($apexBreakdown) < 3)
-                                        <span class="d-block">Tingkat tanpa data pada periode ini dikeluarkan, bobotnya dibagi ke tingkat yang tersedia.</span>
-                                    @endif
-                                @else
-                                    Belum ada data pada periode ini, sehingga skor belum dapat dihitung.
-                                @endif
-                            </small>
-                        </div>
-                        <div class="col-md-5 text-md-right text-center mt-2 mt-md-0">
-                            <span class="h2 font-weight-bold text-warning mb-0 mr-3">{{ number_format($apexScore, 1) }}%</span>
-                            <span class="badge badge-pill {{ $apexScore >= 100 ? 'badge-success' : ($apexScore >= 80 ? 'badge-warning' : 'badge-danger') }} px-3 py-2 font-weight-bold">
-                                Status: {{ $apexScore >= 100 ? 'TERCAPAI' : ($apexScore >= 80 ? 'WASPADA' : 'DI BAWAH TARGET') }}
-                            </span>
+            <!-- APEX SCORE SUMMARY -->
+            @php($adaSkor = count($apexBreakdown) > 0)
+            @php($apexTone = ! $adaSkor ? 'none' : ($apexScore >= 100 ? 'good' : ($apexScore >= 80 ? 'warn' : 'bad')))
+            @php($apexLabel = ['none' => 'Belum ada data', 'good' => 'Tercapai', 'warn' => 'Waspada', 'bad' => 'Di Bawah Target'][$apexTone])
+            @php($keliling = 2 * M_PI * 52)
+            @php($komponen = [
+                ['key' => 'revenue', 'kode' => 'F1', 'label' => 'Revenue', 'icon' => 'fa-bullseye', 'score' => $revenueScore, 'note' => $revenueScore === null ? ($revenueReason ?? 'belum ada data') : null],
+                ['key' => 'ratios', 'kode' => 'F2', 'label' => 'Rasio Keuangan', 'icon' => 'fa-percent', 'score' => $hasRatioScore ? $avgRatioScore : null, 'note' => $hasRatioScore ? null : 'belum ada rasio terhitung'],
+            ])
+            @php($bobotDipakai = collect($apexBreakdown)->pluck('weight', 'label'))
+            <div class="apex-card apex-{{ $apexTone }} mb-4">
+                <div class="apex-main">
+                    <div class="apex-gauge" role="img" aria-label="Skor puncak {{ $adaSkor ? number_format($apexScore, 1).'%' : 'belum ada' }}">
+                        <svg viewBox="0 0 120 120">
+                            <circle class="apex-gauge-track" cx="60" cy="60" r="52"></circle>
+                            <circle class="apex-gauge-value" cx="60" cy="60" r="52"
+                                    stroke-dasharray="{{ round($keliling, 2) }}"
+                                    stroke-dashoffset="{{ round($keliling * (1 - min(max($adaSkor ? $apexScore : 0, 0), 100) / 100), 2) }}"></circle>
+                        </svg>
+                        <div class="apex-gauge-label">
+                            <strong>{{ $adaSkor ? number_format($apexScore, 1) : '—' }}<small>{{ $adaSkor ? '%' : '' }}</small></strong>
+                            <span>dari 100</span>
                         </div>
                     </div>
+                    <div class="apex-info">
+                        <div class="apex-eyebrow"><i class="fas fa-crown mr-2"></i>Skor Puncak (Apex)</div>
+                        <span class="apex-status"><i class="fas {{ ['none' => 'fa-circle-question', 'good' => 'fa-circle-check', 'warn' => 'fa-triangle-exclamation', 'bad' => 'fa-circle-xmark'][$apexTone] }} mr-1"></i>{{ $apexLabel }}</span>
+                        <p class="apex-formula mb-0">
+                            @if($adaSkor)
+                                Rata-rata terbobot:
+                                @foreach($apexBreakdown as $bagian)
+                                    <strong>{{ $bagian['weight'] }}% {{ $bagian['label'] }}</strong>{{ ! $loop->last ? ' + ' : '' }}
+                                @endforeach
+                                @if(count($apexBreakdown) < count(array_filter($apexWeights)))
+                                    <span class="d-block">Tingkat tanpa data pada periode ini dikeluarkan, bobotnya dibagi ke tingkat yang tersedia.</span>
+                                @endif
+                            @else
+                                Belum ada data pada periode ini, sehingga skor belum dapat dihitung.
+                            @endif
+                        </p>
+                    </div>
+                </div>
+                <div class="apex-parts">
+                    @foreach($komponen as $k)
+                        @php($ada = $k['score'] !== null)
+                        <button type="button" class="apex-part {{ $ada ? '' : 'is-empty' }}" wire:click="selectLevel({{ $loop->iteration }})" title="Telusuri Tingkat {{ $loop->iteration }}">
+                            <div class="apex-part-head">
+                                <span class="apex-part-icon"><i class="fas {{ $k['icon'] }}"></i></span>
+                                <span class="apex-part-name">{{ $k['kode'] }} · {{ $k['label'] }}</span>
+                                <span class="apex-part-weight">{{ $ada && isset($bobotDipakai[$k['label']]) ? 'bobot '.$bobotDipakai[$k['label']].'%' : 'dikeluarkan' }}</span>
+                            </div>
+                            <div class="apex-part-score">{{ $ada ? number_format($k['score'], 1).'%' : '—' }}</div>
+                            <div class="apex-part-bar"><span style="width: {{ $ada ? min(max($k['score'], 0), 100) : 0 }}%"></span></div>
+                            @if(! $ada)
+                                <div class="apex-part-note">{{ $k['note'] }}</div>
+                            @endif
+                        </button>
+                    @endforeach
                 </div>
             </div>
 
@@ -449,10 +478,11 @@
 
                         <!-- TINGKAT 1: APEX KEUANGAN (PUNCAK SEGITIGA SEMPURNA 50% 0%) -->
                         <div class="pyramid-tier tier-1 {{ $activeLevel === 1 ? 'active-tier' : '' }}" wire:click="selectLevel(1)">
-                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[1]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[1]) }}"></span>
+                            <span class="tier-status-dot" style="background: {{ score_color($tierStatus[1]) }};" title="{{ score_label($tierStatus[1]) }}"></span>
                             <div class="tier-content">
-                                <div class="tier-title">Tingkat 1: Apex</div>
-                                <div class="tier-score">@if(count($apexBreakdown) > 0){{ number_format($apexScore, 1) }}%@else<span class="tier-empty">belum lengkap</span>@endif</div>
+                                {{-- Tingkat 1 = Revenue (L1). Skor puncak gabungan ada di kartu Apex di atas. --}}
+                                <div class="tier-title">Tingkat 1: Revenue</div>
+                                <div class="tier-score">@if($revenueScore !== null){{ number_format($revenueScore, 1) }}%@else<span class="tier-empty">{{ $revenueReason }}</span>@endif</div>
                             </div>
                             @if($activeLevel === 1)
                                 <div class="click-hint-badge"><i class="fas fa-check-circle text-warning"></i> Aktif Telusur</div>
@@ -461,13 +491,13 @@
 
                         <!-- TINGKAT 2: RASIO KEUANGAN (MID-TOP TRAPEZOID 37.5% - 62.5% TO 25% - 75%) -->
                         <div class="pyramid-tier tier-2 {{ $activeLevel === 2 ? 'active-tier' : '' }}" wire:click="selectLevel(2)">
-                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[2]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[2]) }}"></span>
+                            <span class="tier-status-dot" style="background: {{ score_color($tierStatus[2]) }};" title="{{ score_label($tierStatus[2]) }}"></span>
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-chart-line text-white mr-1"></i>
                                     <span class="d-none d-md-inline">Tingkat 2: Rasio Keuangan</span>
                                     <span class="d-md-none">T2: Rasio Keuangan</span>
                                 </div>
-                                <div class="tier-score">@if($ratioCount > 0){{ number_format($avgRatioScore, 1) }}%@else<span class="tier-empty">data belum lengkap</span>@endif</div>
+                                <div class="tier-score">@if($hasRatioScore){{ number_format($avgRatioScore, 1) }}%@else<span class="tier-empty">{{ $ratioCount > 0 ? 'target rasio belum diisi' : 'data belum lengkap' }}</span>@endif</div>
                                 <div class="tier-subtitle">{{ $ratioCount }} Rasio Keuangan <br> (Likuiditas, Solvabilitas, Aktivitas, Profitabilitas, Produktivitas)</div>
                             </div>
                             @if($activeLevel === 2)
@@ -477,7 +507,7 @@
 
                         <!-- TINGKAT 3: OBJECTIVE DEPARTEMEN (MID-BOTTOM TRAPEZOID 25% - 75% TO 12.5% - 87.5%) -->
                         <div class="pyramid-tier tier-3 {{ $activeLevel === 3 ? 'active-tier' : '' }}" wire:click="selectLevel(3)">
-                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[3]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[3]) }}"></span>
+                            <span class="tier-status-dot" style="background: {{ score_color($tierStatus[3]) }};" title="{{ score_label($tierStatus[3]) }}"></span>
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-bullseye text-white mr-1"></i>
                                     <span class="d-none d-md-inline">Tingkat 3: Objective Dept</span>
@@ -493,7 +523,7 @@
 
                         <!-- TINGKAT 4: PROGRAM KERJA / ACTION PLANS (BASE TRAPEZOID 12.5% - 87.5% TO 0% - 100%) -->
                         <div class="pyramid-tier tier-4 {{ $activeLevel === 4 ? 'active-tier' : '' }}" wire:click="selectLevel(4)">
-                            <span class="tier-status-dot" style="background: {{ \App\Support\ScoreStatus::color($tierStatus[4]) }};" title="{{ \App\Support\ScoreStatus::label($tierStatus[4]) }}"></span>
+                            <span class="tier-status-dot" style="background: {{ score_color($tierStatus[4]) }};" title="{{ score_label($tierStatus[4]) }}"></span>
                             <div class="tier-content">
                                 <div class="tier-title"><i class="fas fa-tasks text-white mr-1"></i>
                                     <span class="d-none d-md-inline">Tingkat 4: Program Kerja (Action Plans)</span>
@@ -533,11 +563,13 @@
             </div>
 
             <!-- PANEL TELUSUR DETAIL (DYNAMIC DRILL-DOWN PANEL) -->
-            <div class="card drill-down-card bg-white mb-4">
+            {{-- Klik tingkat piramida → komponen mengirim "telusur-detail" → gulir ke sini. --}}
+            <div class="card drill-down-card bg-white mb-4" id="telusurDetail" style="scroll-margin-top: 70px;"
+                 x-data x-on:telusur-detail.window="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
                 <div class="card-header bg-teal text-white d-flex justify-content-between align-items-center">
                     <h4 class="card-title font-weight-bold mb-0">
                         @if($activeLevel === 1)
-                            <i class="fas fa-crown mr-2"></i> Telusur Detail Tingkat 1: Apex Keuangan & Revenue Puncak
+                            <i class="fas fa-crown mr-2"></i> Telusur Detail Tingkat 1: Revenue & Skor Puncak
                         @elseif($activeLevel === 2)
                             <i class="fas fa-chart-line mr-2"></i> Telusur Detail Tingkat 2: Rasio Keuangan Perusahaan
                         @elseif($activeLevel === 3)
@@ -548,21 +580,23 @@
                     </h4>
 
                     <div>
+                        {{-- Filter "Semua" tidak diteruskan: halaman tujuan membacanya sebagai status. --}}
+                        @php($saringStatus = $statusFilter !== 'all' ? ['status' => $statusFilter] : [])
                         @if($activeLevel === 2)
-                            <a href="{{ route('financial-ratios', ['status' => $statusFilter, 'period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
-                                Halaman Rasio Utuh <i class="fas fa-external-link-alt ml-1"></i>
+                            <a href="{{ route('financial-ratios', $saringStatus + ['period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
+                                Buka menu Rasio Keuangan <i class="fas fa-arrow-right ml-1"></i>
                             </a>
                         @elseif($activeLevel === 3)
-                            <a href="{{ route('department-objectives', ['status' => $statusFilter, 'period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
-                                Halaman Objective Utuh <i class="fas fa-external-link-alt ml-1"></i>
+                            <a href="{{ route('department-objectives', $saringStatus + ['period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
+                                Buka menu Objective Departemen <i class="fas fa-arrow-right ml-1"></i>
                             </a>
                         @elseif($activeLevel === 4)
-                            <a href="{{ route('action-plans', ['status' => $statusFilter]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
-                                Halaman Action Plans Utuh <i class="fas fa-external-link-alt ml-1"></i>
+                            <a href="{{ route('action-plans', $saringStatus) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
+                                Buka menu Program Kerja <i class="fas fa-arrow-right ml-1"></i>
                             </a>
                         @else
                             <a href="{{ route('bsc-wiring', ['period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
-                                Lihat Wiring Causes <i class="fas fa-project-diagram ml-1"></i>
+                                Buka Wiring / Peta Hubungan <i class="fas fa-arrow-right ml-1"></i>
                             </a>
                         @endif
                     </div>
@@ -601,16 +635,30 @@
                             <div class="col-md-6 mb-3">
                                 <div class="p-3 bg-light rounded border border-teal h-100">
                                     <h5 class="font-weight-bold text-teal"><i class="fas fa-calculator mr-2"></i> Rincian Bobot Apex Score</h5>
-                                    <p class="text-muted small">Apex Score dihitung dari kombinasi realisasi Revenue puncak dan rata-rata rasio keuangan perusahaan:</p>
+                                    <p class="text-muted small">Skor puncak = {{ (float) ($apexWeights['revenue'] ?? 0) * 100 }}% × F1 (revenue) + {{ (float) ($apexWeights['ratios'] ?? 0) * 100 }}% × F2 (rasio keuangan).
+                                        Tingkat tanpa data dikeluarkan dan bobotnya dibagi ke yang tersedia.</p>
                                     <ul class="list-group list-group-flush small mb-3">
                                         <li class="list-group-item bg-transparent d-flex justify-content-between">
-                                            <span>Skor Realisasi Revenue (45%)</span>
-                                            <strong class="text-dark">96.00%</strong>
+                                            <span>Skor Revenue — F1 ({{ (float) ($apexWeights['revenue'] ?? 0) * 100 }}%)</span>
+                                            @if($revenueScore !== null)
+                                                <strong class="text-dark">{{ number_format($revenueScore, 2) }}%</strong>
+                                            @else
+                                                <span class="text-muted">{{ $revenueReason }} — dikeluarkan</span>
+                                            @endif
                                         </li>
                                         <li class="list-group-item bg-transparent d-flex justify-content-between">
-                                            <span>Skor Rata-Rata 7 Rasio Keuangan (55%)</span>
-                                            <strong class="text-dark">{{ number_format($avgRatioScore, 2) }}%</strong>
+                                            <span>Skor Rasio Keuangan — F2 ({{ (float) ($apexWeights['ratios'] ?? 0) * 100 }}%)</span>
+                                            @if($hasRatioScore)
+                                                <strong class="text-dark">{{ number_format($avgRatioScore, 2) }}%</strong>
+                                            @else
+                                                <span class="text-muted">belum ada skor — dikeluarkan</span>
+                                            @endif
                                         </li>
+                                        @if($apexBreakdown)
+                                            <li class="list-group-item bg-transparent small text-muted">
+                                                Bobot efektif periode ini: @foreach($apexBreakdown as $b){{ $b['label'] }} {{ $b['weight'] }}%@if(! $loop->last) · @endif @endforeach
+                                            </li>
+                                        @endif
                                         <li class="list-group-item bg-transparent d-flex justify-content-between font-weight-bold border-top">
                                             <span class="text-teal">Total Konsolidasi Apex Score</span>
                                             <span class="text-teal h5 font-weight-bold mb-0">{{ number_format($apexScore, 2) }}%</span>
@@ -621,23 +669,64 @@
                             <div class="col-md-6 mb-3">
                                 <div class="p-3 bg-light rounded border border-info h-100">
                                     <h5 class="font-weight-bold text-info"><i class="fas fa-chart-line mr-2"></i> Capaian Target Revenue</h5>
+                                    @php($rd = $revenueDetail)
+                                    <small class="text-muted d-block">Target setahun {{ substr($selectedPeriod, 0, 4) }}: <strong>{{ rupiah($rd['annual']) }}</strong></small>
                                     <div class="d-flex justify-content-between align-items-center mt-3">
                                         <div>
-                                            <small class="text-muted d-block">Baseline RKAP 2026</small>
-                                            <h4 class="font-weight-bold text-dark">IDR 120.00 M</h4>
+                                            <small class="text-muted d-block">Target kumulatif Jan–{{ substr($selectedPeriod, 5, 2) }}</small>
+                                            <h4 class="font-weight-bold text-dark">{{ rupiah($rd['target_ytd']) }}</h4>
                                         </div>
-                                        <div>
-                                            <small class="text-muted d-block">Realisasi Puncak</small>
-                                            <h4 class="font-weight-bold text-success">IDR 115.20 M</h4>
+                                        <div class="text-right">
+                                            <small class="text-muted d-block">Realisasi kumulatif ({{ $rd['months_actual'] }} bulan)</small>
+                                            <h4 class="font-weight-bold text-success">{{ $rd['months_actual'] ? rupiah($rd['actual_ytd']) : '—' }}</h4>
                                         </div>
                                     </div>
-                                    <div class="progress mt-3 style-progress" style="height: 10px;">
-                                        <div class="progress-bar bg-success" style="width: 96%"></div>
-                                    </div>
-                                    <div class="d-flex justify-content-between small text-muted mt-1">
-                                        <span>Capaian Target: 96.00%</span>
-                                        <span class="text-danger">Delta: -4.00%</span>
-                                    </div>
+                                    @if($revenueScore !== null)
+                                        <div class="progress mt-3 style-progress" style="height: 10px;">
+                                            <div class="progress-bar {{ $revenueScore >= 100 ? 'bg-success' : ($revenueScore >= 80 ? 'bg-warning' : 'bg-danger') }}" style="width: {{ min(100, $revenueScore) }}%"></div>
+                                        </div>
+                                        <div class="d-flex justify-content-between small text-muted mt-1">
+                                            <span>Capaian kumulatif (F1): {{ number_format($revenueScore, 2, ',', '.') }}%</span>
+                                            @php($selisih = $rd['actual_ytd'] - $rd['target_ytd'])
+                                            <span class="{{ $selisih < 0 ? 'text-danger' : 'text-success' }}">Selisih: {{ rupiah($selisih) }}</span>
+                                        </div>
+                                        @if(! empty($rd['months_missing']))
+                                            <div class="alert alert-warning small mt-3 mb-0 py-2">
+                                                <i class="fas fa-triangle-exclamation mr-1"></i>
+                                                Realisasi <strong>{{ implode(', ', $rd['months_missing']) }}</strong> belum diisi, sehingga dihitung 0 dan menurunkan F1.
+                                                Isi di <a class="font-weight-bold" href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}">Target &amp; Realisasi</a>.
+                                            </div>
+                                        @endif
+                                    @else
+                                        <div class="alert alert-light border small mt-3 mb-0">
+                                            <i class="fas fa-info-circle text-info mr-1"></i>
+                                            @switch($rd['reason'])
+                                                @case(f1_belum_difasing())
+                                                    Target setahun sudah disahkan, tetapi target bulanannya belum diisi. Buka
+                                                    <a class="font-weight-bold text-primary" href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}">Target &amp; Realisasi Revenue</a>,
+                                                    klik <strong>Bagi rata</strong> atau <strong>Pola musiman</strong>, lalu <strong>Simpan</strong>.
+                                                    @break
+                                                @case(f1_tanpa_realisasi())
+                                                    Target bulanan sudah ada, tetapi realisasi Jan–{{ substr($selectedPeriod, 5, 2) }} belum diisi di
+                                                    <a class="font-weight-bold text-primary" href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}">Target &amp; Realisasi Revenue</a>.
+                                                    @break
+                                                @default
+                                                    Belum ada target revenue {{ substr($selectedPeriod, 0, 4) }}. Susun di
+                                                    <a class="font-weight-bold text-primary" href="{{ route('revenue-planning', ['year' => substr($selectedPeriod, 0, 4)]) }}">Perencanaan Target</a>
+                                                    atau isi langsung di <a class="font-weight-bold text-primary" href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}">Target &amp; Realisasi Revenue</a>.
+                                            @endswitch
+                                        </div>
+                                    @endif
+                                    @canany(['manage revenue', 'view dashboard'])
+                                        <div class="mt-3">
+                                            <a href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-edit mr-1"></i> Isi target &amp; realisasi bulanan
+                                            </a>
+                                            <a href="{{ route('revenue-planning', ['year' => substr($selectedPeriod, 0, 4)]) }}" class="btn btn-sm btn-outline-info">
+                                                <i class="fas fa-drafting-compass mr-1"></i> Perencanaan target
+                                            </a>
+                                        </div>
+                                    @endcanany
                                 </div>
                             </div>
                         </div>
@@ -662,17 +751,11 @@
                                         <tr>
                                             <td><span class="badge badge-info">{{ $r->category }}</span></td>
                                             <td class="font-weight-bold">{{ $r->ratio_name }}</td>
-                                            <td class="text-center">{{ number_format($r->target, 2) }}</td>
-                                            <td class="text-center font-weight-bold text-dark">{{ number_format($r->actual, 2) }}</td>
+                                            <td class="text-center">{{ $r->display($r->target) }}</td>
+                                            <td class="text-center font-weight-bold text-dark">{{ $r->display($r->actual) }}</td>
                                             <td class="text-center font-weight-bold text-teal">{{ number_format($r->achievement_pct, 1) }}%</td>
                                             <td class="text-center">
-                                                @if($r->status === 'Tercapai')
-                                                    <span class="badge badge-tercapai px-2 py-1"><i class="fas fa-check-circle"></i> Tercapai</span>
-                                                @elseif($r->status === 'Waspada')
-                                                    <span class="badge badge-waspada px-2 py-1"><i class="fas fa-exclamation-triangle"></i> Waspada</span>
-                                                @else
-                                                    <span class="badge badge-dibawah px-2 py-1"><i class="fas fa-times-circle"></i> Off-Target</span>
-                                                @endif
+                                                <x-status-badge :status="$r->status" />
                                             </td>
                                             <td class="text-center">
                                                 <button wire:click="inspectItem('ratio', {{ $r->id }})" class="btn btn-xs btn-outline-teal">
@@ -716,13 +799,7 @@
                                             <td class="text-center font-weight-bold text-dark">{{ number_format($obj->actual, 1) }}</td>
                                             <td class="text-center font-weight-bold text-teal">{{ number_format($obj->achievement_pct, 1) }}%</td>
                                             <td class="text-center">
-                                                @if($obj->status === 'Tercapai')
-                                                    <span class="badge badge-tercapai px-2 py-1"><i class="fas fa-check-circle"></i> Tercapai</span>
-                                                @elseif($obj->status === 'Waspada')
-                                                    <span class="badge badge-waspada px-2 py-1"><i class="fas fa-exclamation-triangle"></i> Waspada</span>
-                                                @else
-                                                    <span class="badge badge-dibawah px-2 py-1"><i class="fas fa-times-circle"></i> Off-Target</span>
-                                                @endif
+                                                <x-status-badge :status="$obj->status" />
                                             </td>
                                             <td class="text-center">
                                                 <span class="badge badge-pill badge-light border text-purple">
@@ -794,14 +871,16 @@
 
     <!-- MODAL INSPECT TELUSUR ITEM -->
     @if($showModal && $selectedItemDetail)
-        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content border-teal shadow-lg">
-                    <div class="modal-header bg-teal text-white">
-                        <h5 class="modal-title font-weight-bold">
-                            <i class="fas fa-search-plus mr-2"></i> Inspeksi Telusur Lineage: {{ $selectedItemDetail['type'] }}
-                        </h5>
-                        <button type="button" class="close text-white" wire:click="closeModal">&times;</button>
+                <div class="modal-content">
+                    <div class="modal-hd">
+                        <span class="modal-hd-icon"><i class="fas fa-magnifying-glass-plus"></i></span>
+                        <div>
+                            <h5 class="modal-title">Inspeksi Telusur Lineage</h5>
+                            <small>{{ $selectedItemDetail['type'] }}</small>
+                        </div>
+                        <button type="button" class="modal-close" wire:click="closeModal" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                     </div>
                     <div class="modal-body">
                         <div class="p-3 bg-light rounded mb-3 border">
@@ -836,8 +915,8 @@
                             <strong>Deskripsi Alignment:</strong> {{ $selectedItemDetail['description'] }}
                         </p>
                     </div>
-                    <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary btn-sm" wire:click="closeModal">Tutup Telusur</button>
+                    <div class="modal-ft">
+                        <button type="button" class="btn btn-ghost" wire:click="closeModal">Tutup</button>
                     </div>
                 </div>
             </div>
@@ -846,14 +925,16 @@
 
     <!-- MODAL BUAT PERIODE BARU (PRD G-05) -->
     @if($showCreatePeriodModal)
-        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-teal shadow-lg">
-                    <div class="modal-header bg-teal text-white">
-                        <h5 class="modal-title font-weight-bold">
-                            <i class="fas fa-calendar-plus mr-2"></i> Tambah Periode Pelaporan Baru
-                        </h5>
-                        <button type="button" class="close text-white" wire:click="$set('showCreatePeriodModal', false)">&times;</button>
+                <div class="modal-content">
+                    <div class="modal-hd">
+                        <span class="modal-hd-icon"><i class="fas fa-calendar-plus"></i></span>
+                        <div>
+                            <h5 class="modal-title">Tambah Periode Pelaporan Baru</h5>
+                            <small>Sasaran mutu periode sebelumnya disalin dengan realisasi 0</small>
+                        </div>
+                        <button type="button" class="modal-close" wire:click="$set('showCreatePeriodModal', false)" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                     </div>
                     <div class="modal-body">
                         <div class="alert alert-info py-2" style="font-size: 12px;">
@@ -867,9 +948,9 @@
                             @enderror
                         </div>
                     </div>
-                    <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary btn-sm" wire:click="$set('showCreatePeriodModal', false)">Batal</button>
-                        <button type="button" class="btn btn-teal btn-sm font-weight-bold" wire:click="createNewPeriod">
+                    <div class="modal-ft">
+                        <button type="button" class="btn btn-ghost" wire:click="$set('showCreatePeriodModal', false)">Batal</button>
+                        <button type="button" class="btn btn-teal" wire:click="createNewPeriod">
                             <i class="fas fa-save mr-1"></i> Buat Periode
                         </button>
                     </div>

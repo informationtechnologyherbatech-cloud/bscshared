@@ -3,7 +3,12 @@
         {{-- Brand Zone — fullscreen left 42% --}}
         <div class="login-brand">
             <div class="text-center mb-4">
-                @if(entity_logo())
+                @if(group_logo())
+                    {{-- Logo holding Erhanesia Mulia Corpora --}}
+                    <div class="brand-logo-card">
+                        <img src="{{ group_logo() }}" alt="{{ config('entity.holding.name') }}">
+                    </div>
+                @elseif(entity_logo())
                     <img src="{{ entity_logo() }}" alt="{{ entity_name() }}" style="max-height:72px; max-width:180px; object-fit:contain;">
                 @else
                     <div class="icon-circle"><i class="fas fa-chart-line"></i></div>
@@ -14,6 +19,21 @@
             <div class="brand-quote">
                 <p>Satu sumber kebenaran skor kinerja — dari revenue puncak hingga action plan mitigasi, dapat ditelusuri dalam ≤3 klik.</p>
             </div>
+
+            @php($logoEntitas = group_entity_logos())
+            @if($logoEntitas)
+                {{-- Entitas grup --}}
+                <div class="entity-logo-strip mt-4">
+                    <small class="d-block text-center mb-2">Entitas grup {{ config('entity.holding.name') }}</small>
+                    <div class="entity-logo-row">
+                        @foreach($logoEntitas as $e)
+                            <div class="entity-logo-tile" title="{{ $e['legal_name'] }}">
+                                <img src="{{ $e['url'] }}" alt="{{ $e['name'] }}" loading="lazy">
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
 
         {{-- Action Zone — fullscreen right 58% --}}
@@ -38,7 +58,7 @@
                     <label class="form-label-premium">Email <span style="color:var(--c-error)">*</span></label>
                     <div class="input-group">
                         <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-envelope"></i></span></div>
-                        <input type="email" wire:model="email" class="form-control @error('email') is-invalid @enderror" placeholder="superadmin@herbatech.co.id" autofocus autocomplete="email">
+                        <input type="email" wire:model="email" class="form-control @error('email') is-invalid @enderror" placeholder="nama@perusahaan.co.id" autofocus autocomplete="email">
                     </div>
                     @error('email') <span class="invalid-feedback d-block" style="font-size:12px;">{{ $message }}</span> @enderror
                 </div>

@@ -3,21 +3,28 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
-use Livewire\Component;
-use Livewire\Attributes\Url;
-use App\Models\Period;
-use App\Support\ScoreStatus;
-use App\Models\FinancialRatio;
-use App\Models\DepartmentObjective;
+use App\Livewire\Concerns\FollowsActivePeriod;
 use App\Models\ActionPlan;
+use App\Models\DepartmentObjective;
+use App\Models\FinancialRatio;
+use App\Models\Period;
+use App\Models\RevenueTarget;
+use App\Support\Bsc\MonitoringSync;
+use App\Support\Bsc\RatioEngine;
+use App\Support\Bsc\Scorecard;
+use App\Support\ScoreStatus;
 use Carbon\Carbon;
+use Livewire\Attributes\Url;
+use Livewire\Component;
 
 class BscDashboard extends Component
 {
+    use FollowsActivePeriod;
+
     use AuthorizesWrites;
 
     #[Url]
-    public $selectedPeriod = '2026-08';
+    public $selectedPeriod = '';
 
     public $periods = [];
 
@@ -37,19 +44,23 @@ class BscDashboard extends Component
 
     public function mount()
     {
-        $this->periods = Period::pluck('period')->toArray();
-        if (empty($this->periods)) {
-            $this->periods = ['2026-08'];
-        }
-        if (!in_array($this->selectedPeriod, $this->periods)) {
-            $this->selectedPeriod = $this->periods[0] ?? '2026-08';
-        }
+        // Terbaru lebih dulu; tanpa periode sama sekali dipakai bulan berjalan.
+        $this->periods = Period::list() ?: [Period::currentPeriod()];
+        $this->selectedPeriod = $this->initialPeriod($this->selectedPeriod);
+    }
+
+    public function updatedSelectedPeriod(): void
+    {
+        $this->shareActivePeriod((string) $this->selectedPeriod);
     }
 
     public function selectLevel($level)
     {
         $this->activeLevel = (int) $level;
         $this->searchQuery = '';
+
+        // Langsung gulir ke panel Telusur Detail — tidak perlu scroll manual.
+        $this->dispatch('telusur-detail');
     }
 
     public function filterStatus($status)
@@ -92,6 +103,12 @@ class BscDashboard extends Component
             return;
         }
 
+        // Templat = periode terakhir sebelum periode baru (sebelumnya selalu
+        // 2026-08, sehingga entitas lain atau tahun berikutnya menyalin data keliru).
+        $sumber = Period::where('period', '<', $periodStr)->orderByDesc('period')->value('period')
+            ?? Period::orderByDesc('period')->value('period');
+        $tahunSama = $sumber && substr($sumber, 0, 4) === substr($periodStr, 0, 4);
+
         // Create new period (G-05: Actuals initialized to 0.00, NOT copied from target)
         Period::create([
             'period' => $periodStr,
@@ -99,14 +116,18 @@ class BscDashboard extends Component
             'apex_score' => 0.00,
         ]);
 
-        // Copy template of objectives with 0 actuals
-        $baseObjectives = DepartmentObjective::where('period', '2026-08')->get();
-        if ($baseObjectives->isEmpty()) {
-            $baseObjectives = DepartmentObjective::distinct('kpi_code')->get();
-        }
+        // Salin sasaran periode sumber dengan realisasi 0. Sasaran yang tertaut ke
+        // KPI cascade hanya disalin dalam tahun yang sama — KPI cascade berlaku per
+        // tahun; untuk tahun baru, sasarannya datang dari KPI Lolos tahun itu.
+        $baseObjectives = $sumber ? DepartmentObjective::where('period', $sumber)->get() : collect();
 
         foreach ($baseObjectives as $base) {
+            if ($base->kpi_cascade_id && ! $tahunSama) {
+                continue;
+            }
+
             DepartmentObjective::create([
+                'kpi_cascade_id' => $base->kpi_cascade_id,
                 'period' => $periodStr,
                 'dept_code' => $base->dept_code,
                 'kpi_code' => $base->kpi_code,
@@ -120,12 +141,20 @@ class BscDashboard extends Component
         }
 
         // Copy template of financial ratios with 0 actuals
-        $baseRatios = FinancialRatio::where('period', '2026-08')->get();
+        // Rasio hasil hitungan tidak disalin — periode baru mendapatkannya
+        // saat pos akunnya diisi di menu Pos Akun.
+        $baseRatios = $sumber
+            ? FinancialRatio::where('period', $sumber)->where('source', '!=', RatioEngine::SOURCE_COMPUTED)->get()
+            : collect();
         foreach ($baseRatios as $baseR) {
             FinancialRatio::create([
                 'period' => $periodStr,
                 'category' => $baseR->category,
                 'ratio_name' => $baseR->ratio_name,
+                'ratio_code' => $baseR->ratio_code,
+                'unit' => $baseR->unit,
+                'polarity' => $baseR->polarity,
+                'weight' => $baseR->weight,
                 'target' => $baseR->target,
                 'actual' => 0.00,
                 'achievement_pct' => 0.00,
@@ -133,12 +162,23 @@ class BscDashboard extends Component
             ]);
         }
 
-        $this->periods = Period::pluck('period')->toArray();
+        // KPI cascade berstatus Lolos tahun itu yang belum ada ikut dimasukkan,
+        // dengan target disesuaikan faktor revisi revenue.
+        $sinkron = MonitoringSync::syncPeriod($periodStr);
+
+        $this->periods = Period::list();
         $this->selectedPeriod = $periodStr;
+        Period::setActive($periodStr);
         $this->newPeriodInput = '';
         $this->showCreatePeriodModal = false;
 
-        session()->flash('message', 'Periode baru ' . $periodStr . ' berhasil dibuat (Realisasi diinisialisasi 0 per aturan PRD G-05)!');
+        session()->flash('message', 'Periode baru ' . $periodStr . ' berhasil dibuat'
+            . ($sumber ? ' dari templat ' . $sumber : '')
+            . ($sinkron['created'] ? ', ' . $sinkron['created'] . ' KPI Lolos dari Cascade KPI ditambahkan' : '')
+            . ' (realisasi diinisialisasi 0 per aturan PRD G-05).');
+
+        // Muat ulang agar periode baru ikut tampil di pilihan periode navbar.
+        $this->redirect(route('dashboard'));
     }
 
     public function inspectItem($type, $id)
@@ -150,8 +190,8 @@ class BscDashboard extends Component
                     'type' => 'Rasio Keuangan (Tingkat 2)',
                     'code' => $ratio->category,
                     'name' => $ratio->ratio_name,
-                    'target' => number_format($ratio->target, 2),
-                    'actual' => number_format($ratio->actual, 2),
+                    'target' => $ratio->display($ratio->target),
+                    'actual' => $ratio->display($ratio->actual),
                     'achievement' => number_format($ratio->achievement_pct, 1) . '%',
                     'status' => $ratio->status,
                     'upstream' => 'Piramida Tingkat 1 (Apex Score Keuangan)',
@@ -171,7 +211,9 @@ class BscDashboard extends Component
                     'actual' => number_format($obj->actual, 1),
                     'achievement' => number_format($obj->achievement_pct, 1) . '%',
                     'status' => $obj->status,
-                    'upstream' => 'Menyokong Rasio Keuangan Hop 4 (Tingkat 2)',
+                    'upstream' => $obj->kpiCascade?->ratio_code
+                        ? 'Menggerakkan ' . \App\Support\Bsc\RatioLibrary::impactName($obj->kpiCascade->ratio_code) . ' (Tingkat 2)'
+                        : 'Menyokong Rasio Keuangan (Tingkat 2)',
                     'downstream' => $obj->actionPlans->count() . ' Program Kerja Mitigasi (Tingkat 4)',
                     'description' => 'Sasaran mutu operasional departemen ' . $obj->dept_code . ' untuk mencapai target strategic BSC.',
                     'action_plans' => $obj->actionPlans->toArray(),
@@ -216,9 +258,8 @@ class BscDashboard extends Component
     {
         $weights = config('bsc.apex_weights', []);
         $label = [
+            'revenue' => 'Revenue',
             'ratios' => 'Rasio Keuangan',
-            'objectives' => 'Sasaran Mutu',
-            'action_plans' => 'Program Kerja',
         ];
 
         $aktif = [];
@@ -257,20 +298,7 @@ class BscDashboard extends Component
      */
     private function calculateApexScore(array $tierScores): float
     {
-        $weights = config('bsc.apex_weights', []);
-        $weightedSum = 0.0;
-        $totalWeight = 0.0;
-
-        foreach ($tierScores as $tier => $score) {
-            $weight = (float) ($weights[$tier] ?? 0);
-            if ($score === null || $weight <= 0) {
-                continue;
-            }
-            $weightedSum += $weight * (float) $score;
-            $totalWeight += $weight;
-        }
-
-        return $totalWeight > 0 ? round($weightedSum / $totalWeight, 2) : 0.0;
+        return Scorecard::apex($tierScores);
     }
 
     public function render()
@@ -286,11 +314,14 @@ class BscDashboard extends Component
         $isStale = $hoursSinceSync >= (int) config('bsc.stale_after_hours', 26);
         
         $ratiosQuery = FinancialRatio::where('period', $this->selectedPeriod);
-        $ratios = $ratiosQuery->get();
-        $avgRatioScore = $ratios->count() > 0 ? round($ratios->avg('achievement_pct'), 2) : 0;
-        
+        $ratios = $ratiosQuery->orderBy('id')->get();
+        // F2 dari Scorecard — sumber yang sama dengan konsolidasi holding.
+        $ratioScore = Scorecard::ratioScore($this->selectedPeriod);
+        $hasRatioScore = $ratioScore !== null;
+        $avgRatioScore = $ratioScore ?? 0;
+
         $objectivesQuery = DepartmentObjective::where('period', $this->selectedPeriod);
-        $objectives = $objectivesQuery->get();
+        $objectives = $objectivesQuery->orderBy('id')->get();
         $avgObjScore = $objectives->count() > 0 ? round($objectives->avg('achievement_pct'), 2) : 0;
 
         // Program kerja tidak punya kolom periode; keterkaitannya lewat sasaran mutu
@@ -309,10 +340,15 @@ class BscDashboard extends Component
         // Apex Score = rata-rata terbobot Tingkat 2 (rasio), Tingkat 3 (sasaran
         // mutu) dan Tingkat 4 (program kerja), seluruhnya dari data nyata.
         // Bobot diatur di config/bsc.php.
+        // F1: pencapaian revenue kumulatif (Tingkat 1). Null (dengan alasannya) =
+        // belum ada target bulanan atau belum ada realisasi.
+        $revenueDetail = RevenueTarget::cumulative($this->selectedPeriod);
+        $revenueScore = $revenueDetail['score'];
+
+        // Skor puncak = 0,45 × F1 + 0,55 × F2 (config/bsc.php).
         $tierScores = [
-            'ratios' => $ratios->count() > 0 ? $avgRatioScore : null,
-            'objectives' => $objectives->count() > 0 ? $avgObjScore : null,
-            'action_plans' => $actionPlans->count() > 0 ? $avgActionProgress : null,
+            'revenue' => $revenueScore,
+            'ratios' => $hasRatioScore ? $avgRatioScore : null,
         ];
         $apexScore = $this->calculateApexScore($tierScores);
         $apexBreakdown = $this->apexBreakdown($tierScores);
@@ -320,8 +356,8 @@ class BscDashboard extends Component
         // Status tiap tingkat piramida. Tingkat tanpa data ditandai "belum lengkap",
         // bukan diberi nilai nol — keduanya berbeda arti.
         $tierStatus = [
-            1 => ScoreStatus::for($apexScore, $apexBreakdown !== []),
-            2 => ScoreStatus::for($avgRatioScore, $ratios->count() > 0),
+            1 => ScoreStatus::for($revenueScore, $revenueScore !== null),
+            2 => ScoreStatus::for($avgRatioScore, $hasRatioScore),
             3 => ScoreStatus::for($avgObjScore, $objectives->count() > 0),
             4 => ScoreStatus::for($avgActionProgress, $actionPlans->count() > 0),
         ];
@@ -389,6 +425,11 @@ class BscDashboard extends Component
             'lastSyncTime' => $lastSyncTime,
             'apexScore' => $apexScore,
             'apexBreakdown' => $apexBreakdown,
+            'revenueScore' => $revenueScore,
+            'revenueDetail' => $revenueDetail,
+            'revenueReason' => RevenueTarget::reasonLabel($revenueDetail['reason']),
+            'hasRatioScore' => $hasRatioScore,
+            'apexWeights' => config('bsc.apex_weights', []),
             'tierStatus' => $tierStatus,
             'statusLegend' => ScoreStatus::legend(),
             'objectiveCount' => $objectives->count(),

@@ -25,6 +25,7 @@ class User extends Authenticatable
         'password',
         'is_active',
         'dept_code',
+        'entity_id',
         'must_change_password',
         'password_changed_at',
     ];
@@ -65,5 +66,18 @@ class User extends Authenticatable
         }
 
         $this->forceFill(['must_change_password' => $wajib])->save();
+    }
+    /**
+     * Entitas tempat pengguna bekerja. Kosong = pengguna level holding yang
+     * dapat berpindah antarentitas.
+     */
+    public function entity(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Entity::class);
+    }
+
+    public function isHoldingLevel(): bool
+    {
+        return $this->entity_id === null;
     }
 }

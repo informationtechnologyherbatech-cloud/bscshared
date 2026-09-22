@@ -2,20 +2,24 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Livewire\Attributes\Url;
+use App\Livewire\Concerns\FollowsActivePeriod;
 use App\Models\DepartmentObjective;
 use App\Models\Period;
+use App\Models\WorkUnit;
+use Livewire\Attributes\Url;
+use Livewire\Component;
 
 class DepartmentObjectives extends Component
 {
+    use FollowsActivePeriod;
+
     public $selectedDept = '';
 
     #[Url(as: 'status')]
     public $selectedStatus = '';
 
     #[Url(as: 'period')]
-    public $selectedPeriod = '2026-08';
+    public $selectedPeriod = '';
 
     public $editingObjId = null;
     public $editTarget = 0;
@@ -23,12 +27,19 @@ class DepartmentObjectives extends Component
 
     public function mount()
     {
-        if (request()->query('status')) {
+        if (request()->query('status') && request()->query('status') !== 'all') {
             $this->selectedStatus = request()->query('status');
         }
-        if (request()->query('period')) {
-            $this->selectedPeriod = request()->query('period');
+        if ($this->selectedStatus === 'all') {
+            $this->selectedStatus = ''; // "Semua" dari dashboard = tanpa saringan
         }
+        // Bawaan: periode aktif di navbar; ?period= dari tautan halaman lain menggantikannya.
+        $this->selectedPeriod = $this->initialPeriod(request()->query('period') ?: $this->selectedPeriod);
+    }
+
+    public function updatedSelectedPeriod(): void
+    {
+        $this->shareActivePeriod((string) $this->selectedPeriod);
     }
 
     public function editObjective($id)
@@ -37,13 +48,14 @@ class DepartmentObjectives extends Component
             session()->flash('error', 'Akses ditolak: butuh manage objectives / can_write_kpi (HRIS, FAT, Kadep, Operator, Super Admin). Viewer tidak dapat mengubah KPI.');
             return;
         }
-        $periodObj = Period::where('period', $this->selectedPeriod)->first();
-        if ($periodObj && $periodObj->isClosed()) {
-            session()->flash('error', 'Periode ' . $this->selectedPeriod . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
+        // Kunci CLOSED mengikuti periode milik sasaran itu sendiri, bukan periode
+        // yang sedang dipilih di halaman (id dapat berasal dari periode lain).
+        $obj = DepartmentObjective::findOrFail($id);
+        if (Period::where('period', $obj->period)->first()?->isClosed()) {
+            session()->flash('error', 'Periode ' . $obj->period . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
             return;
         }
 
-        $obj = DepartmentObjective::findOrFail($id);
         $this->editingObjId = $obj->id;
         $this->editTarget = $obj->target;
         $this->editActual = $obj->actual;
@@ -58,30 +70,19 @@ class DepartmentObjectives extends Component
             return;
         }
 
-        $periodObj = Period::where('period', $this->selectedPeriod)->first();
-        if ($periodObj && $periodObj->isClosed()) {
-            session()->flash('error', 'Periode ' . $this->selectedPeriod . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
+        $obj = DepartmentObjective::findOrFail($this->editingObjId);
+        if (Period::where('period', $obj->period)->first()?->isClosed()) {
+            session()->flash('error', 'Periode ' . $obj->period . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
             $this->editingObjId = null;
             return;
         }
-
-        $obj = DepartmentObjective::findOrFail($this->editingObjId);
         $target = floatval($this->editTarget);
         $actual = floatval($this->editActual);
 
-        // Calculate achievement based on polarity
-        if ($obj->polarity === 'Turun') {
-            // Lower actual is better (e.g. defect rate, cycle time)
-            $ach = $actual > 0 ? round(($target / $actual) * 100, 2) : 100;
-        } else {
-            // Higher actual is better (Naik)
-            $ach = $target > 0 ? round(($actual / $target) * 100, 2) : 100;
-        }
-
-        // Cap achievement at 100% per business rule (Cap 100%)
-        if ($ach > 100) {
-            $ach = 100.00;
-        }
+        // Capaian menurut polaritas — Naik, Turun, dan Rentang — dibatasi 100%,
+        // sama dengan rasio keuangan. Rentang sebelumnya dihitung seperti Naik.
+        // Target 0 dinilai menurut arah polaritas — aturan yang sama dengan monitoring.
+        $ach = \App\Support\Bsc\RatioLibrary::objectiveAchievement($actual, $target, $obj->polarity);
 
         $status = 'Waspada';
         if ($ach >= 100) {
@@ -120,14 +121,27 @@ class DepartmentObjectives extends Component
         if ($this->selectedStatus) {
             if ($this->selectedStatus === 'bermasalah') {
                 $query->whereIn('status', ['Waspada', 'Di Bawah Target', 'Off-Target']);
-            } else {
+            } elseif ($this->selectedStatus === 'Di Bawah Target') {
+                $query->whereIn('status', ['Di Bawah Target', 'Off-Target']);
+            } elseif ($this->selectedStatus !== 'all') {
                 $query->where('status', $this->selectedStatus);
             }
         }
 
-        $objectives = $query->get();
-        $departments = DepartmentObjective::distinct()->pluck('dept_code')->toArray();
-        $periods = Period::pluck('period')->toArray();
+        $objectives = $query->orderBy('id')->get(); // urutan input, tidak bergantung indeks
+
+        // Daftar departemen dari master Unit Kerja entitas aktif — sebelumnya hanya
+        // diturunkan dari DISTINCT dept_code, sehingga unit yang belum punya sasaran
+        // mutu tidak pernah muncul dan nama unitnya tidak diketahui.
+        $units = WorkUnit::active()->get();
+        $departments = $units->pluck('name', 'code')->toArray();
+
+        // Kode yang masih dipakai data lama tetapi unitnya sudah nonaktif/terhapus
+        // tetap dapat disaring, supaya datanya tidak "hilang" dari layar.
+        foreach ($objectives->pluck('dept_code')->unique() as $kode) {
+            $departments[$kode] ??= $kode;
+        }
+        $periods = Period::list();
 
         return view('livewire.department-objectives', [
             'objectives' => $objectives,

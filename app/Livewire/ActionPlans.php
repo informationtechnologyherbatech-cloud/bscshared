@@ -3,14 +3,18 @@
 namespace App\Livewire;
 
 use Livewire\Component;
+use Livewire\WithPagination;
 use Livewire\Attributes\Url;
 use App\Models\ActionPlan;
 use App\Models\DepartmentObjective;
+use App\Models\WorkUnit;
 
 class ActionPlans extends Component
 {
+    use WithPagination;
+
     public $title = '';
-    public $ownerDept = 'HRD';
+    public $ownerDept = '';
     public $objectiveId = null;
 
     #[Url(as: 'status')]
@@ -21,8 +25,11 @@ class ActionPlans extends Component
 
     public function mount()
     {
-        if (request()->query('status')) {
+        if (request()->query('status') && request()->query('status') !== 'all') {
             $this->selectedStatus = request()->query('status');
+        }
+        if ($this->selectedStatus === 'all') {
+            $this->selectedStatus = ''; // "Semua" dari dashboard = tanpa saringan
         }
     }
 
@@ -34,7 +41,12 @@ class ActionPlans extends Component
         }
         $this->validate([
             'title' => 'required|min:5|max:255',
-            'ownerDept' => 'required|string|max:30',
+            // Harus salah satu unit kerja aktif entitas ini — sebelumnya teks bebas,
+            // sehingga salah ketik membuat departemen "baru" yang tidak ada.
+            'ownerDept' => ['required', 'string', 'max:30', \Illuminate\Validation\Rule::in(WorkUnit::active()->pluck('code')->all())],
+            // Sasaran harus milik entitas aktif (model berentitas) — id buatan
+            // dari entitas lain ditolak.
+            'objectiveId' => ['nullable', \Illuminate\Validation\Rule::exists('department_objectives', 'id')->where('entity_id', app(\App\Support\EntityContext::class)->id())],
         ]);
 
         ActionPlan::create([
@@ -85,6 +97,11 @@ class ActionPlans extends Component
         session()->flash('message', 'Progres program kerja ' . $plan->title . ' diperbarui menjadi ' . $prog . '%!');
     }
 
+    public function updatedSelectedStatus(): void
+    {
+        $this->resetPage();
+    }
+
     public function cancelEdit()
     {
         $this->editingPlanId = null;
@@ -108,12 +125,18 @@ class ActionPlans extends Component
             }
         }
 
-        $actionPlans = $query->get();
-        $offTargetObjectives = DepartmentObjective::where('status', '!=', 'Tercapai')->get();
+        $actionPlans = $query->latest('id')->paginate(25);
+        // Hanya sasaran periode terbaru — sebelumnya semua periode, sehingga kode
+        // KPI yang sama muncul berulang kali di pilihan.
+        $offTargetObjectives = DepartmentObjective::where('period', \App\Models\Period::currentPeriod())
+            ->where('status', '!=', 'Tercapai')
+            ->orderBy('dept_code')->orderBy('kpi_code')
+            ->get();
 
         return view('livewire.action-plans', [
             'actionPlans' => $actionPlans,
             'offTargetObjectives' => $offTargetObjectives,
+            'units' => WorkUnit::active()->get(),
         ])->layout('layouts.app', ['title' => 'Program Kerja']);
     }
 }
