@@ -128,6 +128,20 @@
                                     <small class="text-muted d-block mt-2">Realisasi yang sudah diisi tidak berubah; hanya definisi &amp; target yang diperbarui.</small>
                                 @endif
                             @endcanany
+                            @if ($unlinked > 0)
+                                <div class="alert alert-warning small mt-3 mb-0 p-2">
+                                    <i class="fas fa-unlink mr-1"></i>
+                                    <strong>{{ $unlinked }}</strong> sasaran di Objective Departemen {{ $year }} belum tertaut ke cascade
+                                    (data lama atau salinan templat periode).
+                                    @if ($canWrite)
+                                        <button wire:click="adoptObjectives"
+                                                wire:confirm="Buat draf KPI Head dari sasaran yang belum tertaut? Draf perlu dilengkapi (jabatan, bobot, rasio & pos akun) lalu diuji Keuangan."
+                                                class="btn btn-xs btn-warning d-block mt-2">
+                                            <i class="fas fa-link mr-1"></i> Ambil dari Objective Departemen
+                                        </button>
+                                    @endif
+                                </div>
+                            @endif
                             @if (abs($revisionFactor - 1) > 1e-9)
                                 <div class="small text-info mt-2"><i class="fas fa-balance-scale mr-1"></i> Revenue {{ $year }} direvisi (faktor {{ number_format($revisionFactor, 4, ',', '.') }}); monitoring memakai target disesuaikan.</div>
                             @endif

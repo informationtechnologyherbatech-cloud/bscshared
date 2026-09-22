@@ -453,6 +453,78 @@ class KpiCascades extends Component
             .'Hanya KPI berstatus Lolos yang dimasukkan; realisasi yang sudah diisi tidak berubah.');
     }
 
+    /**
+     * Sasaran di Objective Departemen tahun ini yang belum tertaut ke cascade —
+     * data lama, data contoh lama, atau salinan templat periode.
+     */
+    private function unlinkedObjectives()
+    {
+        return DepartmentObjective::whereNull('kpi_cascade_id')
+            ->where('period', 'like', $this->year.'-%');
+    }
+
+    /**
+     * Jadikan sasaran yang belum tertaut sebagai draf KPI Head di cascade, lalu
+     * tautkan. Satu KPI per kode KPI; definisinya diambil dari periode terbaru.
+     * Drafnya berstatus "Belum diuji" dan sengaja belum lengkap (bobot 0, tanpa
+     * rasio & pos akun) supaya pemeriksaan cascade menandai apa yang harus
+     * dilengkapi unit sebelum diuji Keuangan.
+     */
+    public function adoptObjectives(): void
+    {
+        if ($this->lacksPermission('manage objectives', 'can_write_kpi')) {
+            return;
+        }
+
+        $perKode = $this->unlinkedObjectives()->orderByDesc('period')->get()->groupBy('kpi_code');
+        $dibuat = 0;
+        $ditautkan = 0;
+
+        DB::transaction(function () use ($perKode, &$dibuat, &$ditautkan) {
+            foreach ($perKode as $kode => $baris) {
+                $terbaru = $baris->first();
+                $kodeKpi = $this->safeCode((string) $kode, (string) $terbaru->dept_code);
+
+                $kpi = KpiCascade::where('year', $this->year)->where('code', $kodeKpi)->first();
+
+                if (! $kpi) {
+                    $kpi = KpiCascade::create([
+                        'year' => $this->year,
+                        'code' => $kodeKpi,
+                        'unit_code' => strtoupper((string) $terbaru->dept_code),
+                        'level' => KpiCascade::HEAD,
+                        'position' => 'Kepala '.strtoupper((string) $terbaru->dept_code),
+                        'objective' => mb_substr((string) $terbaru->kpi_name, 0, 255),
+                        'measure_type' => 'Lag',
+                        'target' => (float) $terbaru->target,
+                        'polarity' => in_array($terbaru->polarity, [RatioLibrary::NAIK, RatioLibrary::TURUN, RatioLibrary::RENTANG], true)
+                            ? $terbaru->polarity : RatioLibrary::NAIK,
+                        'reporting_period' => 'Bulanan',
+                        'weight' => 0,
+                        'kpi_type' => KpiCascade::DRIVER,
+                        'validation_status' => KpiCascade::BELUM_DIUJI,
+                        'finance_notes' => 'Diambil dari Objective Departemen — lengkapi jabatan, bobot, rasio & pos akun, lalu uji.',
+                    ]);
+                    $dibuat++;
+                }
+
+                $ditautkan += DepartmentObjective::whereIn('id', $baris->pluck('id'))
+                    ->update(['kpi_cascade_id' => $kpi->id, 'kpi_code' => $kpi->code]);
+            }
+        });
+
+        session()->flash('message', $dibuat.' draf KPI dibuat dan '.$ditautkan.' sasaran bulanan ditautkan. '
+            .'Lengkapi jabatan, bobot, rasio & pos akun yang ditandai merah, lalu minta Keuangan mengujinya.');
+    }
+
+    /** Kode KPI sah untuk cascade (huruf, angka, titik, garis); unik per tahun. */
+    private function safeCode(string $kode, string $unit): string
+    {
+        $bersih = strtoupper(trim(preg_replace('/[^A-Za-z0-9._-]+/', '-', $kode), '-'));
+
+        return mb_substr($bersih !== '' ? $bersih : strtoupper($unit).'-LAMA', 0, 50);
+    }
+
     /* -------------------------------------------------------------- tampil */
 
     private function angka(float $n): string
@@ -495,6 +567,7 @@ class KpiCascades extends Component
             'periods' => Period::where('period', 'like', $this->year.'-%')->orderBy('period')->pluck('status', 'period'),
             'canWrite' => $this->canWrite(),
             'revisionFactor' => RevenuePlan::factorFor($this->year),
+            'unlinked' => $this->unlinkedObjectives()->count(),
             'canValidate' => $this->canValidate(),
             'entity' => app(EntityContext::class)->entity(),
             'years' => range((int) now()->format('Y') - 2, (int) now()->format('Y') + 2),

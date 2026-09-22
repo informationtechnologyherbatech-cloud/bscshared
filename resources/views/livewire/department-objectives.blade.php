@@ -100,7 +100,12 @@
                             @forelse($objectives as $obj)
                                 <tr>
                                     <td><span class="badge badge-dark" title="{{ $departments[$obj->dept_code] ?? $obj->dept_code }}">{{ $obj->dept_code }}</span></td>
-                                    <td><code>{{ $obj->kpi_code }}</code></td>
+                                    <td>
+                                        <code>{{ $obj->kpi_code }}</code>
+                                        @if (! $obj->kpi_cascade_id)
+                                            <small class="d-block text-warning" title="Belum tertaut ke Cascade KPI — tautkan lewat tombol Ambil dari Objective Departemen"><i class="fas fa-unlink"></i> belum di cascade</small>
+                                        @endif
+                                    </td>
                                     <td class="font-weight-normal">{{ $obj->kpi_name }}</td>
                                     <td class="text-center">
                                         @if($obj->polarity === 'Turun')

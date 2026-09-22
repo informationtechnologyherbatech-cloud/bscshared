@@ -17,7 +17,7 @@ use App\Models\KpiCascade;
 class IndicatorTest
 {
     public const QUESTIONS = [
-        1 => 'Mendarat di SATU pos akun yang jelas?',
+        1 => 'Berdampak langsung pada SATU pos akun yang jelas?',
         2 => 'Arah pengaruh ke pos akun terdefinisi?',
         3 => 'Pos akun muncul dalam rumus rasio yang diklaim? (Peta bagian 1)',
         4 => 'Unit adalah Pemilik/Kontributor pos akun itu? (Peta bagian 2)',
