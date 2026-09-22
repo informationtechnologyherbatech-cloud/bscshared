@@ -134,12 +134,16 @@
 
     {{-- Formulir tambah / ubah --}}
     @if($showModal)
-        <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
-                    <div class="modal-header" style="background:#17a2b8;color:#fff;">
-                        <h5 class="modal-title">{{ $unitId ? 'Ubah Unit Kerja' : 'Tambah Unit Kerja' }}</h5>
-                        <button type="button" class="close text-white" wire:click="closeModal"><span>&times;</span></button>
+                    <div class="modal-hd">
+                        <span class="modal-hd-icon"><i class="fas {{ $unitId ? 'fa-pen-to-square' : 'fa-building-user' }}"></i></span>
+                        <div>
+                            <h5 class="modal-title">{{ $unitId ? 'Ubah Unit Kerja' : 'Tambah Unit Kerja' }}</h5>
+                            <small>Kode unit dipakai di seluruh aplikasi</small>
+                        </div>
+                        <button type="button" class="modal-close" wire:click="closeModal" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                     </div>
                     <div class="modal-body">
                         <div class="row">
@@ -196,9 +200,9 @@
                             <label class="custom-control-label" for="unitActive">Aktif</label>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button wire:click="closeModal" class="btn btn-secondary">Batal</button>
-                        <button wire:click="save" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Simpan</button>
+                    <div class="modal-ft">
+                        <button wire:click="closeModal" class="btn btn-ghost">Batal</button>
+                        <button wire:click="save" class="btn btn-teal"><i class="fas fa-save mr-1"></i> Simpan</button>
                     </div>
                 </div>
             </div>
@@ -207,20 +211,18 @@
 
     {{-- Konfirmasi hapus --}}
     @if($confirmDeleteId)
-        <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header bg-danger">
-                        <h5 class="modal-title"><i class="fas fa-trash mr-1"></i> Hapus Unit Kerja</h5>
-                        <button type="button" class="close text-white" wire:click="cancelDelete"><span>&times;</span></button>
-                    </div>
+                <div class="modal-content modal-confirm">
+                    <button type="button" class="modal-close modal-close--float" wire:click="cancelDelete" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                     <div class="modal-body">
-                        Unit kerja yang masih dipakai sasaran mutu atau program kerja tidak dapat dihapus —
-                        nonaktifkan saja agar riwayatnya tetap utuh. Lanjutkan menghapus?
+                        <div class="modal-confirm-icon"><i class="fas fa-trash-can"></i></div>
+                        <h5>Hapus unit kerja ini?</h5>
+                        <p>Unit kerja yang masih dipakai sasaran mutu atau program kerja tidak dapat dihapus — nonaktifkan saja agar riwayatnya tetap utuh.</p>
                     </div>
-                    <div class="modal-footer">
-                        <button wire:click="cancelDelete" class="btn btn-secondary">Batal</button>
-                        <button wire:click="delete" class="btn btn-danger">Ya, hapus</button>
+                    <div class="modal-ft">
+                        <button type="button" wire:click="cancelDelete" class="btn btn-ghost">Batal</button>
+                        <button type="button" wire:click="delete" class="btn btn-danger"><i class="fas fa-trash-can mr-1"></i> Ya, hapus</button>
                     </div>
                 </div>
             </div>

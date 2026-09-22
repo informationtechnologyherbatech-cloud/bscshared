@@ -110,4 +110,22 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
 
         return redirect()->back()->with('message', 'Beralih ke entitas '.\App\Models\Entity::find($entityId)?->name.'.');
     })->name('entity.switch');
+
+    // Periode aktif (navbar) — berlaku di semua halaman. Parameter periode/tahun di
+    // URL halaman asal dibuang agar halaman mengikuti periode yang baru dipilih.
+    Route::post('/periode/aktif', function (\Illuminate\Http\Request $request) {
+        $periode = (string) $request->input('period');
+
+        if (! \App\Models\Period::setActive($periode)) {
+            return redirect()->back()->with('error', 'Periode '.$periode.' belum dibuat.');
+        }
+
+        $asal = url()->previous();
+        $bagian = parse_url($asal);
+        parse_str($bagian['query'] ?? '', $query);
+        unset($query['period'], $query['selectedPeriod'], $query['year']);
+        $tujuan = strtok($asal, '?').($query ? '?'.http_build_query($query) : '');
+
+        return redirect()->to($tujuan);
+    })->name('period.switch');
 });

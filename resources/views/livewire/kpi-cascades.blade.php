@@ -276,12 +276,16 @@
     {{-- Formulir KPI --}}
     @if ($showModal)
         @php($kunciIsi = ! $canWrite)
-        <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5); overflow-y:auto">
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
-                    <div class="modal-header" style="background:#17a2b8;color:#fff;">
-                        <h5 class="modal-title">{{ $editingId ? 'Ubah KPI '.$form['code'] : 'Tambah KPI '.$form['level'] }}</h5>
-                        <button type="button" class="close text-white" wire:click="closeModal"><span>&times;</span></button>
+                    <div class="modal-hd">
+                        <span class="modal-hd-icon"><i class="fas {{ $editingId ? 'fa-pen-to-square' : 'fa-sitemap' }}"></i></span>
+                        <div>
+                            <h5 class="modal-title">{{ $editingId ? 'Ubah KPI '.$form['code'] : 'Tambah KPI '.$form['level'] }}</h5>
+                            <small>Cascade KPI · sasaran, target, bobot, serta rasio & pos akun yang digerakkan</small>
+                        </div>
+                        <button type="button" class="modal-close" wire:click="closeModal" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                     </div>
                     <div class="modal-body">
                         <fieldset @disabled($kunciIsi)>
@@ -473,9 +477,9 @@
                             <small class="text-muted">Status validasi ditetapkan Keuangan. Mengubah isi KPI yang sudah Lolos mengembalikannya ke "Belum diuji".</small>
                         @endunless
                     </div>
-                    <div class="modal-footer">
-                        <button wire:click="closeModal" class="btn btn-secondary">Batal</button>
-                        <button wire:click="save" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Simpan</button>
+                    <div class="modal-ft">
+                        <button wire:click="closeModal" class="btn btn-ghost">Batal</button>
+                        <button wire:click="save" class="btn btn-teal"><i class="fas fa-save mr-1"></i> Simpan</button>
                     </div>
                 </div>
             </div>
@@ -483,19 +487,18 @@
     @endif
 
     @if ($confirmDeleteId)
-        <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header bg-danger">
-                        <h5 class="modal-title"><i class="fas fa-trash mr-1"></i> Hapus KPI</h5>
-                        <button type="button" class="close text-white" wire:click="cancelDelete"><span>&times;</span></button>
-                    </div>
+                <div class="modal-content modal-confirm">
+                    <button type="button" class="modal-close modal-close--float" wire:click="cancelDelete" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                     <div class="modal-body">
-                        KPI ini akan dihapus dari cascade. Riwayat realisasi bulanannya di Objective Departemen tetap disimpan.
+                        <div class="modal-confirm-icon"><i class="fas fa-trash-can"></i></div>
+                        <h5>Hapus KPI ini?</h5>
+                        <p>KPI ini akan dihapus dari cascade. Riwayat realisasi bulanannya di Objective Departemen tetap disimpan.</p>
                     </div>
-                    <div class="modal-footer">
-                        <button wire:click="cancelDelete" class="btn btn-secondary">Batal</button>
-                        <button wire:click="delete" class="btn btn-danger">Ya, hapus</button>
+                    <div class="modal-ft">
+                        <button type="button" wire:click="cancelDelete" class="btn btn-ghost">Batal</button>
+                        <button type="button" wire:click="delete" class="btn btn-danger"><i class="fas fa-trash-can mr-1"></i> Ya, hapus</button>
                     </div>
                 </div>
             </div>

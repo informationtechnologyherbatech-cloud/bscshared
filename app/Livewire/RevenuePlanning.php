@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
 use App\Models\Entity;
+use App\Models\Period;
 use App\Models\RevenueForecastPlan;
 use App\Models\RevenuePlan;
 use App\Models\RevenueTarget;
@@ -58,7 +59,7 @@ class RevenuePlanning extends Component
     public function mount(): void
     {
         if (! preg_match('/^\d{4}$/', $this->year)) {
-            $this->year = (string) ((int) now()->format('Y') + 1);
+            $this->year = (string) ((int) Period::activeYear() + 1); // tahun sesudah periode aktif
         }
 
         $this->load();

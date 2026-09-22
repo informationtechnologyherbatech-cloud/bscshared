@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
+use App\Livewire\Concerns\FollowsActivePeriod;
 use App\Models\AccountBalance;
 use App\Models\Period;
 use App\Support\Bsc\AccountPosts;
@@ -21,6 +22,8 @@ use Livewire\Component;
  */
 class AccountBalances extends Component
 {
+    use FollowsActivePeriod;
+
     use AuthorizesWrites;
 
     #[Url]
@@ -31,9 +34,9 @@ class AccountBalances extends Component
 
     public function mount(): void
     {
-        if (! $this->validPeriod($this->period)) {
-            $this->period = Period::orderByDesc('period')->value('period') ?? now()->format('Y-m');
-        }
+        // Periode dari URL boleh belum dibuat (pos akun bisa diisi lebih dulu).
+        $this->period = $this->validPeriod($this->period) ? $this->period : $this->initialPeriod(null);
+        $this->shareActivePeriod($this->period);
 
         $this->loadPeriod();
     }
@@ -43,6 +46,7 @@ class AccountBalances extends Component
         if (! $this->validPeriod($this->period)) {
             $this->period = now()->format('Y-m');
         }
+        $this->shareActivePeriod($this->period);
 
         $this->loadPeriod();
     }

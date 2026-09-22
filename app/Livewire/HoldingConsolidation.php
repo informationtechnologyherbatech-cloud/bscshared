@@ -3,8 +3,10 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
+use App\Livewire\Concerns\FollowsActivePeriod;
 use App\Models\Entity;
 use App\Models\IntercompanySale;
+use App\Models\Period;
 use App\Support\Bsc\Consolidation;
 use App\Support\EntityContext;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +24,8 @@ use Livewire\Component;
  */
 class HoldingConsolidation extends Component
 {
+    use FollowsActivePeriod;
+
     use AuthorizesWrites;
 
     #[Url]
@@ -39,8 +43,9 @@ class HoldingConsolidation extends Component
         $this->ensureHoldingUser();
 
         if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $this->period)) {
-            // Periode terbaru dari entitas mana pun; kueri langsung karena lintas entitas.
-            $this->period = DB::table('periods')->max('period') ?? now()->format('Y-m');
+            // Periode aktif di navbar; tanpa periode sama sekali, periode terbaru grup
+            // (kueri langsung karena lintas entitas).
+            $this->period = Period::list() ? Period::active() : (DB::table('periods')->max('period') ?? now()->format('Y-m'));
         }
 
         $this->form = $this->blankForm();
@@ -72,6 +77,7 @@ class HoldingConsolidation extends Component
         if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $this->period)) {
             $this->period = now()->format('Y-m');
         }
+        $this->shareActivePeriod($this->period);
     }
 
     public function openCreate(): void

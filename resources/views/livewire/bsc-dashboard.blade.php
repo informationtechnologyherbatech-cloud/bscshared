@@ -862,14 +862,16 @@
 
     <!-- MODAL INSPECT TELUSUR ITEM -->
     @if($showModal && $selectedItemDetail)
-        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content border-teal shadow-lg">
-                    <div class="modal-header bg-teal text-white">
-                        <h5 class="modal-title font-weight-bold">
-                            <i class="fas fa-search-plus mr-2"></i> Inspeksi Telusur Lineage: {{ $selectedItemDetail['type'] }}
-                        </h5>
-                        <button type="button" class="close text-white" wire:click="closeModal">&times;</button>
+                <div class="modal-content">
+                    <div class="modal-hd">
+                        <span class="modal-hd-icon"><i class="fas fa-magnifying-glass-plus"></i></span>
+                        <div>
+                            <h5 class="modal-title">Inspeksi Telusur Lineage</h5>
+                            <small>{{ $selectedItemDetail['type'] }}</small>
+                        </div>
+                        <button type="button" class="modal-close" wire:click="closeModal" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                     </div>
                     <div class="modal-body">
                         <div class="p-3 bg-light rounded mb-3 border">
@@ -904,8 +906,8 @@
                             <strong>Deskripsi Alignment:</strong> {{ $selectedItemDetail['description'] }}
                         </p>
                     </div>
-                    <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary btn-sm" wire:click="closeModal">Tutup Telusur</button>
+                    <div class="modal-ft">
+                        <button type="button" class="btn btn-ghost" wire:click="closeModal">Tutup</button>
                     </div>
                 </div>
             </div>
@@ -914,14 +916,16 @@
 
     <!-- MODAL BUAT PERIODE BARU (PRD G-05) -->
     @if($showCreatePeriodModal)
-        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-teal shadow-lg">
-                    <div class="modal-header bg-teal text-white">
-                        <h5 class="modal-title font-weight-bold">
-                            <i class="fas fa-calendar-plus mr-2"></i> Tambah Periode Pelaporan Baru
-                        </h5>
-                        <button type="button" class="close text-white" wire:click="$set('showCreatePeriodModal', false)">&times;</button>
+                <div class="modal-content">
+                    <div class="modal-hd">
+                        <span class="modal-hd-icon"><i class="fas fa-calendar-plus"></i></span>
+                        <div>
+                            <h5 class="modal-title">Tambah Periode Pelaporan Baru</h5>
+                            <small>Sasaran mutu periode sebelumnya disalin dengan realisasi 0</small>
+                        </div>
+                        <button type="button" class="modal-close" wire:click="$set('showCreatePeriodModal', false)" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                     </div>
                     <div class="modal-body">
                         <div class="alert alert-info py-2" style="font-size: 12px;">
@@ -935,9 +939,9 @@
                             @enderror
                         </div>
                     </div>
-                    <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary btn-sm" wire:click="$set('showCreatePeriodModal', false)">Batal</button>
-                        <button type="button" class="btn btn-teal btn-sm font-weight-bold" wire:click="createNewPeriod">
+                    <div class="modal-ft">
+                        <button type="button" class="btn btn-ghost" wire:click="$set('showCreatePeriodModal', false)">Batal</button>
+                        <button type="button" class="btn btn-teal" wire:click="createNewPeriod">
                             <i class="fas fa-save mr-1"></i> Buat Periode
                         </button>
                     </div>

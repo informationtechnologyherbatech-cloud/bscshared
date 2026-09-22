@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
+use App\Models\Period;
 use App\Models\RevenuePlan;
 use App\Models\RevenueTarget;
 use App\Support\Bsc\RevenueForecast;
@@ -45,7 +46,7 @@ class RevenueTargets extends Component
     public function mount(): void
     {
         if (! preg_match('/^\d{4}$/', $this->year)) {
-            $this->year = now()->format('Y');
+            $this->year = Period::activeYear(); // tahun periode aktif di navbar
         }
 
         $this->loadYear();

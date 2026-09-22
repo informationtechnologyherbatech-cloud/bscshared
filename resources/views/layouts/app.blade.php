@@ -104,17 +104,54 @@
             @endif
             @endauth
             @auth
-            {{-- Periode terbaru milik entitas aktif — sebelumnya ditulis mati "2026-08". --}}
-            @php($periodeAktif = \App\Models\Period::orderByDesc('period')->value('period'))
-            @if($periodeAktif)
-            <li class="nav-item d-none d-sm-block">
-                <span class="nav-link nb-chip" title="Periode terbaru entitas ini">
+            {{-- Periode aktif: berlaku di semua halaman (disimpan di sesi, per entitas).
+                 Bawaannya bulan berjalan; memilih periode di halaman juga mengubahnya. --}}
+            @php($daftarPeriode = \App\Models\Period::orderByDesc('period')->get(['period', 'status']))
+            @if($daftarPeriode->isNotEmpty())
+            @php($periodeAktif = \App\Models\Period::active())
+            @php($bulanIni = now()->format('Y-m'))
+            @php($namaBulan = ['01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April', '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus', '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'])
+            <li class="nav-item dropdown d-none d-sm-block">
+                <a class="nav-link nb-chip" data-toggle="dropdown" href="#" title="Periode yang ditampilkan di semua halaman">
                     <span class="nb-chip-icon"><i class="fas fa-calendar-days"></i></span>
                     <span class="nb-chip-text">
                         <small>Periode</small>
-                        <strong>{{ $periodeAktif }}</strong>
+                        <strong data-periode-aktif>{{ $periodeAktif }}</strong>
                     </span>
-                </span>
+                    <i class="fas fa-chevron-down nb-chip-caret"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right nb-entity-menu nb-period-menu">
+                    <div class="nb-entity-menu-head">
+                        <i class="fas fa-calendar-check mr-2"></i>Periode untuk semua halaman
+                    </div>
+                    <div class="nb-period-scroll">
+                        @foreach($daftarPeriode->groupBy(fn ($p) => substr($p->period, 0, 4)) as $tahun => $periodeTahun)
+                            <div class="nb-period-year">{{ $tahun }}</div>
+                            <div class="nb-period-grid">
+                                @foreach($periodeTahun->sortBy('period') as $p)
+                                    @php($pilih = $p->period === $periodeAktif)
+                                    <form method="POST" action="{{ route('period.switch') }}" class="m-0">
+                                        @csrf
+                                        <input type="hidden" name="period" value="{{ $p->period }}">
+                                        <button type="submit" data-periode="{{ $p->period }}"
+                                                class="nb-period-item {{ $pilih ? 'is-active' : '' }}"
+                                                title="{{ $namaBulan[substr($p->period, 5, 2)] ?? '' }} {{ $tahun }}{{ $p->status === 'CLOSED' ? ' · ditutup' : '' }}">
+                                            <strong>{{ mb_substr($namaBulan[substr($p->period, 5, 2)] ?? $p->period, 0, 3) }}</strong>
+                                            <small>
+                                                @if($p->status === 'CLOSED')<i class="fas fa-lock"></i>@endif
+                                                {{ $p->period === $bulanIni ? 'bulan ini' : $p->period }}
+                                            </small>
+                                        </button>
+                                    </form>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="nb-period-foot">
+                        <i class="fas fa-circle-info mr-1"></i>
+                        Revenue (F1) dan rasio (F2) dihitung kumulatif sejak Januari. Untuk melihat capaian setahun, pilih bulan terakhir tahun itu.
+                    </div>
+                </div>
             </li>
             @endif
             @endauth
@@ -428,29 +465,49 @@
 @auth
 <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="logoutModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content border-0 shadow-lg" style="border-radius:14px; overflow:hidden;">
-      <div class="modal-header bg-danger text-white border-0">
-        <h5 class="modal-title font-weight-bold" id="logoutModalLabel"><i class="fas fa-sign-out-alt mr-2"></i> Konfirmasi Logout</h5>
-        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+    <div class="modal-content modal-confirm">
+      <button type="button" class="modal-close modal-close--float" data-dismiss="modal" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
+      <div class="modal-body">
+        <div class="modal-confirm-icon"><i class="fas fa-right-from-bracket"></i></div>
+        <h5 id="logoutModalLabel">Keluar dari aplikasi?</h5>
+        <p>Anda akan keluar dari sesi <strong>{{ auth()->user()->name }}</strong>. Sesi diakhiri dan Anda diarahkan ke halaman login.</p>
       </div>
-      <div class="modal-body text-center py-4">
-        <div class="mx-auto bg-light rounded-circle d-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px;">
-            <i class="fas fa-user-times text-danger" style="font-size:28px;"></i>
-        </div>
-        <p class="mb-1">Anda akan keluar dari sesi <strong>{{ auth()->user()->name }}</strong></p>
-        <p class="text-muted small mb-0">Sesi akan diakhiri dan Anda akan diarahkan ke halaman login. Lanjutkan?</p>
-      </div>
-      <div class="modal-footer bg-light border-0 d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary px-4" data-dismiss="modal"><i class="fas fa-times mr-1"></i> Batal</button>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-ghost" data-dismiss="modal">Batal</button>
         <form method="POST" action="{{ route('logout') }}" class="mb-0">
             @csrf
-            <button type="submit" class="btn btn-danger px-4 font-weight-bold"><i class="fas fa-sign-out-alt mr-1"></i> Ya, Logout</button>
+            <button type="submit" class="btn btn-danger"><i class="fas fa-right-from-bracket mr-1"></i> Ya, Logout</button>
         </form>
       </div>
     </div>
   </div>
 </div>
 @endauth
+
+{{-- Periode dipilih dari dalam halaman → perbarui chip & tanda aktif di navbar. --}}
+<script>
+    window.addEventListener('periode-aktif', (e) => {
+        const periode = e.detail?.period;
+        if (!periode) return;
+        document.querySelectorAll('[data-periode-aktif]').forEach((el) => { el.textContent = periode; });
+        document.querySelectorAll('.nb-period-item').forEach((el) => el.classList.toggle('is-active', el.dataset.periode === periode));
+    });
+</script>
+{{-- Modal Livewire (.modal-lw): Esc menutupnya lewat tombol ✕-nya; klik latar gelap hanya untuk modal konfirmasi. --}}
+<script>
+    (() => {
+        const tutupModal = (modal) => modal && modal.querySelector('.modal-close')?.click();
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape' || document.querySelector('.ss-panel')) return;
+            const semua = document.querySelectorAll('.modal-lw');
+            tutupModal(semua[semua.length - 1]);
+        });
+        document.addEventListener('mousedown', (e) => {
+            // Hanya modal konfirmasi: formulir panjang tidak hilang karena salah klik.
+            if (e.target.classList?.contains('modal-lw') && e.target.querySelector('.modal-confirm')) tutupModal(e.target);
+        });
+    })();
+</script>
 
 <!-- REQUIRED SCRIPTS (Local with CDN fallback) -->
 @if(file_exists(public_path('vendor/jquery/jquery.min.js')))

@@ -3,21 +3,24 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
-use Livewire\Component;
-use Livewire\Attributes\Url;
+use App\Livewire\Concerns\FollowsActivePeriod;
+use App\Models\ActionPlan;
+use App\Models\DepartmentObjective;
+use App\Models\FinancialRatio;
 use App\Models\Period;
 use App\Models\RevenueTarget;
-use App\Support\Bsc\RatioEngine;
 use App\Support\Bsc\MonitoringSync;
+use App\Support\Bsc\RatioEngine;
 use App\Support\Bsc\Scorecard;
 use App\Support\ScoreStatus;
-use App\Models\FinancialRatio;
-use App\Models\DepartmentObjective;
-use App\Models\ActionPlan;
 use Carbon\Carbon;
+use Livewire\Attributes\Url;
+use Livewire\Component;
 
 class BscDashboard extends Component
 {
+    use FollowsActivePeriod;
+
     use AuthorizesWrites;
 
     #[Url]
@@ -43,9 +46,12 @@ class BscDashboard extends Component
     {
         // Terbaru lebih dulu; tanpa periode sama sekali dipakai bulan berjalan.
         $this->periods = Period::list() ?: [Period::currentPeriod()];
-        if (!in_array($this->selectedPeriod, $this->periods)) {
-            $this->selectedPeriod = $this->periods[0];
-        }
+        $this->selectedPeriod = $this->initialPeriod($this->selectedPeriod);
+    }
+
+    public function updatedSelectedPeriod(): void
+    {
+        $this->shareActivePeriod((string) $this->selectedPeriod);
     }
 
     public function selectLevel($level)
@@ -158,6 +164,7 @@ class BscDashboard extends Component
 
         $this->periods = Period::list();
         $this->selectedPeriod = $periodStr;
+        $this->shareActivePeriod($periodStr);
         $this->newPeriodInput = '';
         $this->showCreatePeriodModal = false;
 

@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\FollowsActivePeriod;
 use App\Models\DepartmentObjective;
 use App\Models\FinancialRatio;
 use App\Models\KpiCascade;
@@ -28,6 +29,8 @@ use Livewire\Component;
  */
 class BscWiring extends Component
 {
+    use FollowsActivePeriod;
+
     public const REVENUE = 'revenue';
 
     /** Warna tiap perspektif. */
@@ -57,11 +60,12 @@ class BscWiring extends Component
 
     public function mount(): void
     {
-        $periode = Period::orderByDesc('period')->pluck('period');
+        $this->selectedPeriod = $this->initialPeriod($this->selectedPeriod);
+    }
 
-        if (! $periode->contains($this->selectedPeriod)) {
-            $this->selectedPeriod = (string) ($periode->first() ?? now()->format('Y-m'));
-        }
+    public function updatedSelectedPeriod(): void
+    {
+        $this->shareActivePeriod($this->selectedPeriod);
     }
 
     public function switchTab(string $tab): void

@@ -980,3 +980,263 @@ select.form-control.is-invalid:not([multiple]):not([size]) {
     background-position: right 0.7rem center;
     background-size: 14px 14px;
 }
+
+/* ==========================================================================
+   Modal: kepala putih berikon, kaki rata kanan; varian konfirmasi di tengah
+   ========================================================================== */
+.modal-content {
+    border: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 34, 34, 0.28);
+}
+
+.modal-backdrop.show {
+    opacity: 1;
+    background-color: rgba(0, 34, 34, 0.45);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+}
+
+/* Modal yang dirender Livewire (tanpa JS Bootstrap) memakai latar yang sama. */
+.modal-lw {
+    overflow-y: auto;
+    background: rgba(0, 34, 34, 0.45);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    animation: modal-latar 0.15s ease-out;
+}
+
+.modal-lw .modal-dialog {
+    animation: modal-masuk 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes modal-latar { from { opacity: 0; } }
+@keyframes modal-masuk { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+
+.modal-hd {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 1.1rem 1.4rem;
+    background: #ffffff;
+    border-bottom: 1px solid #edf2f2;
+}
+
+.modal-hd-icon {
+    flex: 0 0 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    color: var(--c-teal);
+    background: var(--c-teal-soft);
+    box-shadow: inset 0 0 0 1px rgba(0, 128, 128, 0.12);
+}
+
+.modal-hd .modal-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--c-text-primary);
+}
+
+.modal-hd small {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.8rem;
+    color: var(--c-text-muted);
+}
+
+.modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    font-size: 1rem;
+    color: #64748b;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.modal-close:hover {
+    color: var(--c-text-primary);
+    background: #f1f5f9;
+}
+
+.modal-close--float {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 1;
+}
+
+.modal-content > .modal-body {
+    padding: 1.25rem 1.4rem;
+}
+
+.modal-ft {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.9rem 1.4rem;
+    background: #f8fafb;
+    border-top: 1px solid #edf2f2;
+}
+
+.modal-ft .btn {
+    min-width: 100px;
+    border-radius: 9px;
+    font-weight: 600;
+}
+
+.btn-ghost {
+    color: #475569;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+}
+
+.btn-ghost:hover,
+.btn-ghost:focus {
+    color: var(--c-text-primary);
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+/* Konfirmasi: ikon besar di tengah, dua tombol selebar kartu. */
+.modal-confirm .modal-body {
+    padding: 2rem 1.75rem 1.25rem !important;
+    text-align: center;
+}
+
+.modal-confirm-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    font-size: 1.75rem;
+    color: #dc3545;
+    background: #fdecee;
+    box-shadow: 0 0 0 8px #fef6f7;
+}
+
+.modal-confirm h5 {
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--c-text-primary);
+}
+
+.modal-confirm p {
+    margin-bottom: 0;
+    font-size: 0.92rem;
+    color: var(--c-text-secondary);
+}
+
+.modal-confirm .modal-ft {
+    flex-wrap: nowrap;
+    padding: 0.5rem 1.75rem 1.75rem;
+    background: #ffffff;
+    border-top: 0;
+}
+
+.modal-confirm .modal-ft > .btn,
+.modal-confirm .modal-ft > form {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.modal-confirm .modal-ft > form .btn {
+    width: 100%;
+}
+
+/* Dropdown periode aktif (navbar) */
+.nb-period-menu {
+    min-width: 320px;
+}
+
+.nb-period-scroll {
+    max-height: 320px;
+    padding: 0 0.3rem;
+    overflow-y: auto;
+}
+
+.nb-period-year {
+    padding: 0.5rem 0.4rem 0.3rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--c-teal-dark);
+}
+
+.nb-period-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-bottom: 0.3rem;
+}
+
+.nb-period-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 0.4rem 0.2rem;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    line-height: 1.15;
+    color: var(--c-text-primary);
+    background: var(--c-surface);
+    cursor: pointer;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.nb-period-item:hover {
+    border-color: rgba(0, 128, 128, 0.35);
+    background: #ffffff;
+}
+
+.nb-period-item strong {
+    font-size: 0.9rem;
+}
+
+.nb-period-item small {
+    font-size: 0.66rem;
+    color: var(--c-text-muted);
+    white-space: nowrap;
+}
+
+.nb-period-item.is-active {
+    color: #ffffff;
+    background: linear-gradient(135deg, #006a6a 0%, #1cb5b5 100%);
+    box-shadow: 0 3px 10px rgba(0, 106, 106, 0.3);
+}
+
+.nb-period-item.is-active small {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.nb-period-foot {
+    margin: 0.4rem 0.3rem 0.2rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 9px;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--c-text-secondary);
+    background: var(--c-teal-soft);
+}

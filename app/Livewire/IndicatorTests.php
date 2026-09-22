@@ -6,6 +6,7 @@ use App\Livewire\Concerns\AuthorizesWrites;
 use App\Models\AccountBalance;
 use App\Models\KpiCascade;
 use App\Models\KpiTest;
+use App\Models\Period;
 use App\Support\Bsc\AccountPosts;
 use App\Support\Bsc\CascadeChecks;
 use App\Support\Bsc\IndicatorTest;
@@ -52,7 +53,7 @@ class IndicatorTests extends Component
     public function mount(): void
     {
         if (! preg_match('/^\d{4}$/', $this->year)) {
-            $this->year = now()->format('Y');
+            $this->year = Period::activeYear(); // tahun periode aktif di navbar
         }
 
         $this->resetForm();

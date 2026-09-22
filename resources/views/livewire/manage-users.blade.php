@@ -131,12 +131,16 @@
 
     {{-- Create/Edit Modal --}}
     @if($showModal)
-    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+    <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-primary">
-                    <h5 class="modal-title">{{ $isEdit ? 'Ubah Pengguna' : 'Tambah Pengguna Baru' }}</h5>
-                    <button type="button" class="close text-white" wire:click="closeModal"><span>&times;</span></button>
+                <div class="modal-hd">
+                    <span class="modal-hd-icon"><i class="fas {{ $isEdit ? 'fa-user-pen' : 'fa-user-plus' }}"></i></span>
+                    <div>
+                        <h5 class="modal-title">{{ $isEdit ? 'Ubah Pengguna' : 'Tambah Pengguna Baru' }}</h5>
+                        <small>Akun, peran, unit kerja, dan entitas</small>
+                    </div>
+                    <button type="button" class="modal-close" wire:click="closeModal" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
@@ -246,9 +250,9 @@
                         </small>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button wire:click="closeModal" class="btn btn-secondary">Batal</button>
-                    <button wire:click="saveUser" class="btn btn-primary">{{ $isEdit ? 'Perbarui' : 'Simpan' }}</button>
+                <div class="modal-ft">
+                    <button wire:click="closeModal" class="btn btn-ghost">Batal</button>
+                    <button wire:click="saveUser" class="btn btn-teal"><i class="fas fa-save mr-1"></i> {{ $isEdit ? 'Perbarui' : 'Simpan' }}</button>
                 </div>
             </div>
         </div>
@@ -257,19 +261,18 @@
 
     {{-- Delete Confirm --}}
     @if($showDeleteModal)
-    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger">
-                    <h5 class="modal-title">Konfirmasi Hapus</h5>
-                    <button type="button" class="close text-white" wire:click="cancelDelete"><span>&times;</span></button>
-                </div>
+    <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-confirm">
+                <button type="button" class="modal-close modal-close--float" wire:click="cancelDelete" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                 <div class="modal-body">
-                    <p>Yakin ingin menghapus pengguna ini? Aksi tidak dapat dibatalkan.</p>
+                    <div class="modal-confirm-icon"><i class="fas fa-trash-can"></i></div>
+                    <h5>Hapus pengguna ini?</h5>
+                    <p>Akun ini tidak bisa lagi dipakai untuk masuk. Aksi ini tidak dapat dibatalkan.</p>
                 </div>
-                <div class="modal-footer">
-                    <button wire:click="cancelDelete" class="btn btn-secondary">Batal</button>
-                    <button wire:click="deleteUser" class="btn btn-danger">Ya, Hapus</button>
+                <div class="modal-ft">
+                    <button type="button" wire:click="cancelDelete" class="btn btn-ghost">Batal</button>
+                    <button type="button" wire:click="deleteUser" class="btn btn-danger"><i class="fas fa-trash-can mr-1"></i> Ya, hapus</button>
                 </div>
             </div>
         </div>

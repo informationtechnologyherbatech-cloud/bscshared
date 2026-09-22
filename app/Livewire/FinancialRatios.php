@@ -2,13 +2,16 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Livewire\Attributes\Url;
+use App\Livewire\Concerns\FollowsActivePeriod;
 use App\Models\FinancialRatio;
 use App\Models\Period;
+use Livewire\Attributes\Url;
+use Livewire\Component;
 
 class FinancialRatios extends Component
 {
+    use FollowsActivePeriod;
+
     public $selectedCategory = '';
 
     #[Url(as: 'status')]
@@ -26,13 +29,13 @@ class FinancialRatios extends Component
         if (request()->query('status')) {
             $this->selectedStatus = request()->query('status');
         }
-        if (request()->query('period')) {
-            $this->selectedPeriod = request()->query('period');
-        }
-        // Bawaan: periode terbaru entitas aktif (sebelumnya dipatok 2026-08).
-        if (! in_array($this->selectedPeriod, Period::list(), true)) {
-            $this->selectedPeriod = Period::currentPeriod();
-        }
+        // Bawaan: periode aktif di navbar; ?period= dari tautan halaman lain menggantikannya.
+        $this->selectedPeriod = $this->initialPeriod(request()->query('period') ?: $this->selectedPeriod);
+    }
+
+    public function updatedSelectedPeriod(): void
+    {
+        $this->shareActivePeriod((string) $this->selectedPeriod);
     }
 
     public function editRatio($id)

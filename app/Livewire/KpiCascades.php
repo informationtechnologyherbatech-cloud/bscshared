@@ -61,7 +61,7 @@ class KpiCascades extends Component
     public function mount(): void
     {
         if (! preg_match('/^\d{4}$/', $this->year)) {
-            $this->year = now()->format('Y');
+            $this->year = Period::activeYear(); // tahun periode aktif di navbar
         }
 
         $this->form = $this->blankForm();
