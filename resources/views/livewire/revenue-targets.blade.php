@@ -56,7 +56,9 @@
                                 <button wire:click="phaseBySeason" class="btn btn-outline-info btn-sm mb-1">
                                     <i class="fas fa-chart-area mr-1"></i> Ikuti pola musiman {{ (int) $year - 1 }}
                                 </button>
-                                <small class="d-block text-muted">Hanya mengisi kolom target di bawah — belum tersimpan sampai Anda menekan Simpan.</small>
+                                <small class="d-block text-muted">Hanya mengisi kolom target di bawah — belum tersimpan sampai Anda menekan Simpan.
+                                    Untuk menyusun angka setahunnya (CAGR, regresi, bottom-up, Ansoff, SWOT), buka
+                                    <a href="{{ route('revenue-planning', ['year' => $year]) }}">Perencanaan Target</a>.</small>
                             </div>
                         </div>
                     </div>

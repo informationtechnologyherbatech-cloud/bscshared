@@ -151,6 +151,12 @@
                             <p>Target Revenue</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ route('revenue-planning') }}" class="nav-link {{ request()->routeIs('revenue-planning') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-drafting-compass"></i>
+                            <p>Perencanaan Target</p>
+                        </a>
+                    </li>
                     @endcanany
                     @can('view ratios')
                     <li class="nav-item">

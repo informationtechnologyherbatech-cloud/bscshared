@@ -32,7 +32,7 @@ dengan bentuk dan arti yang sama untuk keempat entitas.
 | **Asumsi** — A | Bobot skor puncak F1 0,45 · F2 0,55 | ✅ `config/bsc.php` → `apex_weights` |
 | **Asumsi** — E | Daftar unit kerja (17 unit Erdigma) | ✅ Menu **Unit Kerja**, per entitas |
 | **L1 Target Revenue** — G | Fasing bulanan & pencapaian kumulatif (F1) | ✅ Menu **Target Revenue** |
-| **L1 Target Revenue** — B–F | CAGR, regresi, bottom-up brand × channel, Ansoff, SWOT, rekonsiliasi | ⏳ Menyusul (alat bantu penyusunan target) |
+| **L1 Target Revenue** — A–F | Estimasi run-rate, CAGR, regresi, bottom-up brand × channel, Ansoff, SWOT, rekonsiliasi & pengesahan | ✅ Menu **Perencanaan Target** |
 | **Asumsi** — B, C, D | 19 rasio, bobot 5 kelompok, rubrik 5 tingkat | ✅ Menu **Katalog Rasio**, `config/bsc.php` |
 | **Asumsi** — F, G | 16 pos akun & data baseline | ✅ Menu **Pos Akun** |
 | **L2 Rasio Keuangan** | Rasio dihitung dari pos akun, skor rubrik × bobot | ✅ `App\Support\Bsc\RatioEngine` |
@@ -161,6 +161,35 @@ dengan bentuk dan arti yang sama untuk keempat entitas.
 
 ---
 
+## Penyusunan target revenue (L1 bagian A–G) — sudah diterapkan
+
+- Menu **Perencanaan Target**, per entitas per tahun target (tahun dasar = tahun
+  sebelumnya):
+  - **A** estimasi akhir tahun dasar = YTD × 12 ÷ n, otomatis dari realisasi di
+    menu Target Revenue (dapat ditimpa manual bila data bulanan belum ada);
+  - **B** realisasi 3 tahun sebelumnya → YoY, CAGR, dan regresi linear (setara
+    `FORECAST` Excel);
+  - **C** bottom-up brand × channel dengan growth per brand → target per brand
+    dan per channel. Channel dapat diatur per entitas (Erdigma bawaan SOC, TTC,
+    ECO, OFD, PTN; entitas manufaktur mengisi channelnya sendiri); cek Σ basis
+    vs estimasi A (toleransi 2%);
+  - **D** inisiatif Ansoff × probabilitas = expected value; **E** SWOT + koreksi %;
+  - **F** rekonsiliasi enam angka terhadap target disahkan, tombol **Sahkan**
+    per metode atau angka ketikan sendiri (revisi yang sudah ada tidak berubah);
+  - **G** indeks musiman dari realisasi tahun dasar → **Terapkan ke Target
+    Revenue** mengisi 12 target bulanan (realisasi yang sudah ada tidak berubah).
+- Fasing "Ikuti pola musiman" di menu Target Revenue kini memakai metode yang
+  sama (bagian G), sehingga cukup realisasi sebagian tahun — sebelumnya wajib
+  12 bulan lengkap.
+- Rumus di `App\Support\Bsc\RevenueForecast`; kebenaran dijaga
+  `tests/Feature/RevenueForecastWorkbookTest.php` (estimasi 810 M, CAGR 13,0921%,
+  916.046.140.972, regresi 895 M, bottom-up 922.020.000.000 & target per channel,
+  EV Ansoff 58,5 M, metode ambisius 980.520.000.000, rata-rata 911.022.046.991,
+  fasing Jan 70 M … Des 75 M) dan `RevenuePlanningTest` (alur lengkap dari data
+  tersimpan).
+
+---
+
 ## Tahap 4 — sudah diterapkan
 
 ### Uji indikator (sheet L4)
@@ -217,5 +246,3 @@ dengan bentuk dan arti yang sama untuk keempat entitas.
   akun konsolidasi (termasuk eliminasi piutang/utang & persediaan antarentitas)
   yang belum dicatat. Bobot ini keputusan yang dapat diubah bila holding
   menghendaki cara lain (mis. rata-rata sederhana).
-- Belum diterapkan: alat bantu penyusunan target revenue L1 bagian B–F (CAGR,
-  regresi, bottom-up brand × channel, Ansoff, SWOT, rekonsiliasi).

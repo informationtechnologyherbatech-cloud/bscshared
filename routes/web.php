@@ -19,6 +19,7 @@ use App\Livewire\HoldingConsolidation;
 use App\Livewire\IndicatorTests;
 use App\Livewire\KpiCascades;
 use App\Livewire\RatioCatalog;
+use App\Livewire\RevenuePlanning;
 use App\Livewire\RevenueTargets;
 use App\Livewire\WorkUnits;
 use App\Support\EntityContext;
@@ -81,6 +82,8 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
 
     // Tingkat 1 — target & realisasi revenue bulanan (sumber F1 skor puncak).
     Route::get('/revenue', RevenueTargets::class)->middleware('permission:manage revenue|view dashboard')->name('revenue');
+    // Penyusunan target setahun (L1 bagian A–G): CAGR, regresi, bottom-up, Ansoff, SWOT, rekonsiliasi.
+    Route::get('/revenue/perencanaan', RevenuePlanning::class)->middleware('permission:manage revenue|view dashboard')->name('revenue-planning');
 
     // Tingkat 2 — pos akun (sumber 19 rasio) dan katalog rasio per entitas.
     Route::get('/pos-akun', AccountBalances::class)->middleware('permission:manage ratios|view ratios')->name('account-balances');

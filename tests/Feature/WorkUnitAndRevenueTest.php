@@ -212,7 +212,7 @@ class WorkUnitAndRevenueTest extends TestCase
         $this->assertEqualsWithDelta(900000000000, $total, 0.01);
     }
 
-    public function test_seasonal_phasing_needs_a_full_previous_year(): void
+    public function test_seasonal_phasing_needs_previous_year_realisations(): void
     {
         $this->actingAsRole('Super Admin');
 

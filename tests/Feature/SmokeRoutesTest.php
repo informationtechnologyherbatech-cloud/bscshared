@@ -44,6 +44,7 @@ class SmokeRoutesTest extends TestCase
             'manajemen pengguna' => ['manage-users'],
             'pengaturan' => ['settings'],
             'target revenue' => ['revenue'],
+            'perencanaan target' => ['revenue-planning'],
             'unit kerja' => ['work-units'],
             'pos akun' => ['account-balances'],
             'katalog rasio' => ['ratio-catalog'],

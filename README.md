@@ -110,7 +110,10 @@ Mengikuti workbook `Cascading_Revenue_Rasio_KPI_Erdigma_2026.xlsx`:
 Skor puncak = 0,45 × F1 (pencapaian revenue kumulatif) + 0,55 × F2 (skor rasio keuangan)
 ```
 
-F1 diisi lewat menu **Target Revenue**. F2 dihitung dari 16 pos akun yang diisi di
+F1 diisi lewat menu **Target Revenue**; angka setahunnya disusun di menu
+**Perencanaan Target** (run-rate, CAGR, regresi, bottom-up brand × channel,
+Ansoff, SWOT → rekonsiliasi → sahkan → fasing musiman).
+F2 dihitung dari 16 pos akun yang diisi di
 menu **Pos Akun**, dengan rasio, bobot, dan target dari menu **Katalog Rasio**.
 KPI unit kerja disusun di menu **Cascade KPI** (Head → Supervisor → Staff) dan
 ditelusuri ke rasio lewat **Peta Pos Akun**; yang lolos validasi Keuangan

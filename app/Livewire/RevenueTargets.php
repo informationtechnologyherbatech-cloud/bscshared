@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Livewire\Concerns\AuthorizesWrites;
 use App\Models\RevenuePlan;
 use App\Models\RevenueTarget;
+use App\Support\Bsc\RevenueForecast;
 use App\Support\EntityContext;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -106,8 +107,10 @@ class RevenueTargets extends Component
     }
 
     /**
-     * Fasing mengikuti pola musiman realisasi tahun sebelumnya, seperti indeks
-     * musiman pada sheet L1 bagian G.
+     * Fasing mengikuti pola musiman realisasi tahun sebelumnya, persis sheet L1
+     * bagian G: indeks = realisasi bulan ÷ estimasi akhir tahun (run-rate);
+     * bulan tanpa realisasi berbagi rata sisa indeks. Cukup realisasi sebagian
+     * tahun.
      */
     public function phaseBySeason(): void
     {
@@ -122,23 +125,21 @@ class RevenueTargets extends Component
             ->whereNotNull('actual')
             ->pluck('actual', 'period');
 
-        $jumlah = (float) $realisasi->sum();
+        $perBulan = [];
+        foreach (array_keys(self::BULAN) as $bulan) {
+            $nilai = $realisasi->get($lalu.'-'.$bulan);
+            $perBulan[$bulan] = $nilai === null ? null : (float) $nilai;
+        }
 
-        if ($realisasi->count() < 12 || $jumlah <= 0) {
-            $this->addError('annualTarget', 'Pola musiman butuh realisasi lengkap 12 bulan tahun '.$lalu.'. Pakai "Bagi rata" atau lengkapi dulu realisasinya.');
+        $indeks = RevenueForecast::seasonalIndex($perBulan);
+
+        if ($indeks === null) {
+            $this->addError('annualTarget', 'Pola musiman butuh realisasi tahun '.$lalu.' (minimal satu bulan). Pakai "Bagi rata" atau isi dulu realisasinya.');
 
             return;
         }
 
-        $terpakai = 0.0;
-        foreach (array_keys(self::BULAN) as $i => $bulan) {
-            if ($i === 11) {
-                $nilai = round($total - $terpakai, 2);
-            } else {
-                $indeks = (float) $realisasi->get($lalu.'-'.$bulan, 0) / $jumlah;
-                $nilai = round($total * $indeks, 2);
-                $terpakai += $nilai;
-            }
+        foreach (RevenueForecast::phase($total, $indeks) as $bulan => $nilai) {
             $this->rows[$bulan]['target'] = $this->angka($nilai);
         }
     }
