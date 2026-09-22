@@ -72,8 +72,8 @@ class MenuDataConsistencyTest extends TestCase
         $this->assertCount(8, $baru);
         $this->assertTrue($baru->every(fn ($o) => $o->kpi_cascade_id !== null), 'Sasaran periode baru harus tetap tertaut ke cascade.');
         $this->assertTrue($baru->every(fn ($o) => (float) $o->actual === 0.0));
-        // Rasio manual lama ikut sebagai templat.
-        $this->assertSame(7, FinancialRatio::where('period', '2026-09')->count());
+        // Rasio hasil hitungan tidak disalin — periode baru mendapatkannya dari pos akunnya sendiri.
+        $this->assertSame(0, FinancialRatio::where('period', '2026-09')->count());
     }
 
     public function test_a_new_year_takes_its_objectives_from_that_years_approved_kpis(): void

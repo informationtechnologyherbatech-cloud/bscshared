@@ -42,7 +42,7 @@ class DefaultEntitySeedingTest extends TestCase
         $this->seed(DatabaseSeeder::class);
 
         $this->assertSame(['ERDIGMA' => 1], $this->perEntity(Period::class));
-        $this->assertSame(['ERDIGMA' => 7], $this->perEntity(FinancialRatio::class));
+        $this->assertSame(['ERDIGMA' => 19], $this->perEntity(FinancialRatio::class)); // 19 rasio hasil hitungan pos akun
         $this->assertSame(['ERDIGMA' => 8], $this->perEntity(DepartmentObjective::class));
         $this->assertSame(['ERDIGMA' => 2], $this->perEntity(StagingLog::class));
     }

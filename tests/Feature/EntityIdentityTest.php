@@ -75,7 +75,7 @@ class EntityIdentityTest extends TestCase
             ->set('company_phone', '(021) 8899001')
             ->set('company_email', 'halo@nusantarafarma.co.id')
             ->set('company_website', 'https://nusantarafarma.co.id')
-            ->call('saveIdentity')
+            ->call('saveEntity')
             ->assertHasNoErrors();
 
         $this->assertSame('Nusantara Farma', AppSetting::getValue('entity_name'));
@@ -93,7 +93,7 @@ class EntityIdentityTest extends TestCase
         Livewire::test(AppSettings::class)
             ->set('company_name', '')
             ->set('company_email', 'bukan-email')
-            ->call('saveIdentity')
+            ->call('saveEntity')
             ->assertHasErrors(['company_name', 'company_email']);
     }
 
@@ -104,7 +104,7 @@ class EntityIdentityTest extends TestCase
         AppSetting::setValue('company_name', 'PT Entitas Lain');
 
         Livewire::test(AppSettings::class)
-            ->call('resetIdentity');
+            ->call('resetEntity');
 
         $this->assertSame(config('entity.defaults.company_name'), AppSetting::getValue('company_name'));
     }

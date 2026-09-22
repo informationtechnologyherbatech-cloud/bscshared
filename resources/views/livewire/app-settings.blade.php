@@ -40,6 +40,13 @@
                         @endcan
                         @can('manage settings')
                         <li class="nav-item">
+                            <a wire:click="switchTab('entity')" class="nav-link {{ $activeTab==='entity' ? 'active' : '' }}" href="#" role="tab">
+                                <i class="fas fa-building mr-1"></i> Entitas
+                            </a>
+                        </li>
+                        @endcan
+                        @can('manage settings')
+                        <li class="nav-item">
                             <a wire:click="switchTab('security')" class="nav-link {{ $activeTab==='security' ? 'active' : '' }}" href="#" role="tab">
                                 <i class="fas fa-shield-alt mr-1"></i> Keamanan
                             </a>
@@ -82,58 +89,6 @@
                             </div>
                         </div>
 
-                        {{-- Identitas entitas pengguna aplikasi --}}
-                        <div class="card card-outline card-teal">
-                            <div class="card-header">
-                                <h6 class="card-title mb-0"><i class="fas fa-building mr-1"></i> Identitas Entitas</h6>
-                            </div>
-                            <div class="card-body">
-                                <p class="text-muted small">
-                                    Aplikasi ini dapat dipakai entitas mana pun. Isi identitas di bawah untuk menentukan
-                                    perusahaan pemilik data — nilai ini dipakai pada judul halaman, sidebar, halaman login
-                                    dan footer.
-                                </p>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label>Nama Entitas *</label>
-                                            <input type="text" wire:model="entity_name" class="form-control @error('entity_name') is-invalid @enderror" placeholder="mis. Herbatech Innopharma">
-                                            <small class="text-muted">Nama pendek entitas, dipakai pada sidebar &amp; judul.</small>
-                                            @error('entity_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Nama Perusahaan *</label>
-                                            <input type="text" wire:model="company_name" class="form-control @error('company_name') is-invalid @enderror" placeholder="mis. PT Herbatech Innopharma Industry">
-                                            <small class="text-muted">Nama resmi/legal, dipakai pada footer &amp; hak cipta.</small>
-                                            @error('company_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Alamat Perusahaan</label>
-                                            <textarea wire:model="company_address" rows="3" class="form-control @error('company_address') is-invalid @enderror" placeholder="Jalan, kota, provinsi, kode pos"></textarea>
-                                            @error('company_address') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label>Nomor Kontak</label>
-                                            <input type="text" wire:model="company_phone" class="form-control @error('company_phone') is-invalid @enderror" placeholder="mis. (021) 1234567 / 0812-3456-7890">
-                                            @error('company_phone') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Email Kontak</label>
-                                            <input type="email" wire:model="company_email" class="form-control @error('company_email') is-invalid @enderror" placeholder="mis. info@perusahaan.co.id">
-                                            @error('company_email') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Situs Web</label>
-                                            <input type="url" wire:model="company_website" class="form-control @error('company_website') is-invalid @enderror" placeholder="https://perusahaan.co.id">
-                                            @error('company_website') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         {{-- Identitas aplikasi & branding --}}
                         <div class="card card-outline card-info">
                             <div class="card-header">
@@ -165,7 +120,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label>Logo (PNG/JPG/SVG max 2MB)</label>
+                                            <label>Logo (PNG/JPG/WEBP max 2MB)</label>
                                             <div class="custom-file">
                                                 <input type="file" wire:model="logoUpload" class="custom-file-input @error('logoUpload') is-invalid @enderror" accept="image/*">
                                                 <label class="custom-file-label">{{ $logoUpload ? $logoUpload->getClientOriginalName() : 'Pilih file logo' }}</label>
@@ -192,11 +147,112 @@
 
                         <div class="text-right">
                             @can('manage settings')
-                            <button wire:click="resetIdentity" class="btn btn-secondary mr-2"><i class="fas fa-undo mr-1"></i> Reset Default</button>
-                            <button wire:click="saveIdentity" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
+                            <button wire:click="resetApp" class="btn btn-secondary mr-2"><i class="fas fa-undo mr-1"></i> Reset Default</button>
+                            <button wire:click="saveApp" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
                             @endcan
                         </div>
 
+                    @elseif($activeTab === 'entity')
+                        {{-- Jenis instalasi (dari .env) --}}
+                        <div class="callout {{ $installation['holding'] ? 'callout-warning' : 'callout-info' }}">
+                            <h6 class="font-weight-bold mb-1">
+                                <i class="fas fa-server mr-1"></i> Jenis Instalasi:
+                                {{ $installation['holding'] ? 'Holding (semua entitas)' : 'Satu entitas — '.($installation['entity']?->name ?? $installation['code']) }}
+                            </h6>
+                            <p class="small mb-1">
+                                Diatur di <code>.env</code>:
+                                <code>BSC_DEFAULT_ENTITY={{ $installation['code'] }}</code> ·
+                                <code>BSC_HOLDING_MODE={{ $installation['holding'] ? 'true' : 'false' }}</code>.
+                                Identitas bawaan untuk instalasi ini: <strong>{{ $installation['defaults']['entity_name'] }}</strong> —
+                                {{ $installation['defaults']['company_name'] }}.
+                            </p>
+                            @if(! $installation['entity'])
+                                <p class="small text-danger mb-1"><i class="fas fa-exclamation-triangle mr-1"></i> Kode <code>{{ $installation['code'] }}</code> tidak dikenal atau nonaktif.</p>
+                            @endif
+                            <p class="small text-muted mb-0">
+                                Mengubah <code>.env</code> lalu menjalankan <code>php artisan migrate</code> menyelaraskan identitas yang masih bawaan lama;
+                                tombol <strong>Reset Default</strong> di bawah mengembalikan identitas ke nilai instalasi.
+                            </p>
+                        </div>
+                        {{-- Identitas entitas pengguna aplikasi --}}
+                        <div class="card card-outline card-teal">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-building mr-1"></i> Identitas Entitas</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">
+                                    Perusahaan pemilik instalasi ini — dipakai pada judul halaman, sidebar, halaman login
+                                    dan footer. Nilai awalnya mengikuti <code>.env</code> (lihat kartu Jenis Instalasi).
+                                </p>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nama Entitas *</label>
+                                            <input type="text" wire:model="entity_name" class="form-control @error('entity_name') is-invalid @enderror" placeholder="mis. Erdigma">
+                                            <small class="text-muted">Nama pendek entitas, dipakai pada sidebar &amp; judul.</small>
+                                            @error('entity_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Nama Perusahaan *</label>
+                                            <input type="text" wire:model="company_name" class="form-control @error('company_name') is-invalid @enderror" placeholder="mis. PT Erhanesia Digima Mukitama">
+                                            <small class="text-muted">Nama resmi/legal, dipakai pada footer &amp; hak cipta.</small>
+                                            @error('company_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Alamat Perusahaan</label>
+                                            <textarea wire:model="company_address" rows="3" class="form-control @error('company_address') is-invalid @enderror" placeholder="Jalan, kota, provinsi, kode pos"></textarea>
+                                            @error('company_address') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nomor Kontak</label>
+                                            <input type="text" wire:model="company_phone" class="form-control @error('company_phone') is-invalid @enderror" placeholder="mis. (021) 1234567 / 0812-3456-7890">
+                                            @error('company_phone') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Email Kontak</label>
+                                            <input type="email" wire:model="company_email" class="form-control @error('company_email') is-invalid @enderror" placeholder="mis. info@perusahaan.co.id">
+                                            @error('company_email') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Situs Web</label>
+                                            <input type="url" wire:model="company_website" class="form-control @error('company_website') is-invalid @enderror" placeholder="https://perusahaan.co.id">
+                                            @error('company_website') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card card-outline card-secondary">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-sitemap mr-1"></i> Entitas Grup Terdaftar</h6>
+                            </div>
+                            <div class="card-body p-0 table-responsive">
+                                <table class="table table-sm m-0">
+                                    <thead class="bg-light"><tr><th>Kode</th><th>Nama</th><th>Nama resmi</th><th>Jenis</th><th></th></tr></thead>
+                                    <tbody>
+                                        @foreach($installation['entities'] as $e)
+                                            <tr class="{{ $installation['entity']?->id === $e->id ? 'table-info font-weight-bold' : '' }}">
+                                                <td><code>{{ $e->code }}</code></td>
+                                                <td>{{ $e->name }}</td>
+                                                <td>{{ $e->legal_name }}</td>
+                                                <td>{{ $e->industryLabel() }}</td>
+                                                <td class="small">{{ $installation['entity']?->id === $e->id ? 'instalasi ini' : '' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="text-right">
+                            @can('manage settings')
+                            <button wire:click="resetEntity" wire:confirm="Kembalikan identitas entitas ke nilai instalasi ({{ $installation['defaults']['company_name'] }})?" class="btn btn-secondary mr-2"><i class="fas fa-undo mr-1"></i> Reset Default</button>
+                            <button wire:click="saveEntity" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
+                            @endcan
+                        </div>
                     @elseif($activeTab === 'security')
 
                         <div class="card card-outline card-danger">

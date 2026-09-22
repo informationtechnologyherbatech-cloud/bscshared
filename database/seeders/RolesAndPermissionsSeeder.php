@@ -120,7 +120,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // tidak memakai kata sandi yang mudah ditebak. Akun yang sudah ada
         // tidak diubah (firstOrCreate).
         $superAdmin = User::firstOrCreate(
-            ['email' => env('SUPERADMIN_EMAIL') ?: 'superadmin@herbatech.co.id'],
+            ['email' => env('SUPERADMIN_EMAIL') ?: 'superadmin@emc.co.id'],
             [
                 'name' => 'Super Admin',
                 'password' => bcrypt(env('SUPERADMIN_PASSWORD') ?: 'Bsc#Admin2026'),

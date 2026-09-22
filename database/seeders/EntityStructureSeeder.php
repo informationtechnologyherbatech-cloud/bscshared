@@ -65,12 +65,14 @@ class EntityStructureSeeder extends Seeder
      */
     public static function entities(): array
     {
-        return [
-            ['code' => 'HERBAEMAS', 'name' => 'Herbaemas', 'legal_name' => 'PT Herba Emas Wahidatama', 'industry' => Entity::MANUFAKTUR],
-            ['code' => 'HERBATECH', 'name' => 'Herbatech', 'legal_name' => 'PT Herbatech Innopharma Industry', 'industry' => Entity::MANUFAKTUR],
-            ['code' => 'AEJ', 'name' => 'AEJ', 'legal_name' => 'PT Abithama Emas Juara', 'industry' => Entity::MANUFAKTUR],
-            ['code' => 'ERDIGMA', 'name' => 'Erdigma', 'legal_name' => 'PT Erhanesia Digima Mukitama', 'industry' => Entity::DIGITAL_MARKETING],
-        ];
+        // Satu sumber: config/entity.php (profiles) — juga dipakai sebagai
+        // identitas bawaan instalasi.
+        $hasil = [];
+        foreach (config('entity.profiles', []) as $kode => $p) {
+            $hasil[] = ['code' => $kode, 'name' => $p['name'], 'legal_name' => $p['legal_name'], 'industry' => $p['industry']];
+        }
+
+        return $hasil;
     }
 
     public function run(): void

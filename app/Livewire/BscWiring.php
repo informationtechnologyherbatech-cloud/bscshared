@@ -135,23 +135,30 @@ class BscWiring extends Component
         $f1 = RevenueTarget::cumulativeAchievement($this->selectedPeriod);
         $targetSetahun = $rencana?->approved_target ?? (float) RevenueTarget::where('period', 'like', $tahun.'-%')->sum('target');
 
-        // ---- Kolom 2: perspektif
+        // ---- Kolom 2: perspektif — istilah & urutan mengikuti wiring versi lama:
+        // Profitabilitas, Revenue / Pertumbuhan, Aktivitas, Produktivitas,
+        // Likuiditas, Solvabilitas. Skor ditampilkan sebagai indeks 0–1.
         $skorGrup = $this->groupScores();
-        $perspectives = [[
-            'id' => self::REVENUE,
-            'name' => 'Revenue (Tingkat 1)',
-            'detail' => 'F1 · pencapaian kumulatif',
-            'score' => $f1,
-            'color' => self::WARNA[self::REVENUE],
-        ]];
+        $indeks = fn (?float $s) => $s === null ? null : number_format($s / 100, 2, ',', '.');
+        $perspectives = [];
         foreach (RatioLibrary::groups() as $grup => $bobot) {
             $perspectives[] = [
                 'id' => $grup,
                 'name' => $grup,
-                'detail' => 'bobot '.$bobot.' · '.$skorGrup[$grup]['count'].' rasio',
+                'detail' => ($skorGrup[$grup]['score'] === null ? 'belum ada skor' : 'e '.$indeks($skorGrup[$grup]['score'])).' · '.$skorGrup[$grup]['count'].' rasio',
                 'score' => $skorGrup[$grup]['score'],
                 'color' => self::WARNA[$grup] ?? '#64748b',
             ];
+
+            if ($grup === 'Profitabilitas') {
+                $perspectives[] = [
+                    'id' => self::REVENUE,
+                    'name' => 'Revenue / Pertumbuhan',
+                    'detail' => ($f1 === null ? 'belum ada target' : 'e '.$indeks($f1)).' · F1 kumulatif',
+                    'score' => $f1,
+                    'color' => self::WARNA[self::REVENUE],
+                ];
+            }
         }
 
         // ---- Kolom 3: unit kerja + garis

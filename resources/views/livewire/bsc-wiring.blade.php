@@ -346,7 +346,8 @@
     </style>
 
     @php
-        $skor = fn ($n) => $n === null ? '—' : number_format($n, 1, ',', '.');
+        // Skor perspektif & F1 berskala 0–100; ditampilkan sebagai indeks 0–1 seperti wiring versi lama.
+        $skor = fn ($n) => $n === null ? '—' : number_format($n / 100, 3, ',', '.');
         $rp = fn ($n) => $n === null ? '—' : 'Rp '.number_format((float) $n, 0, ',', '.');
         $angka = fn ($n) => rtrim(rtrim(number_format((float) $n, 4, ',', '.'), '0'), ',');
         $warnaSkor = fn ($n) => $n === null ? '#94a3b8' : ($n >= 90 ? '#10b981' : ($n >= 80 ? '#f59e0b' : '#e11d48'));

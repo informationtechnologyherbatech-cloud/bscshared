@@ -5,7 +5,9 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Entity;
 use App\Models\Period;
-use App\Models\FinancialRatio;
+use App\Models\AccountBalance;
+use App\Models\RatioTarget;
+use App\Support\Bsc\RatioEngine;
 use App\Models\DepartmentObjective;
 use App\Models\KpiCascade;
 use App\Models\ActionPlan;
@@ -15,7 +17,7 @@ use App\Support\EntityContext;
 use RuntimeException;
 
 /**
- * Data contoh (periode 2026-08, rasio, sasaran mutu, log staging) untuk
+ * Data contoh (periode 2026-08, pos akun & 19 rasio, sasaran mutu, log staging) untuk
  * entitas bawaan instalasi — BSC_DEFAULT_ENTITY, bawaan ERDIGMA.
  *
  * Kode departemen contoh ditulis dalam istilah manufaktur (OPS, MKT, PROD,
@@ -51,6 +53,23 @@ class BscDataSeeder extends Seeder
         'OPS-06' => [KpiCascade::DRIVER, 'REV', 'PA01', 'Menaikkan', 15],
         'MKT-01' => [KpiCascade::DRIVER, 'REV', 'PA01', 'Menaikkan', 60],
         'MKT-02' => [KpiCascade::DRIVER, 'REV', 'PA01', 'Menaikkan', 40],
+    ];
+
+    /** Sheet Asumsi bagian G — [nilai YTD / saldo akhir, saldo awal] (Rp; HRIS dalam orang/jam). */
+    private const POS_AKUN_ILUSTRASI = [
+        'PA01' => [540e9, null], 'PA02' => [351e9, null], 'PA03' => [135e9, null], 'PA04' => [81e9, null],
+        'PA05' => [117e9, 108e9], 'PA06' => [99e9, 90e9], 'PA07' => [67.5e9, 63e9], 'PA08' => [58.5e9, 54e9],
+        'PA09' => [333e9, 315e9], 'PA10' => [189e9, 180e9], 'PA11' => [756e9, 720e9], 'PA12' => [324e9, 315e9],
+        'PA13' => [432e9, 405e9], 'PA14' => [270e9, 270e9], 'PA15' => [320, null], 'PA16' => [450000, null],
+    ];
+
+    /** Sheet L2 kolom Target (persen ditulis dalam persen). */
+    private const TARGET_RASIO_ILUSTRASI = [
+        'P1' => 37, 'P2' => 11, 'P3' => 12, 'P4' => 20,
+        'A1' => 6, 'A2' => 1.2, 'A3' => 10, 'A4' => 60, 'A5' => 36, 'A6' => 45,
+        'D1' => 2.8e9, 'D2' => 1.3e6, 'D3' => 7, 'D4' => 0.7,
+        'L1' => 1.8, 'L2' => 1.2, 'L3' => 0.35,
+        'S1' => 0.7, 'S2' => 0.4,
     ];
 
     private array $peta = [];
@@ -141,79 +160,21 @@ class BscDataSeeder extends Seeder
             ]
         );
 
-        // 2. Financial Ratios
-        $ratios = [
-            [
-                'period' => '2026-08',
-                'category' => 'Likuiditas',
-                'ratio_name' => 'Current Ratio',
-                'target' => 2.00,
-                'actual' => 2.10,
-                'achievement_pct' => 100.00,
-                'status' => 'Tercapai',
-            ],
-            [
-                'period' => '2026-08',
-                'category' => 'Likuiditas',
-                'ratio_name' => 'Quick Ratio',
-                'target' => 1.50,
-                'actual' => 1.45,
-                'achievement_pct' => 96.67,
-                'status' => 'Waspada',
-            ],
-            [
-                'period' => '2026-08',
-                'category' => 'Solvabilitas',
-                'ratio_name' => 'Debt to Equity Ratio',
-                'target' => 0.80,
-                'actual' => 0.75,
-                'achievement_pct' => 100.00,
-                'status' => 'Tercapai',
-            ],
-            [
-                'period' => '2026-08',
-                'category' => 'Aktivitas',
-                'ratio_name' => 'Inventory Turnover',
-                'target' => 6.00,
-                'actual' => 5.80,
-                'achievement_pct' => 96.67,
-                'status' => 'Waspada',
-            ],
-            [
-                'period' => '2026-08',
-                'category' => 'Profitabilitas',
-                'ratio_name' => 'Net Profit Margin (%)',
-                'target' => 15.00,
-                'actual' => 14.80,
-                'achievement_pct' => 98.67,
-                'status' => 'Waspada',
-            ],
-            [
-                'period' => '2026-08',
-                'category' => 'Profitabilitas',
-                'ratio_name' => 'Return on Equity / ROE (%)',
-                'target' => 18.00,
-                'actual' => 18.50,
-                'achievement_pct' => 100.00,
-                'status' => 'Tercapai',
-            ],
-            [
-                'period' => '2026-08',
-                'category' => 'Produktivitas',
-                'ratio_name' => 'Revenue per Employee (Juta IDR)',
-                'target' => 120.00,
-                'actual' => 118.00,
-                'achievement_pct' => 98.33,
-                'status' => 'Waspada',
-            ],
-        ];
-
-        foreach ($ratios as $r) {
-            FinancialRatio::updateOrCreate(
-                ['period' => $r['period'], 'ratio_name' => $r['ratio_name']],
-                $r
+        // 2. Rasio keuangan — lewat jalur resmi: 16 pos akun + target rasio →
+        // mesin 19 rasio (RatioEngine). Angkanya data ILUSTRASI workbook
+        // (sheet Asumsi bagian G, 2026 YTD Jan–Agu = periode 2026-08; target dari
+        // sheet L2), sehingga F2 contoh = 94,1 persis seperti Excel. Ganti dengan
+        // data GL/HRIS aktual lewat menu Pos Akun & Katalog Rasio.
+        foreach (self::POS_AKUN_ILUSTRASI as $kode => [$nilai, $awal]) {
+            AccountBalance::updateOrCreate(
+                ['period' => '2026-08', 'code' => $kode],
+                ['amount' => $nilai, 'opening' => $awal]
             );
         }
+        foreach (self::TARGET_RASIO_ILUSTRASI as $kode => $target) {
+            RatioTarget::updateOrCreate(['year' => '2026', 'code' => $kode], ['target' => $target]);
+        }
+        app(RatioEngine::class)->materialize('2026-08');
 
         // 3. Department Objectives
         $objectives = [

@@ -83,11 +83,12 @@ class BscWiringTest extends TestCase
             ->assertSeeHtml('Likuiditas');
     }
 
-    public function test_perspectives_are_revenue_plus_the_five_ratio_groups(): void
+    public function test_perspectives_follow_the_old_wiring_terms_and_order(): void
     {
         Livewire::test(BscWiring::class)
-            ->assertViewHas('perspectives', fn ($p) => collect($p)->pluck('id')->all()
-                === ['revenue', 'Profitabilitas', 'Aktivitas', 'Produktivitas', 'Likuiditas', 'Solvabilitas']);
+            ->assertViewHas('perspectives', fn ($p) => collect($p)->pluck('name')->all()
+                === ['Profitabilitas', 'Revenue / Pertumbuhan', 'Aktivitas', 'Produktivitas', 'Likuiditas', 'Solvabilitas'])
+            ->assertSee('Revenue / Pertumbuhan');
     }
 
     public function test_the_unit_filter_and_shifted_filter_apply(): void
