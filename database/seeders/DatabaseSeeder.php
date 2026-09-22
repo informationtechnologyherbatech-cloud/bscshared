@@ -3,12 +3,12 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
+    // Tanpa WithoutModelEvents: event "creating" dibutuhkan BelongsToEntity untuk
+    // mengisi entity_id data contoh, dan AppSetting membersihkan cache-nya lewat event.
 
     /**
      * Seed the application's database.

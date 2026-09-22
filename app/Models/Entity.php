@@ -29,6 +29,12 @@ class Entity extends Model
         ];
     }
 
+    /** Entitas bawaan instalasi ini (config bsc.default_entity, env BSC_DEFAULT_ENTITY). */
+    public static function configuredDefault(): ?self
+    {
+        return static::active()->where('code', config('bsc.default_entity'))->first();
+    }
+
     public function workUnits(): HasMany
     {
         return $this->hasMany(WorkUnit::class)->withoutGlobalScopes();

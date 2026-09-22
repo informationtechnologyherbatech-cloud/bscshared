@@ -4,6 +4,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Entitas Bawaan
+    |--------------------------------------------------------------------------
+    |
+    | Kode entitas (HERBAEMAS, HERBATECH, AEJ, ERDIGMA) yang:
+    |   - dibuka pertama kali oleh pengguna level holding yang belum memilih
+    |     entitas lewat pengalih di navbar, dan
+    |   - menjadi pemilik data contoh saat `php artisan db:seed`.
+    |
+    | Pengguna yang ditautkan ke satu entitas selalu melihat entitasnya sendiri,
+    | apa pun nilai ini. Setiap instalasi dapat memakai nilai berbeda lewat .env.
+    |
+    */
+
+    'default_entity' => strtoupper((string) env('BSC_DEFAULT_ENTITY', 'ERDIGMA')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Bobot Skor Puncak (Apex)
     |--------------------------------------------------------------------------
     |

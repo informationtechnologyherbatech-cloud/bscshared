@@ -3,15 +3,79 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use App\Models\Entity;
 use App\Models\Period;
 use App\Models\FinancialRatio;
 use App\Models\DepartmentObjective;
 use App\Models\ActionPlan;
 use App\Models\StagingLog;
+use App\Models\WorkUnit;
+use App\Support\EntityContext;
+use RuntimeException;
 
+/**
+ * Data contoh (periode 2026-08, rasio, sasaran mutu, log staging) untuk
+ * entitas bawaan instalasi — BSC_DEFAULT_ENTITY, bawaan ERDIGMA.
+ *
+ * Kode departemen contoh ditulis dalam istilah manufaktur (OPS, MKT, PROD,
+ * HRD) lalu dipetakan ke unit kerja entitas tujuan, sehingga yang tampil
+ * adalah departemen entitas itu sendiri.
+ */
 class BscDataSeeder extends Seeder
 {
+    /** Kode contoh → unit kerja tiap jenis entitas. */
+    private const PETA_UNIT = [
+        Entity::MANUFAKTUR => ['OPS' => 'OPS', 'MKT' => 'MKT', 'PROD' => 'PRO', 'HRD' => 'HRD'],
+        Entity::DIGITAL_MARKETING => ['OPS' => 'SCM', 'MKT' => 'BMK', 'PROD' => 'MFG', 'HRD' => 'HRG'],
+    ];
+
+    /** Unit yang dibuat bila belum ada di katalog entitas (MKT tidak ada di katalog manufaktur). */
+    private const UNIT_TAMBAHAN = ['MKT' => 'Marketing & Penjualan'];
+
+    private array $peta = [];
+
     public function run(): void
+    {
+        $entitas = Entity::configuredDefault();
+
+        if (! $entitas) {
+            throw new RuntimeException('Entitas bawaan "'.config('bsc.default_entity').'" tidak ditemukan atau nonaktif. '
+                .'Periksa BSC_DEFAULT_ENTITY di .env (HERBAEMAS, HERBATECH, AEJ, atau ERDIGMA).');
+        }
+
+        $this->peta = self::PETA_UNIT[$entitas->industry] ?? self::PETA_UNIT[Entity::MANUFAKTUR];
+
+        // Seeder berjalan tanpa pengguna login; tanpa ini entity_id data contoh
+        // kosong dan datanya tidak tampil di entitas mana pun.
+        app(EntityContext::class)->runAs($entitas->id, fn () => $this->seed());
+
+        $this->command?->info('Data contoh BSC dimuat untuk entitas '.$entitas->code.' ('.$entitas->legal_name.').');
+    }
+
+    /** Kode departemen contoh → kode unit entitas; unitnya dipastikan ada. */
+    private function unit(string $kode): string
+    {
+        $tujuan = $this->peta[$kode] ?? $kode;
+
+        if (! WorkUnit::where('code', $tujuan)->exists()) {
+            WorkUnit::create([
+                'code' => $tujuan,
+                'name' => self::UNIT_TAMBAHAN[$tujuan] ?? $tujuan,
+                'is_active' => true,
+                'sort' => (int) WorkUnit::max('sort') + 1,
+            ]);
+        }
+
+        return $tujuan;
+    }
+
+    /** OPS-02 → SCM-02 mengikuti kode unit tujuan. */
+    private function kpi(string $kode): string
+    {
+        return preg_replace_callback('/^(KPI-)?([A-Z]+)(?=-)/', fn ($m) => $m[1].($this->peta[$m[2]] ?? $m[2]), $kode);
+    }
+
+    private function seed(): void
     {
         // 1. Period
         $period = Period::updateOrCreate(
@@ -189,35 +253,38 @@ class BscDataSeeder extends Seeder
         ];
 
         foreach ($objectives as $objData) {
+            $kpiAsli = $objData['kpi_code'];
+            $objData['dept_code'] = $this->unit($objData['dept_code']);
+            $objData['kpi_code'] = $this->kpi($kpiAsli);
             $obj = DepartmentObjective::updateOrCreate(
                 ['period' => $objData['period'], 'kpi_code' => $objData['kpi_code']],
                 $objData
             );
 
             // Action Plans for specific objectives
-            if ($objData['kpi_code'] === 'KPI-HRD-001') {
+            if ($kpiAsli === 'KPI-HRD-001') {
                 ActionPlan::updateOrCreate(
                     ['department_objective_id' => $obj->id, 'title' => 'Program Intensifikasi Pelatihan Teknis Produksi & K3'],
                     [
-                        'owner_dept' => 'HRD',
+                        'owner_dept' => $this->unit('HRD'),
                         'progress_pct' => 75,
                         'status' => 'On Progress',
                     ]
                 );
-            } elseif ($objData['kpi_code'] === 'KPI-PROD-001') {
+            } elseif ($kpiAsli === 'KPI-PROD-001') {
                 ActionPlan::updateOrCreate(
                     ['department_objective_id' => $obj->id, 'title' => 'Kalibrasi Ulang Mesin Utama Line 2'],
                     [
-                        'owner_dept' => 'PROD',
+                        'owner_dept' => $this->unit('PROD'),
                         'progress_pct' => 90,
                         'status' => 'On Progress',
                     ]
                 );
-            } elseif ($objData['kpi_code'] === 'KPI-MKT-001') {
+            } elseif ($kpiAsli === 'KPI-MKT-001') {
                 ActionPlan::updateOrCreate(
                     ['department_objective_id' => $obj->id, 'title' => 'Kampanye Digital Marketing Q3 Produk Herbal'],
                     [
-                        'owner_dept' => 'MKT',
+                        'owner_dept' => $this->unit('MKT'),
                         'progress_pct' => 100,
                         'status' => 'Completed',
                     ]
@@ -230,7 +297,7 @@ class BscDataSeeder extends Seeder
             ['idempotency_key' => 'IDEMP-PROD-202608-001'],
             [
                 'period' => '2026-08',
-                'dept_code' => 'PROD',
+                'dept_code' => $this->unit('PROD'),
                 'status' => 'SCORED',
                 'source_version' => 1,
                 'message' => 'Data realisasi produksi berhasil dihitung dan diterbitkan.',
@@ -241,7 +308,7 @@ class BscDataSeeder extends Seeder
             ['idempotency_key' => 'IDEMP-HRD-202608-001'],
             [
                 'period' => '2026-08',
-                'dept_code' => 'HRD',
+                'dept_code' => $this->unit('HRD'),
                 'status' => 'DELIVERED',
                 'source_version' => 1,
                 'message' => 'Data jam pelatihan diterima dari HRIS, dalam antrean skoring.',

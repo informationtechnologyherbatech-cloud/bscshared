@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\DB;
  * Aturannya:
  *   - pengguna yang terikat satu entitas selalu berada di entitas itu;
  *   - pengguna tanpa entitas (level holding) memilih entitas lewat pengalih,
- *     disimpan di sesi; bila belum memilih, dipakai entitas yang datanya paling
- *     baru diperbarui.
+ *     disimpan di sesi; bila belum memilih, dipakai entitas bawaan instalasi
+ *     (BSC_DEFAULT_ENTITY) — lihat defaultId().
  */
 class EntityContext
 {
@@ -135,9 +135,11 @@ class EntityContext
     }
 
     /**
-     * Entitas bawaan bagi pengguna holding yang belum memilih: entitas yang
-     * datanya paling baru diperbarui, supaya pengguna mendarat di tempat
-     * datanya berada — bukan di entitas kosong.
+     * Entitas bawaan bagi pengguna holding yang belum memilih:
+     *   1. entitas yang ditetapkan instalasi (BSC_DEFAULT_ENTITY);
+     *   2. bila kodenya tidak dikenal/nonaktif: entitas yang datanya paling baru
+     *      diperbarui, supaya pengguna mendarat di tempat datanya berada;
+     *   3. entitas aktif pertama.
      */
     private function defaultId(): ?int
     {
@@ -146,6 +148,10 @@ class EntityContext
         }
 
         $this->defaultResolved = true;
+
+        if ($terpilih = Entity::configuredDefault()) {
+            return $this->default = $terpilih->id;
+        }
 
         // Kueri langsung ke tabel: model Period memakai pembatas entitas, yang
         // memanggil kelas ini — lewat model akan berputar tanpa akhir.
