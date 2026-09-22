@@ -3,7 +3,7 @@
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1><i class="fas fa-sitemap mr-2"></i>Unit Kerja</h1>
+                    <h1><i class="fas fa-building-user mr-2"></i>Unit Kerja</h1>
                     <small class="text-muted">
                         Struktur unit kerja
                         <strong>{{ $entity?->legal_name ?? 'entitas aktif' }}</strong>

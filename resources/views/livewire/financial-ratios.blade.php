@@ -5,7 +5,7 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-coins text-success mr-2"></i> Rasio Keuangan (Level 2)
+                        <i class="fas fa-percent text-teal mr-2"></i> Rasio Keuangan (Level 2)
                     </h1>
                 </div>
                 <div class="col-sm-6 text-right">

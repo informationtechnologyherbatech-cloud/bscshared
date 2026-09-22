@@ -14,7 +14,7 @@
         <div class="container-fluid">
             <div class="row mb-2 align-items-center">
                 <div class="col-sm-8">
-                    <h1><i class="fas fa-vial mr-2 text-teal"></i>Uji Indikator <small class="text-muted">(Tingkat 4)</small></h1>
+                    <h1><i class="fas fa-vial-circle-check mr-2 text-teal"></i>Uji Indikator <small class="text-muted">(Tingkat 4)</small></h1>
                     <small class="text-muted">
                         {{ $entity?->legal_name ?? 'Entitas aktif' }} — Keuangan menguji bahwa tiap KPI benar-benar menggerakkan rasio
                         keuangan sebelum masuk monitoring. Uji A wajib untuk semua KPI; Uji B untuk KPI Driver.

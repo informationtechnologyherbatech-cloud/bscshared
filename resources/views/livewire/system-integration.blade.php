@@ -5,7 +5,7 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-plug text-primary mr-2"></i> Integrasi Sistem & Gateway Inbound (Hop 4)
+                        <i class="fas fa-plug text-teal mr-2"></i> Integrasi Sistem & Gateway Inbound (Hop 4)
                     </h1>
                 </div>
             </div>

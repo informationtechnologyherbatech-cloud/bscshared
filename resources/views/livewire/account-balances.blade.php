@@ -14,7 +14,7 @@
         <div class="container-fluid">
             <div class="row mb-2 align-items-center">
                 <div class="col-sm-7">
-                    <h1><i class="fas fa-book mr-2 text-teal"></i>Pos Akun <small class="text-muted">(Tingkat 2)</small></h1>
+                    <h1><i class="fas fa-file-invoice-dollar mr-2 text-teal"></i>Pos Akun <small class="text-muted">(Tingkat 2)</small></h1>
                     <small class="text-muted">
                         {{ $entity?->legal_name ?? 'Entitas aktif' }} — 16 pos akun ini diolah menjadi 19 rasio keuangan,
                         lalu skornya menjadi <strong>F2</strong> pada skor puncak.

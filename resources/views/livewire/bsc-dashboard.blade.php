@@ -333,7 +333,7 @@
             <div class="row mb-2 align-items-center">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-cubes text-teal mr-2"></i> Dashboard Piramida BSC
+                        <i class="fas fa-layer-group text-teal mr-2"></i> Dashboard Piramida BSC
                         <small class="text-muted d-block" style="font-size: 13px;">Interaktif & Telusur Kinerja 4 Tingkat Perusahaan</small>
                     </h1>
                 </div>
@@ -400,35 +400,64 @@
                 </div>
             @endif
 
-            <!-- APEX SCORE SUMMARY BAR -->
-            <div class="card bg-gradient-navy text-white shadow-sm mb-4">
-                <div class="card-body py-3">
-                    <div class="row align-items-center">
-                        <div class="col-md-7">
-                            <h5 class="font-weight-bold text-uppercase mb-1 text-warning">
-                                <i class="fas fa-crown mr-2"></i> Skor Puncak (Apex)
-                            </h5>
-                            <small class="text-white-50">
-                                @if(count($apexBreakdown) > 0)
-                                    Rata-rata terbobot:
-                                    @foreach($apexBreakdown as $bagian)
-                                        <strong>{{ $bagian['weight'] }}% {{ $bagian['label'] }}</strong>{{ ! $loop->last ? ' + ' : '' }}
-                                    @endforeach
-                                    @if(count($apexBreakdown) < 3)
-                                        <span class="d-block">Tingkat tanpa data pada periode ini dikeluarkan, bobotnya dibagi ke tingkat yang tersedia.</span>
-                                    @endif
-                                @else
-                                    Belum ada data pada periode ini, sehingga skor belum dapat dihitung.
-                                @endif
-                            </small>
-                        </div>
-                        <div class="col-md-5 text-md-right text-center mt-2 mt-md-0">
-                            <span class="h2 font-weight-bold text-warning mb-0 mr-3">{{ number_format($apexScore, 1) }}%</span>
-                            <span class="badge badge-pill {{ $apexScore >= 100 ? 'badge-success' : ($apexScore >= 80 ? 'badge-warning' : 'badge-danger') }} px-3 py-2 font-weight-bold">
-                                Status: {{ $apexScore >= 100 ? 'TERCAPAI' : ($apexScore >= 80 ? 'WASPADA' : 'DI BAWAH TARGET') }}
-                            </span>
+            <!-- APEX SCORE SUMMARY -->
+            @php($adaSkor = count($apexBreakdown) > 0)
+            @php($apexTone = ! $adaSkor ? 'none' : ($apexScore >= 100 ? 'good' : ($apexScore >= 80 ? 'warn' : 'bad')))
+            @php($apexLabel = ['none' => 'Belum ada data', 'good' => 'Tercapai', 'warn' => 'Waspada', 'bad' => 'Di Bawah Target'][$apexTone])
+            @php($keliling = 2 * M_PI * 52)
+            @php($komponen = [
+                ['key' => 'revenue', 'kode' => 'F1', 'label' => 'Revenue', 'icon' => 'fa-bullseye', 'score' => $revenueScore, 'note' => $revenueScore === null ? ($revenueReason ?? 'belum ada data') : null],
+                ['key' => 'ratios', 'kode' => 'F2', 'label' => 'Rasio Keuangan', 'icon' => 'fa-percent', 'score' => $hasRatioScore ? $avgRatioScore : null, 'note' => $hasRatioScore ? null : 'belum ada rasio terhitung'],
+            ])
+            @php($bobotDipakai = collect($apexBreakdown)->pluck('weight', 'label'))
+            <div class="apex-card apex-{{ $apexTone }} mb-4">
+                <div class="apex-main">
+                    <div class="apex-gauge" role="img" aria-label="Skor puncak {{ $adaSkor ? number_format($apexScore, 1).'%' : 'belum ada' }}">
+                        <svg viewBox="0 0 120 120">
+                            <circle class="apex-gauge-track" cx="60" cy="60" r="52"></circle>
+                            <circle class="apex-gauge-value" cx="60" cy="60" r="52"
+                                    stroke-dasharray="{{ round($keliling, 2) }}"
+                                    stroke-dashoffset="{{ round($keliling * (1 - min(max($adaSkor ? $apexScore : 0, 0), 100) / 100), 2) }}"></circle>
+                        </svg>
+                        <div class="apex-gauge-label">
+                            <strong>{{ $adaSkor ? number_format($apexScore, 1) : '—' }}<small>{{ $adaSkor ? '%' : '' }}</small></strong>
+                            <span>dari 100</span>
                         </div>
                     </div>
+                    <div class="apex-info">
+                        <div class="apex-eyebrow"><i class="fas fa-crown mr-2"></i>Skor Puncak (Apex)</div>
+                        <span class="apex-status"><i class="fas {{ ['none' => 'fa-circle-question', 'good' => 'fa-circle-check', 'warn' => 'fa-triangle-exclamation', 'bad' => 'fa-circle-xmark'][$apexTone] }} mr-1"></i>{{ $apexLabel }}</span>
+                        <p class="apex-formula mb-0">
+                            @if($adaSkor)
+                                Rata-rata terbobot:
+                                @foreach($apexBreakdown as $bagian)
+                                    <strong>{{ $bagian['weight'] }}% {{ $bagian['label'] }}</strong>{{ ! $loop->last ? ' + ' : '' }}
+                                @endforeach
+                                @if(count($apexBreakdown) < count(array_filter($apexWeights)))
+                                    <span class="d-block">Tingkat tanpa data pada periode ini dikeluarkan, bobotnya dibagi ke tingkat yang tersedia.</span>
+                                @endif
+                            @else
+                                Belum ada data pada periode ini, sehingga skor belum dapat dihitung.
+                            @endif
+                        </p>
+                    </div>
+                </div>
+                <div class="apex-parts">
+                    @foreach($komponen as $k)
+                        @php($ada = $k['score'] !== null)
+                        <button type="button" class="apex-part {{ $ada ? '' : 'is-empty' }}" wire:click="selectLevel({{ $loop->iteration }})" title="Telusuri Tingkat {{ $loop->iteration }}">
+                            <div class="apex-part-head">
+                                <span class="apex-part-icon"><i class="fas {{ $k['icon'] }}"></i></span>
+                                <span class="apex-part-name">{{ $k['kode'] }} · {{ $k['label'] }}</span>
+                                <span class="apex-part-weight">{{ $ada && isset($bobotDipakai[$k['label']]) ? 'bobot '.$bobotDipakai[$k['label']].'%' : 'dikeluarkan' }}</span>
+                            </div>
+                            <div class="apex-part-score">{{ $ada ? number_format($k['score'], 1).'%' : '—' }}</div>
+                            <div class="apex-part-bar"><span style="width: {{ $ada ? min(max($k['score'], 0), 100) : 0 }}%"></span></div>
+                            @if(! $ada)
+                                <div class="apex-part-note">{{ $k['note'] }}</div>
+                            @endif
+                        </button>
+                    @endforeach
                 </div>
             </div>
 

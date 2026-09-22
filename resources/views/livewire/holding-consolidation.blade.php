@@ -16,7 +16,7 @@
         <div class="container-fluid">
             <div class="row mb-2 align-items-center">
                 <div class="col-sm-8">
-                    <h1><i class="fas fa-layer-group mr-2 text-teal"></i>Konsolidasi Holding</h1>
+                    <h1><i class="fas fa-city mr-2 text-teal"></i>Konsolidasi Holding</h1>
                     <small class="text-muted">
                         Erhanesia Mulia Corpora — skor keempat entitas dengan skala yang sama (0–100), dan revenue grup setelah
                         eliminasi penjualan antarentitas.

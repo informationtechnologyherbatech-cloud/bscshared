@@ -361,7 +361,7 @@
                 <div class="row mb-2 align-items-center">
                     <div class="col-lg-6">
                         <h1 class="m-0 font-weight-bold" :class="darkTheme ? 'text-white' : 'text-dark'">
-                            <i class="fas fa-project-diagram text-teal mr-2"></i> Wiring / Peta Hubungan Transmisi Kaskade
+                            <i class="fas fa-diagram-project text-teal mr-2"></i> Wiring / Peta Hubungan Transmisi Kaskade
                         </h1>
                         <small class="text-muted">{{ $entity?->legal_name ?? 'Entitas aktif' }} — target revenue → perspektif rasio → unit kerja, ditarik dari Cascade KPI.</small>
                     </div>

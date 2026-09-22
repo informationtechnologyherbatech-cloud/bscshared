@@ -5,7 +5,7 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-bullseye text-warning mr-2"></i> Objective Departemen (Level 3)
+                        <i class="fas fa-crosshairs text-teal mr-2"></i> Objective Departemen (Level 3)
                     </h1>
                 </div>
                 <div class="col-sm-6 text-right">

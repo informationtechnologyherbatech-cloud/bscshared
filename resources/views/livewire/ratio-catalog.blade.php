@@ -5,7 +5,7 @@
         <div class="container-fluid">
             <div class="row mb-2 align-items-center">
                 <div class="col-sm-7">
-                    <h1><i class="fas fa-sliders-h mr-2 text-teal"></i>Katalog Rasio <small class="text-muted">(Tingkat 2)</small></h1>
+                    <h1><i class="fas fa-scale-balanced mr-2 text-teal"></i>Katalog Rasio <small class="text-muted">(Tingkat 2)</small></h1>
                     <small class="text-muted">
                         {{ $entity?->legal_name ?? 'Entitas aktif' }} — pilih rasio yang dipakai, bobotnya, dan target tahunannya.
                         Susunan boleh berbeda antar entitas; skornya tetap F2 berskala 0–100.

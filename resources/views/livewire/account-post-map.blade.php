@@ -3,7 +3,7 @@
 
     <section class="content-header">
         <div class="container-fluid">
-            <h1><i class="fas fa-project-diagram mr-2 text-teal"></i>Peta Pos Akun <small class="text-muted">(Tingkat 3)</small></h1>
+            <h1><i class="fas fa-table-cells mr-2 text-teal"></i>Peta Pos Akun <small class="text-muted">(Tingkat 3)</small></h1>
             <small class="text-muted">
                 {{ $entity?->legal_name ?? 'Entitas aktif' }} — siapa <strong>Pemilik (O)</strong> dan <strong>Kontributor (K)</strong>
                 tiap pos akun. Peta ini menentukan rasio mana yang boleh diklaim unit di Cascade KPI.

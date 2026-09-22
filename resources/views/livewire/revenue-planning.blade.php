@@ -12,7 +12,7 @@
         <div class="container-fluid">
             <div class="row mb-2 align-items-center">
                 <div class="col-sm-8">
-                    <h1><i class="fas fa-drafting-compass mr-2 text-teal"></i>Perencanaan Target Revenue <small class="text-muted">(Tingkat 1)</small></h1>
+                    <h1><i class="fas fa-chart-line mr-2 text-teal"></i>Perencanaan Target Revenue <small class="text-muted">(Tingkat 1)</small></h1>
                     <small class="text-muted">
                         {{ $entity?->legal_name ?? 'Entitas aktif' }} — menyusun target {{ $year }} dari lima sudut pandang, mengesahkan satu angka,
                         lalu memfasingnya ke 12 bulan. Tahun dasar: <strong>{{ $baseYear }}</strong>.

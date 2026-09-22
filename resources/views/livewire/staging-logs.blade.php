@@ -5,7 +5,7 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-network-wired text-info mr-2"></i> Staging & Audit Log Integrasi Hop 4
+                        <i class="fas fa-clipboard-list text-teal mr-2"></i> Staging & Audit Log Integrasi Hop 4
                     </h1>
                 </div>
             </div>
