@@ -202,7 +202,7 @@ class SystemIntegration extends Component
             'idempotency_key' => $idempotencyKey,
             'status' => 'SCORED',
             'source_version' => 1,
-            'message' => 'Penerimaan Data Finance ERP ke Pos Akun (Penjualan: Rp ' . number_format($this->salesPayload) . ' JT, HPP: Rp ' . number_format($this->hppPayload) . ' JT, Laba: Rp ' . number_format($netProfit) . ' JT); rasio keuangan dihitung ulang.',
+            'message' => 'Penerimaan Data Finance ERP ke Pos Akun (Penjualan: ' . rupiah($this->salesPayload) . ' JT, HPP: ' . rupiah($this->hppPayload) . ' JT, Laba: ' . rupiah($netProfit) . ' JT); rasio keuangan dihitung ulang.',
         ]);
 
         session()->flash('message', 'Data CoA Finance ' . $this->financePeriod . ' masuk ke Pos Akun dan rasio keuangan dihitung ulang. '

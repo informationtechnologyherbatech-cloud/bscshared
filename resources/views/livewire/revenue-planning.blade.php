@@ -54,8 +54,8 @@
                             <div class="form-row">
                                 <div class="form-group col-7">
                                     <label class="small">Revenue {{ $baseYear }} YTD (Rp)</label>
-                                    <input type="number" min="0" step="any" wire:model.live.debounce.500ms="baseYtd" class="form-control form-control-sm text-right @error('baseYtd') is-invalid @enderror"
-                                           placeholder="{{ $r['auto_ytd'] !== null ? number_format($r['auto_ytd'], 0, '', '') : 'isi manual' }}" @disabled($kunci)>
+                                    <x-input-rupiah wire:model.live.debounce.500ms="baseYtd" class="form-control form-control-sm text-right {{ $errors->has('baseYtd') ? 'is-invalid' : '' }}"
+                                           placeholder="{{ $r['auto_ytd'] !== null ? 'Rp '.number_format($r['auto_ytd'], 0, ',', '.') : 'isi manual' }}" :disabled="$kunci" />
                                 </div>
                                 <div class="form-group col-5">
                                     <label class="small">Bulan berjalan (n)</label>
@@ -89,7 +89,7 @@
                                     @foreach ($history as $t => $v)
                                         <tr>
                                             <td class="align-middle">{{ $t }}</td>
-                                            <td class="p-1"><input type="number" min="0" step="any" wire:model.live.debounce.500ms="history.{{ $t }}" class="form-control form-control-sm text-right" placeholder="realisasi {{ $t }}" @disabled($kunci) aria-label="Realisasi {{ $t }}"></td>
+                                            <td class="p-1"><x-input-rupiah wire:model.live.debounce.500ms="history.{{ $t }}" class="form-control form-control-sm text-right" placeholder="realisasi {{ $t }}" :disabled="$kunci" aria-label="Realisasi {{ $t }}" /></td>
                                             <td class="text-right align-middle">{{ $pct($r['yoy'][(int) $t] ?? null, 1) }}</td>
                                         </tr>
                                     @endforeach
@@ -152,7 +152,7 @@
                                     <tr wire:key="brand-{{ $bi }}">
                                         <td class="p-1"><input type="text" wire:model.live.debounce.500ms="brands.{{ $bi }}.name" class="form-control form-control-sm" placeholder="nama brand" @disabled($kunci) aria-label="Nama brand {{ $bi + 1 }}"></td>
                                         @foreach ($channels as $ci => $c)
-                                            <td class="p-1"><input type="number" min="0" step="any" wire:model.live.debounce.500ms="brands.{{ $bi }}.cells.{{ $ci }}" class="form-control form-control-sm text-right" @disabled($kunci) aria-label="Basis {{ $b['name'] }} {{ $c }}"></td>
+                                            <td class="p-1"><x-input-rupiah wire:model.live.debounce.500ms="brands.{{ $bi }}.cells.{{ $ci }}" class="form-control form-control-sm text-right" :disabled="$kunci" aria-label="Basis {{ $b['name'] }} {{ $c }}" /></td>
                                         @endforeach
                                         <td class="text-right align-middle">{{ $rp($bu['brands'][$bi]['base'] ?? 0) }}</td>
                                         <td class="p-1"><input type="number" step="any" wire:model.live.debounce.500ms="brands.{{ $bi }}.growth" class="form-control form-control-sm text-right" @disabled($kunci) aria-label="Growth {{ $b['name'] }}"></td>
@@ -225,7 +225,7 @@
                                                 </select>
                                             </td>
                                             <td class="p-1"><input type="text" wire:model="ansoff.{{ $ai }}.initiative" class="form-control form-control-sm" @disabled($kunci) aria-label="Inisiatif"></td>
-                                            <td class="p-1"><input type="number" min="0" step="any" wire:model.live.debounce.500ms="ansoff.{{ $ai }}.revenue" class="form-control form-control-sm text-right" @disabled($kunci) aria-label="Revenue tambahan"></td>
+                                            <td class="p-1"><x-input-rupiah wire:model.live.debounce.500ms="ansoff.{{ $ai }}.revenue" class="form-control form-control-sm text-right" :disabled="$kunci" aria-label="Revenue tambahan" /></td>
                                             <td class="p-1"><input type="number" min="0" max="100" step="any" wire:model.live.debounce.500ms="ansoff.{{ $ai }}.probability" class="form-control form-control-sm text-right" @disabled($kunci) aria-label="Probabilitas"></td>
                                             <td class="text-right align-middle">{{ $rp((is_numeric($a['revenue']) ? (float) $a['revenue'] : 0) * (is_numeric($a['probability']) ? (float) $a['probability'] : 0) / 100) }}</td>
                                             @if ($canManage)
@@ -308,7 +308,7 @@
                                 <td colspan="{{ $canManage ? 4 : 3 }}">
                                     @if ($canManage)
                                         <div class="input-group input-group-sm" style="max-width:360px">
-                                            <input type="number" min="0" step="any" wire:model="manualApproval" class="form-control @error('manualApproval') is-invalid @enderror" placeholder="atau ketik angka lain (Rp)">
+                                            <x-input-rupiah wire:model="manualApproval" class="form-control {{ $errors->has('manualApproval') ? 'is-invalid' : '' }}" placeholder="atau ketik angka lain (Rp)" />
                                             <div class="input-group-append"><button wire:click="approve('manual')" class="btn btn-primary">Sahkan</button></div>
                                         </div>
                                     @endif

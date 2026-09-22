@@ -158,9 +158,14 @@
                                     <td class="align-middle">
                                         @if ($bisaUbah)
                                             <div class="input-group input-group-sm">
+                                                @if ($r['unit'] === 'Rp')
+                                                    <x-input-rupiah wire:model.live.debounce.500ms="rows.{{ $kode }}.target"
+                                                           class="form-control text-right {{ $errors->has('rows.'.$kode.'.target') ? 'is-invalid' : '' }}" placeholder="belum ada" />
+                                                @else
                                                 <input type="number" step="any" wire:model.live.debounce.500ms="rows.{{ $kode }}.target"
                                                        class="form-control text-right @error('rows.'.$kode.'.target') is-invalid @enderror" placeholder="belum ada">
                                                 <div class="input-group-append"><span class="input-group-text">{{ $r['unit'] }}</span></div>
+                                                @endif
                                             </div>
                                         @else
                                             <div class="text-right">{{ $rows[$kode]['target'] !== '' ? \App\Support\Bsc\RatioLibrary::format((float) $rows[$kode]['target'], $r['unit']) : '—' }}</div>

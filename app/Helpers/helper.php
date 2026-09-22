@@ -185,6 +185,23 @@ if (! function_exists('group_entity_logos')) {
     }
 }
 
+if (! function_exists('rupiah')) {
+    /**
+     * Format rupiah Indonesia: rupiah(1000000000) → "Rp 1.000.000.000".
+     * Null/'' → "—". Negatif ditulis "-Rp 1.000".
+     */
+    function rupiah(mixed $nilai, int $desimal = 0): string
+    {
+        if ($nilai === null || $nilai === '' || ! is_numeric($nilai)) {
+            return '—';
+        }
+
+        $n = (float) $nilai;
+
+        return ($n < 0 ? '-' : '').'Rp '.number_format(abs($n), $desimal, ',', '.');
+    }
+}
+
 if (! function_exists('recaptcha')) {
     /** Layanan Google reCAPTCHA (lihat App\Support\Recaptcha). */
     function recaptcha(): Recaptcha

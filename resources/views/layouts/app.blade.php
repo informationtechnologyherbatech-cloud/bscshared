@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="{{ asset('css/custom-app.css') }}">
 
     @livewireStyles
+    @include('partials.input-rupiah-script')
 </head>
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
 <div class="wrapper">

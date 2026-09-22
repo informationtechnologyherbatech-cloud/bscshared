@@ -147,7 +147,10 @@ class RevenueTargets extends Component
     private function annualTargetValue(): ?float
     {
         $this->resetErrorBag('annualTarget');
-        $bersih = str_replace(['.', ',', ' '], ['', '.', ''], $this->annualTarget);
+        // Komponen rupiah mengirim angka murni; teks lama "1.000.000,5" tetap dipahami.
+        $bersih = is_numeric($this->annualTarget)
+            ? $this->annualTarget
+            : str_replace(['Rp', '.', ',', ' '], ['', '', '.', ''], $this->annualTarget);
 
         if (! is_numeric($bersih) || (float) $bersih <= 0) {
             $this->addError('annualTarget', 'Isi target setahun lebih dulu (angka lebih dari 0).');

@@ -86,7 +86,7 @@
                                 <span class="info-box-icon bg-info"><i class="fas fa-shopping-cart"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text font-weight-bold text-uppercase">4101 · Penjualan</span>
-                                    <span class="info-box-number text-info">Rp {{ number_format($salesPayload) }} JT</span>
+                                    <span class="info-box-number text-info">{{ rupiah($salesPayload) }} JT</span>
                                     <small class="text-muted">Pendapatan Operasional</small>
                                 </div>
                             </div>
@@ -96,7 +96,7 @@
                                 <span class="info-box-icon bg-danger"><i class="fas fa-boxes"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text font-weight-bold text-uppercase">5101 · HPP</span>
-                                    <span class="info-box-number text-danger">Rp {{ number_format($hppPayload) }} JT</span>
+                                    <span class="info-box-number text-danger">{{ rupiah($hppPayload) }} JT</span>
                                     <small class="text-muted">Beban Pokok Penjualan</small>
                                 </div>
                             </div>
@@ -106,7 +106,7 @@
                                 <span class="info-box-icon bg-warning"><i class="fas fa-file-invoice"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text font-weight-bold text-uppercase">6101 · Beban Opex</span>
-                                    <span class="info-box-number text-warning">Rp {{ number_format($opexPayload) }} JT</span>
+                                    <span class="info-box-number text-warning">{{ rupiah($opexPayload) }} JT</span>
                                     <small class="text-muted">Beban Operasional & Distribusi</small>
                                 </div>
                             </div>
@@ -116,7 +116,7 @@
                                 <span class="info-box-icon bg-white text-success"><i class="fas fa-coins"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text font-weight-bold text-uppercase">Laba Bersih Operasional</span>
-                                    <span class="info-box-number text-white">Rp {{ number_format($netProfitCalculated) }} JT</span>
+                                    <span class="info-box-number text-white">{{ rupiah($netProfitCalculated) }} JT</span>
                                     <small class="text-white-50">Laba = Penjualan - HPP - Opex</small>
                                 </div>
                             </div>
@@ -137,39 +137,39 @@
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">4101 · Penjualan (JT)</label>
-                                    <input type="number" step="100" wire:model="salesPayload" class="form-control form-control-sm font-weight-bold text-primary">
+                                    <x-input-rupiah wire:model="salesPayload" class="form-control form-control-sm font-weight-bold text-primary text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">5101 · HPP (JT)</label>
-                                    <input type="number" step="100" wire:model="hppPayload" class="form-control form-control-sm font-weight-bold text-danger">
+                                    <x-input-rupiah wire:model="hppPayload" class="form-control form-control-sm font-weight-bold text-danger text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">6101 · Beban Operasional (JT)</label>
-                                    <input type="number" step="100" wire:model="opexPayload" class="form-control form-control-sm font-weight-bold text-warning">
+                                    <x-input-rupiah wire:model="opexPayload" class="form-control form-control-sm font-weight-bold text-warning text-right" />
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">1101 · Kas & Bank (JT)</label>
-                                    <input type="number" step="100" wire:model="kasPayload" class="form-control form-control-sm font-weight-bold">
+                                    <x-input-rupiah wire:model="kasPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">1201 · Piutang Usaha (JT)</label>
-                                    <input type="number" step="100" wire:model="piutangPayload" class="form-control form-control-sm font-weight-bold">
+                                    <x-input-rupiah wire:model="piutangPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">1301 · Persediaan Barang (JT)</label>
-                                    <input type="number" step="100" wire:model="persediaanPayload" class="form-control form-control-sm font-weight-bold">
+                                    <x-input-rupiah wire:model="persediaanPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">2101 · Hutang Usaha (JT)</label>
-                                    <input type="number" step="100" wire:model="hutangPayload" class="form-control form-control-sm font-weight-bold">
+                                    <x-input-rupiah wire:model="hutangPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group col-md-3">
                                     <label class="small font-weight-bold">3101 · Modal / Ekuitas (JT)</label>
-                                    <input type="number" step="100" wire:model="modalPayload" class="form-control form-control-sm font-weight-bold">
+                                    <x-input-rupiah wire:model="modalPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="col-md-9 small text-muted d-flex align-items-center">
                                     <span>

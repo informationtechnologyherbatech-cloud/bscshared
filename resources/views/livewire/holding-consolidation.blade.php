@@ -185,11 +185,11 @@
                             </div>
                             <div class="form-group col-md-2">
                                 <label class="small">Rencana (Rp)</label>
-                                <input type="number" min="0" step="any" wire:model="form.planned_amount" class="form-control form-control-sm text-right @error('form.planned_amount') is-invalid @enderror">
+                                <x-input-rupiah wire:model="form.planned_amount" class="form-control form-control-sm text-right {{ $errors->has('form.planned_amount') ? 'is-invalid' : '' }}" />
                             </div>
                             <div class="form-group col-md-2">
                                 <label class="small">Realisasi (Rp)</label>
-                                <input type="number" min="0" step="any" wire:model="form.actual_amount" class="form-control form-control-sm text-right @error('form.actual_amount') is-invalid @enderror">
+                                <x-input-rupiah wire:model="form.actual_amount" class="form-control form-control-sm text-right {{ $errors->has('form.actual_amount') ? 'is-invalid' : '' }}" />
                                 @error('form.actual_amount') <span class="invalid-feedback">{{ $message }}</span> @enderror
                             </div>
                         </div>

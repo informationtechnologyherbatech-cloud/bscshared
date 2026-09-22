@@ -45,8 +45,8 @@
                         <div class="row align-items-end">
                             <div class="col-md-5 form-group mb-md-0">
                                 <label class="small">Target revenue {{ $year }} (Rp)</label>
-                                <input type="text" wire:model="annualTarget" inputmode="numeric"
-                                       class="form-control @error('annualTarget') is-invalid @enderror" placeholder="mis. 900000000000">
+                                <x-input-rupiah wire:model="annualTarget"
+                                       class="form-control @error('annualTarget') is-invalid @enderror" placeholder="mis. Rp 900.000.000.000" />
                                 @error('annualTarget') <span class="invalid-feedback">{{ $message }}</span> @enderror
                             </div>
                             <div class="col-md-7">
@@ -74,21 +74,21 @@
                         <div class="col-md-4 form-group mb-md-0">
                             <label class="small">Disahkan direksi (Rp)</label>
                             @can('manage revenue')
-                                <input type="number" min="0" step="any" wire:model.live.debounce.500ms="approvedTarget"
-                                       class="form-control @error('approvedTarget') is-invalid @enderror" placeholder="belum diisi">
+                                <x-input-rupiah wire:model.live.debounce.500ms="approvedTarget"
+                                       class="form-control @error('approvedTarget') is-invalid @enderror" placeholder="belum diisi" />
                                 @error('approvedTarget') <span class="invalid-feedback">{{ $message }}</span> @enderror
                             @else
-                                <div>{{ $approvedTarget !== '' ? number_format((float) $approvedTarget, 0, ',', '.') : '—' }}</div>
+                                <div>{{ rupiah($approvedTarget) }}</div>
                             @endcan
                         </div>
                         <div class="col-md-4 form-group mb-md-0">
                             <label class="small">Revisi tengah tahun (Rp) <span class="text-muted">— opsional</span></label>
                             @can('manage revenue')
-                                <input type="number" min="0" step="any" wire:model.live.debounce.500ms="revisedTarget"
-                                       class="form-control @error('revisedTarget') is-invalid @enderror" placeholder="tidak ada revisi">
+                                <x-input-rupiah wire:model.live.debounce.500ms="revisedTarget"
+                                       class="form-control @error('revisedTarget') is-invalid @enderror" placeholder="tidak ada revisi" />
                                 @error('revisedTarget') <span class="invalid-feedback">{{ $message }}</span> @enderror
                             @else
-                                <div>{{ $revisedTarget !== '' ? number_format((float) $revisedTarget, 0, ',', '.') : '—' }}</div>
+                                <div>{{ rupiah($revisedTarget) }}</div>
                             @endcan
                         </div>
                         <div class="col-md-4">
@@ -131,24 +131,24 @@
                                     <td class="font-weight-bold align-middle">{{ $r['nama'] }}</td>
                                     <td>
                                         @can('manage revenue')
-                                            <input type="number" min="0" step="any" wire:model.live.debounce.500ms="rows.{{ $bulan }}.target"
-                                                   class="form-control form-control-sm text-right @error('rows.'.$bulan.'.target') is-invalid @enderror">
+                                            <x-input-rupiah wire:model.live.debounce.500ms="rows.{{ $bulan }}.target"
+                                                   class="form-control form-control-sm text-right {{ $errors->has('rows.'.$bulan.'.target') ? 'is-invalid' : '' }}" />
                                         @else
-                                            <div class="text-right">{{ $rows[$bulan]['target'] !== '' ? number_format((float) $rows[$bulan]['target'], 0, ',', '.') : '—' }}</div>
+                                            <div class="text-right">{{ rupiah($rows[$bulan]['target']) }}</div>
                                         @endcan
                                     </td>
                                     <td>
                                         @can('manage revenue')
-                                            <input type="number" min="0" step="any" wire:model.live.debounce.500ms="rows.{{ $bulan }}.actual"
-                                                   class="form-control form-control-sm text-right @error('rows.'.$bulan.'.actual') is-invalid @enderror"
-                                                   placeholder="belum ada">
+                                            <x-input-rupiah wire:model.live.debounce.500ms="rows.{{ $bulan }}.actual"
+                                                   class="form-control form-control-sm text-right {{ $errors->has('rows.'.$bulan.'.actual') ? 'is-invalid' : '' }}"
+                                                   placeholder="belum ada" />
                                         @else
-                                            <div class="text-right">{{ $rows[$bulan]['actual'] !== '' ? number_format((float) $rows[$bulan]['actual'], 0, ',', '.') : '—' }}</div>
+                                            <div class="text-right">{{ rupiah($rows[$bulan]['actual']) }}</div>
                                         @endcan
                                     </td>
                                     <td class="text-right align-middle">{{ $r['bulanan'] !== null ? number_format($r['bulanan'], 1, ',', '.').'%' : '—' }}</td>
-                                    <td class="text-right align-middle small text-muted">{{ number_format($r['kum_target'], 0, ',', '.') }}</td>
-                                    <td class="text-right align-middle small text-muted">{{ number_format($r['kum_actual'], 0, ',', '.') }}</td>
+                                    <td class="text-right align-middle small text-muted">{{ rupiah($r['kum_target']) }}</td>
+                                    <td class="text-right align-middle small text-muted">{{ rupiah($r['kum_actual']) }}</td>
                                     <td class="text-right align-middle font-weight-bold">
                                         @if($r['kumulatif'] !== null)
                                             @php($status = \App\Support\ScoreStatus::for($r['kumulatif']))
@@ -163,8 +163,8 @@
                         <tfoot class="bg-light font-weight-bold">
                             <tr>
                                 <td>Total {{ $year }}</td>
-                                <td class="text-right">{{ number_format($totalTarget, 0, ',', '.') }}</td>
-                                <td class="text-right">{{ number_format($totalActual, 0, ',', '.') }}</td>
+                                <td class="text-right">{{ rupiah($totalTarget) }}</td>
+                                <td class="text-right">{{ rupiah($totalActual) }}</td>
                                 <td colspan="4" class="text-right small text-muted font-weight-normal">
                                     Capaian dibatasi 100% — melebihi target tidak menambah nilai (konvensi BSC).
                                 </td>

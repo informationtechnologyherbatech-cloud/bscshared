@@ -350,11 +350,15 @@
                                 </div>
                                 <div class="form-group col-md-2">
                                     <label class="small">Target</label>
-                                    <input type="number" step="any" wire:model="form.target" class="form-control form-control-sm text-right @error('form.target') is-invalid @enderror">
+                                    @if (str_contains(strtolower((string) ($form['unit_label'] ?? '')), 'rp'))
+                                        <x-input-rupiah wire:model="form.target" class="form-control form-control-sm text-right {{ $errors->has('form.target') ? 'is-invalid' : '' }}" />
+                                    @else
+                                        <input type="number" step="any" wire:model="form.target" class="form-control form-control-sm text-right @error('form.target') is-invalid @enderror">
+                                    @endif
                                 </div>
                                 <div class="form-group col-md-2">
                                     <label class="small">Satuan</label>
-                                    <input type="text" wire:model="form.unit_label" class="form-control form-control-sm" placeholder="%, Rp, x, hari">
+                                    <input type="text" wire:model.blur="form.unit_label" class="form-control form-control-sm" placeholder="%, Rp, x, hari">
                                 </div>
                                 <div class="form-group col-md-2">
                                     <label class="small">Arah baik</label>

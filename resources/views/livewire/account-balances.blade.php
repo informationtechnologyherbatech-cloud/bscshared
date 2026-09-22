@@ -91,8 +91,8 @@
                                             <td class="align-middle">
                                                 @if ($neraca)
                                                     @if ($bisaUbah)
-                                                        <input type="number" step="any" wire:model.live.debounce.500ms="values.{{ $kode }}.opening"
-                                                               class="form-control form-control-sm text-right @error('values.'.$kode.'.opening') is-invalid @enderror" placeholder="opsional">
+                                                        <x-input-rupiah wire:model.live.debounce.500ms="values.{{ $kode }}.opening"
+                                                               class="form-control form-control-sm text-right {{ $errors->has('values.'.$kode.'.opening') ? 'is-invalid' : '' }}" placeholder="opsional" />
                                                     @else
                                                         <div class="text-right">{{ $values[$kode]['opening'] !== '' ? number_format((float) $values[$kode]['opening'], 0, ',', '.') : '—' }}</div>
                                                     @endif
@@ -102,15 +102,24 @@
                                             </td>
                                             <td class="align-middle">
                                                 @if ($bisaUbah)
-                                                    <input type="number" step="any" wire:model.live.debounce.500ms="values.{{ $kode }}.amount"
-                                                           class="form-control form-control-sm text-right @error('values.'.$kode.'.amount') is-invalid @enderror"
-                                                           placeholder="{{ $neraca ? 'saldo akhir' : ($pos['kind'] === \App\Support\Bsc\AccountPosts::HRIS_RATA ? 'rata-rata' : 'YTD') }}">
+                                                    @php($hris = in_array($pos['kind'], [\App\Support\Bsc\AccountPosts::HRIS_RATA, \App\Support\Bsc\AccountPosts::HRIS_ALIRAN], true))
+                                                    {{-- Jumlah karyawan & jam kerja bukan rupiah: tanpa awalan Rp, tanpa desimal. --}}
+                                                    <x-input-rupiah wire:model.live.debounce.500ms="values.{{ $kode }}.amount"
+                                                           :prefix="$hris ? '' : 'Rp'" :decimals="$hris ? 0 : 2"
+                                                           class="form-control form-control-sm text-right {{ $errors->has('values.'.$kode.'.amount') ? 'is-invalid' : '' }}"
+                                                           placeholder="{{ $neraca ? 'saldo akhir' : ($pos['kind'] === \App\Support\Bsc\AccountPosts::HRIS_RATA ? 'rata-rata (orang)' : ($hris ? 'jam kerja YTD' : 'YTD')) }}" />
                                                 @else
                                                     <div class="text-right">{{ $values[$kode]['amount'] !== '' ? number_format((float) $values[$kode]['amount'], 0, ',', '.') : '—' }}</div>
                                                 @endif
                                             </td>
                                             <td class="text-right align-middle small text-muted">
-                                                {{ ($hasil['used'][$kode] ?? null) !== null ? number_format($hasil['used'][$kode], 0, ',', '.') : '—' }}
+                                                @if (($hasil['used'][$kode] ?? null) === null)
+                                                    —
+                                                @elseif (in_array($pos['kind'], [\App\Support\Bsc\AccountPosts::HRIS_RATA, \App\Support\Bsc\AccountPosts::HRIS_ALIRAN], true))
+                                                    {{ number_format($hasil['used'][$kode], 0, ',', '.') }}
+                                                @else
+                                                    {{ rupiah($hasil['used'][$kode]) }}
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach
