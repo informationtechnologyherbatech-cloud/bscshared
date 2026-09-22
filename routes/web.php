@@ -13,6 +13,8 @@ use App\Livewire\SystemIntegration;
 use App\Livewire\BscWiring;
 use App\Livewire\ManageUsers;
 use App\Livewire\AppSettings;
+use App\Livewire\AccountBalances;
+use App\Livewire\RatioCatalog;
 use App\Livewire\RevenueTargets;
 use App\Livewire\WorkUnits;
 use App\Support\EntityContext;
@@ -75,6 +77,10 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
 
     // Tingkat 1 — target & realisasi revenue bulanan (sumber F1 skor puncak).
     Route::get('/revenue', RevenueTargets::class)->middleware('permission:manage revenue|view dashboard')->name('revenue');
+
+    // Tingkat 2 — pos akun (sumber 19 rasio) dan katalog rasio per entitas.
+    Route::get('/pos-akun', AccountBalances::class)->middleware('permission:manage ratios|view ratios')->name('account-balances');
+    Route::get('/katalog-rasio', RatioCatalog::class)->middleware('permission:manage ratios|view ratios')->name('ratio-catalog');
 
     // Struktur unit kerja per entitas — sumber daftar departemen.
     Route::get('/unit-kerja', WorkUnits::class)->middleware('permission:manage units')->name('work-units');

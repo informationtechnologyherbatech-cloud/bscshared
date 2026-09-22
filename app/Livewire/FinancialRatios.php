@@ -44,6 +44,10 @@ class FinancialRatios extends Component
         }
 
         $ratio = FinancialRatio::findOrFail($id);
+        if ($ratio->isComputed()) {
+            session()->flash('error', 'Rasio '.$ratio->ratio_name.' dihitung otomatis dari pos akun. Ubah lewat menu Pos Akun atau Katalog Rasio.');
+            return;
+        }
         $this->editingRatioId = $ratio->id;
         $this->editTarget = $ratio->target;
         $this->editActual = $ratio->actual;
@@ -66,6 +70,11 @@ class FinancialRatios extends Component
         }
 
         $ratio = FinancialRatio::findOrFail($this->editingRatioId);
+        if ($ratio->isComputed()) {
+            session()->flash('error', 'Rasio hasil hitungan pos akun tidak dapat diubah langsung.');
+            $this->editingRatioId = null;
+            return;
+        }
         $target = floatval($this->editTarget);
         $actual = floatval($this->editActual);
 

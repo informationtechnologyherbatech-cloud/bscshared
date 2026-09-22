@@ -88,7 +88,7 @@ menghasilkan satu query; cache otomatis dibersihkan setiap pengaturan disimpan.
 Satu aplikasi dipakai empat entitas di bawah holding **Erhanesia Mulia Corpora**:
 Herbaemas, Herbatech, AEJ (manufaktur), dan Erdigma (digital marketing). Mesin
 penilaiannya sama; yang berbeda per entitas hanya konfigurasinya — unit kerja,
-target revenue, dan (menyusul) bobot rasio.
+target revenue, serta katalog rasio (rasio aktif, bobot, target).
 
 - Seluruh data BSC bertanda `entity_id` dan otomatis dibatasi pada entitas yang
   sedang dibuka lewat trait [`BelongsToEntity`](app/Models/Concerns/BelongsToEntity.php);
@@ -110,7 +110,9 @@ Mengikuti workbook `Cascading_Revenue_Rasio_KPI_Erdigma_2026.xlsx`:
 Skor puncak = 0,45 × F1 (pencapaian revenue kumulatif) + 0,55 × F2 (skor rasio keuangan)
 ```
 
-F1 diisi lewat menu **Target Revenue**. Bila salah satu belum punya data, bobotnya
+F1 diisi lewat menu **Target Revenue**. F2 dihitung dari 16 pos akun yang diisi di
+menu **Pos Akun**, dengan rasio, bobot, dan target dari menu **Katalog Rasio**.
+Bila salah satu belum punya data, bobotnya
 dinormalisasi ke yang tersedia. Bobot diatur di `config/bsc.php`.
 
 ---

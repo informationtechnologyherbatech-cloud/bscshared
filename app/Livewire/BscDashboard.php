@@ -7,6 +7,7 @@ use Livewire\Component;
 use Livewire\Attributes\Url;
 use App\Models\Period;
 use App\Models\RevenueTarget;
+use App\Support\Bsc\RatioEngine;
 use App\Support\ScoreStatus;
 use App\Models\FinancialRatio;
 use App\Models\DepartmentObjective;
@@ -121,7 +122,9 @@ class BscDashboard extends Component
         }
 
         // Copy template of financial ratios with 0 actuals
-        $baseRatios = FinancialRatio::where('period', '2026-08')->get();
+        // Rasio hasil hitungan tidak disalin — periode baru mendapatkannya
+        // saat pos akunnya diisi di menu Pos Akun.
+        $baseRatios = FinancialRatio::where('period', '2026-08')->where('source', '!=', RatioEngine::SOURCE_COMPUTED)->get();
         foreach ($baseRatios as $baseR) {
             FinancialRatio::create([
                 'period' => $periodStr,
@@ -151,8 +154,8 @@ class BscDashboard extends Component
                     'type' => 'Rasio Keuangan (Tingkat 2)',
                     'code' => $ratio->category,
                     'name' => $ratio->ratio_name,
-                    'target' => number_format($ratio->target, 2),
-                    'actual' => number_format($ratio->actual, 2),
+                    'target' => $ratio->display($ratio->target),
+                    'actual' => $ratio->display($ratio->actual),
                     'achievement' => number_format($ratio->achievement_pct, 1) . '%',
                     'status' => $ratio->status,
                     'upstream' => 'Piramida Tingkat 1 (Apex Score Keuangan)',
@@ -287,8 +290,17 @@ class BscDashboard extends Component
         
         $ratiosQuery = FinancialRatio::where('period', $this->selectedPeriod);
         $ratios = $ratiosQuery->get();
-        $avgRatioScore = $ratios->count() > 0 ? round($ratios->avg('achievement_pct'), 2) : 0;
-        
+        // F2: bila periode ini punya rasio hasil hitungan pos akun, skornya
+        // Σ(rubrik × bobot) ÷ Σ bobot seperti sheet L2. Periode lama yang rasionya
+        // masih diisi manual tetap memakai rata-rata pencapaian.
+        // Rasio yang sudah terhitung tetapi belum bertarget belum dapat diskor.
+        $hasComputed = $ratios->contains(fn ($r) => $r->isComputed());
+        $computedScore = $hasComputed ? RatioEngine::storedScore($this->selectedPeriod) : null;
+        $hasRatioScore = $hasComputed ? $computedScore !== null : $ratios->count() > 0;
+        $avgRatioScore = $hasComputed
+            ? ($computedScore ?? 0)
+            : ($ratios->count() > 0 ? round($ratios->avg('achievement_pct'), 2) : 0);
+
         $objectivesQuery = DepartmentObjective::where('period', $this->selectedPeriod);
         $objectives = $objectivesQuery->get();
         $avgObjScore = $objectives->count() > 0 ? round($objectives->avg('achievement_pct'), 2) : 0;
@@ -315,7 +327,7 @@ class BscDashboard extends Component
         // Skor puncak = 0,45 × F1 + 0,55 × F2 (config/bsc.php).
         $tierScores = [
             'revenue' => $revenueScore,
-            'ratios' => $ratios->count() > 0 ? $avgRatioScore : null,
+            'ratios' => $hasRatioScore ? $avgRatioScore : null,
         ];
         $apexScore = $this->calculateApexScore($tierScores);
         $apexBreakdown = $this->apexBreakdown($tierScores);
@@ -324,7 +336,7 @@ class BscDashboard extends Component
         // bukan diberi nilai nol — keduanya berbeda arti.
         $tierStatus = [
             1 => ScoreStatus::for($revenueScore, $revenueScore !== null),
-            2 => ScoreStatus::for($avgRatioScore, $ratios->count() > 0),
+            2 => ScoreStatus::for($avgRatioScore, $hasRatioScore),
             3 => ScoreStatus::for($avgObjScore, $objectives->count() > 0),
             4 => ScoreStatus::for($avgActionProgress, $actionPlans->count() > 0),
         ];

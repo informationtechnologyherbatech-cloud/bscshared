@@ -663,8 +663,8 @@
                                         <tr>
                                             <td><span class="badge badge-info">{{ $r->category }}</span></td>
                                             <td class="font-weight-bold">{{ $r->ratio_name }}</td>
-                                            <td class="text-center">{{ number_format($r->target, 2) }}</td>
-                                            <td class="text-center font-weight-bold text-dark">{{ number_format($r->actual, 2) }}</td>
+                                            <td class="text-center">{{ $r->display($r->target) }}</td>
+                                            <td class="text-center font-weight-bold text-dark">{{ $r->display($r->actual) }}</td>
                                             <td class="text-center font-weight-bold text-teal">{{ number_format($r->achievement_pct, 1) }}%</td>
                                             <td class="text-center">
                                                 @if($r->status === 'Tercapai')

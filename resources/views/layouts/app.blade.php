@@ -152,6 +152,20 @@
                         </a>
                     </li>
                     @endcan
+                    @can('view ratios')
+                    <li class="nav-item">
+                        <a href="{{ route('account-balances') }}" class="nav-link {{ request()->routeIs('account-balances') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-book"></i>
+                            <p>Pos Akun</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('ratio-catalog') }}" class="nav-link {{ request()->routeIs('ratio-catalog') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-sliders-h"></i>
+                            <p>Katalog Rasio</p>
+                        </a>
+                    </li>
+                    @endcan
                     @can('view objectives')
                     <li class="nav-item">
                         <a href="{{ route('department-objectives') }}" class="nav-link {{ request()->routeIs('department-objectives') ? 'active' : '' }}">

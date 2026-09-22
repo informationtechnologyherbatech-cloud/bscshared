@@ -41,4 +41,42 @@ return [
 
     'stale_after_hours' => 26,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Bobot Kelompok Rasio (Tingkat 2)
+    |--------------------------------------------------------------------------
+    |
+    | Sheet "Asumsi" bagian B — sudah disepakati di BSC. Jumlah bobot rasio
+    | aktif tiap kelompok pada Katalog Rasio sebaiknya sama dengan angka ini;
+    | halaman Katalog Rasio menampilkan pemeriksaannya.
+    |
+    */
+
+    'ratio_groups' => [
+        'Profitabilitas' => 30,
+        'Aktivitas' => 25,
+        'Produktivitas' => 20,
+        'Likuiditas' => 15,
+        'Solvabilitas' => 10,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rubrik Skor
+    |--------------------------------------------------------------------------
+    |
+    | Sheet "Asumsi" bagian C, dari kolom Metode Pengukuran format Sasaran Mutu:
+    | pencapaian minimal (%) => skor. Dibaca dari atas; yang pertama terpenuhi
+    | dipakai.
+    |
+    */
+
+    'rubric' => [
+        90 => 100,
+        80 => 80,
+        75 => 70,
+        65 => 60,
+        0 => 50,
+    ],
+
 ];

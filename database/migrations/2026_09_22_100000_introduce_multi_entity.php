@@ -123,8 +123,20 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Di MySQL, indeks unik (entity_id, period) sekaligus menjadi indeks
+        // foreign key entity_id, jadi foreign key harus dilepas lebih dulu.
         Schema::table('periods', function (Blueprint $table) {
+            $table->dropForeign(['entity_id']);
             $table->dropUnique(['entity_id', 'period']);
+            $table->dropColumn('entity_id');
+        });
+
+        // Tanpa entitas, periode kembali unik secara global: bila beberapa
+        // entitas memiliki periode yang sama, hanya baris tertua yang dipertahankan.
+        $pertama = DB::table('periods')->selectRaw('MIN(id) as id')->groupBy('period')->pluck('id');
+        DB::table('periods')->whereNotIn('id', $pertama)->delete();
+
+        Schema::table('periods', function (Blueprint $table) {
             $table->unique(['period']);
         });
 
@@ -132,7 +144,7 @@ return new class extends Migration
             $table->dropConstrainedForeignId('entity_id');
         });
 
-        foreach (self::TABEL_BERENTITAS as $tabel) {
+        foreach (array_diff(self::TABEL_BERENTITAS, ['periods']) as $tabel) {
             Schema::table($tabel, function (Blueprint $table) {
                 $table->dropConstrainedForeignId('entity_id');
             });

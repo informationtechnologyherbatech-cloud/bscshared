@@ -45,6 +45,8 @@ class SmokeRoutesTest extends TestCase
             'pengaturan' => ['settings'],
             'target revenue' => ['revenue'],
             'unit kerja' => ['work-units'],
+            'pos akun' => ['account-balances'],
+            'katalog rasio' => ['ratio-catalog'],
         ];
     }
 
