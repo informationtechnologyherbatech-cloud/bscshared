@@ -139,6 +139,12 @@
                                 </tbody>
                             </table>
                         </div>
+                        @if($actionPlans->hasPages())
+                            <div class="d-flex justify-content-between align-items-center flex-wrap px-3 pt-3">
+                                <small class="text-muted mb-2">Menampilkan {{ $actionPlans->firstItem() }}–{{ $actionPlans->lastItem() }} dari {{ $actionPlans->total() }}</small>
+                                {{ $actionPlans->links() }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

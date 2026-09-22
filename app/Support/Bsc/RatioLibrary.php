@@ -171,13 +171,51 @@ class RatioLibrary
             return null;
         }
 
+        if ($target < 0) {
+            // Target negatif (mis. margin rugi yang ditoleransi): rasio biasa terbalik
+            // arah, jadi dinilai dari selisih relatif terhadap |target|.
+            $selisih = ($actual - $target) / abs($target);
+            $nilai = match ($polarity) {
+                self::TURUN => 1 - $selisih,
+                self::RENTANG => 1 - abs($selisih),
+                default => 1 + $selisih,
+            };
+
+            return round(max(0.0, min(1.0, $nilai)) * 100, 2);
+        }
+
         $nilai = match ($polarity) {
-            self::TURUN => $actual == 0.0 ? 1.0 : $target / $actual,
+            // Realisasi 0 = sempurna; negatif (mis. DER dengan ekuitas negatif) bukan
+            // "lebih baik" melainkan kondisi buruk → 0.
+            self::TURUN => $actual == 0.0 ? 1.0 : ($actual < 0 ? 0.0 : $target / $actual),
             self::RENTANG => 1 - abs($actual - $target) / $target,
             default => $actual / $target,
         };
 
         return round(max(0.0, min(1.0, $nilai)) * 100, 2);
+    }
+
+    /**
+     * Capaian sasaran mutu / rasio manual (0–100). Sama dengan achievement(),
+     * tetapi target 0 tetap dinilai: tercapai (100) bila realisasi memenuhi arah
+     * polaritasnya, selain itu 0. Dipakai monitoring bulanan dan menu edit,
+     * sehingga keduanya selalu memberi hasil yang sama.
+     */
+    public static function objectiveAchievement(float $actual, float $target, ?string $polarity): float
+    {
+        $polarity = $polarity ?: self::NAIK;
+
+        if ($target == 0.0) {
+            $tercapai = match ($polarity) {
+                self::TURUN => $actual <= 0.0,
+                self::RENTANG => $actual == 0.0,
+                default => $actual >= 0.0,
+            };
+
+            return $tercapai ? 100.0 : 0.0;
+        }
+
+        return self::achievement($actual, $target, $polarity) ?? 0.0;
     }
 
     /**

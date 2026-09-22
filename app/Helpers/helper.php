@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AppSetting;
+use App\Support\EntityContext;
 use App\Support\Recaptcha;
 use Illuminate\Support\Facades\Storage;
 
@@ -123,7 +124,7 @@ if (! function_exists('entity_profile')) {
      */
     function entity_profile(): ?array
     {
-        $kode = app(\App\Support\EntityContext::class)->entity()?->code;
+        $kode = app(EntityContext::class)->entity()?->code;
 
         if ($kode === null) {
             if (config('bsc.holding_mode')) {

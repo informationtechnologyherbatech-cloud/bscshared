@@ -920,6 +920,16 @@ h1, h2, h3, h4, h5, h6 {
         display: none;
     }
 
+    /* HP: chip entitas cukup logonya; periode & avatar tetap tampil. */
+    .nb-entity-chip .nb-chip-text,
+    .navbar-teal .nb-chip-caret {
+        display: none;
+    }
+
+    .nb-period-menu {
+        min-width: min(320px, calc(100vw - 24px));
+    }
+
     /* ---- Tombol aksi berjajar pada kepala kartu ---- */
     .card-header .btn-group {
         width: 100%;
@@ -1239,4 +1249,63 @@ select.form-control.is-invalid:not([multiple]):not([size]) {
     line-height: 1.4;
     color: var(--c-text-secondary);
     background: var(--c-teal-soft);
+}
+
+/* Isian rupiah (<x-input-rupiah>) di dalam .input-group: pembungkus Alpine-nya
+   harus ikut melebar seperti .form-control, dan sudut kanannya menyambung tombol. */
+.input-group > [x-data] {
+    position: relative;
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+}
+
+.input-group > [x-data]:not(:last-child) > .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* Chip periode: ikon mini kalender (pita tahun + singkatan bulan). */
+.nb-cal {
+    display: inline-flex;
+    flex: 0 0 34px;
+    flex-direction: column;
+    width: 34px;
+    height: 36px;
+    overflow: hidden;
+    border-radius: 8px;
+    text-align: center;
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(0, 53, 53, 0.08);
+}
+
+.nb-cal-year {
+    display: block;
+    padding: 1px 0;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    color: #ffffff;
+    background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+}
+
+.nb-cal-month {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #003535;
+}
+
+.navbar-teal a.nb-chip:hover .nb-cal {
+    transform: translateY(-1px) rotate(-3deg);
+}
+
+.nb-cal {
+    transition: transform 0.15s ease;
 }

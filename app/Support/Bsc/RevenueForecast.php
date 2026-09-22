@@ -215,6 +215,11 @@ class RevenueForecast
         }
 
         $kosong = 12 - count($ada);
+        // Estimasi yang tidak melebihi realisasi tercatat (mis. YTD manual lebih kecil)
+        // akan memberi bulan sisa indeks ≤ 0 → target negatif/nol. Pakai run-rate.
+        if ($kosong > 0 && $estimasi <= array_sum($ada)) {
+            $estimasi = array_sum($ada) * 12 / count($ada);
+        }
         $sisa = $kosong > 0 ? (1 - array_sum($ada) / $estimasi) / $kosong : 0.0;
 
         $indeks = [];
@@ -222,7 +227,10 @@ class RevenueForecast
             $indeks[$b] = ($realisasi[$b] ?? null) !== null ? $realisasi[$b] / $estimasi : $sisa;
         }
 
-        return $indeks;
+        // Jumlah indeks selalu 1 agar fasing membagi habis target setahun.
+        $total = array_sum($indeks);
+
+        return $total > 0 ? array_map(fn ($i) => $i / $total, $indeks) : $indeks;
     }
 
     /**
@@ -238,7 +246,7 @@ class RevenueForecast
         $terpakai = 0.0;
 
         foreach ($indeks as $b => $i) {
-            if ($b === '12') {
+            if ((string) $b === '12') { // kunci '12' menjadi int di array PHP
                 $hasil[$b] = round($targetSetahun - $terpakai, 2);
 
                 continue;

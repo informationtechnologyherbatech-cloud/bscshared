@@ -24,9 +24,8 @@ use Livewire\Component;
  */
 class HoldingConsolidation extends Component
 {
-    use FollowsActivePeriod;
-
     use AuthorizesWrites;
+    use FollowsActivePeriod;
 
     #[Url]
     public string $period = '';

@@ -188,6 +188,12 @@ class AppSettings extends Component
         $this->activeTab = $this->firstAllowedTab((string) $tab);
     }
 
+    /** activeTab dapat diubah langsung dari peramban — tetap disaring izinnya. */
+    public function updatedActiveTab($tab): void
+    {
+        $this->activeTab = $this->firstAllowedTab((string) $tab);
+    }
+
     /** Tab Entitas: identitas perusahaan pemilik data. */
     public function saveEntity()
     {
@@ -361,6 +367,9 @@ class AppSettings extends Component
 
     public function revealKey($id)
     {
+        if (! auth()->user()?->can('manage apikey')) {
+            return;
+        }
         $this->showKeyId = $this->showKeyId === $id ? null : $id;
     }
 

@@ -78,7 +78,7 @@ class ManageUsers extends Component
 
     public function openEdit($id)
     {
-        $user = User::findOrFail($id);
+        $user = $this->manageableUsers()->findOrFail($id);
         $this->userId = $user->id;
         $this->name = $user->name;
         $this->email = $user->email;
@@ -118,11 +118,15 @@ class ManageUsers extends Component
             return;
         }
 
+        if ($entitasSaya = auth()->user()?->entity_id) {
+            $this->entity_id = $entitasSaya; // sebelum validasi: aturan unit ikut entitas ini
+        }
+
         $this->validate();
 
         // Guard: last Super Admin cannot be deactivated via edit
         if ($this->isEdit && $this->role !== 'Super Admin') {
-            $user = User::find($this->userId);
+            $user = $this->manageableUsers()->find($this->userId);
             if ($user && $user->hasRole('Super Admin')) {
                 if ($this->isLastSuperAdmin($user->id)) {
                     session()->flash('error', 'Super Admin terakhir tidak dapat diubah role-nya atau dinonaktifkan!');
@@ -131,7 +135,7 @@ class ManageUsers extends Component
             }
         }
         if ($this->isEdit && !$this->is_active) {
-            $user = User::find($this->userId);
+            $user = $this->manageableUsers()->find($this->userId);
             if ($user && $user->hasRole('Super Admin') && $this->isLastSuperAdmin($user->id)) {
                 session()->flash('error', 'Super Admin terakhir tidak dapat dinonaktifkan!');
                 return;
@@ -139,7 +143,7 @@ class ManageUsers extends Component
         }
 
         if ($this->isEdit) {
-            $user = User::findOrFail($this->userId);
+            $user = $this->manageableUsers()->findOrFail($this->userId);
             $data = [
                 'name' => $this->name,
                 'email' => $this->email,
@@ -192,7 +196,7 @@ class ManageUsers extends Component
         }
 
         if (!$this->confirmDeleteId) return;
-        $user = User::findOrFail($this->confirmDeleteId);
+        $user = $this->manageableUsers()->findOrFail($this->confirmDeleteId);
 
         if ($user->hasRole('Super Admin') && $this->isLastSuperAdmin($user->id)) {
             session()->flash('error', 'Super Admin terakhir tidak dapat dihapus!');
@@ -212,7 +216,7 @@ class ManageUsers extends Component
             return;
         }
 
-        $user = User::findOrFail($id);
+        $user = $this->manageableUsers()->findOrFail($id);
         if (!$user->is_active) {
             $user->update(['is_active' => true]);
             session()->flash('message', 'Pengguna ' . $user->name . ' diaktifkan kembali!');
@@ -245,8 +249,28 @@ class ManageUsers extends Component
      * Entitas yang boleh dipilih di formulir: semua entitas aktif di instalasi
      * holding, hanya entitas instalasi di instalasi satu entitas.
      */
+    /**
+     * Pengguna yang boleh dikelola: admin level holding (tanpa entitas) mengelola
+     * semua; admin yang terikat satu entitas hanya pengguna entitasnya sendiri —
+     * tidak dapat mengubah pengguna entitas lain atau menjadikan siapa pun level holding.
+     */
+    private function manageableUsers(): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = User::query();
+
+        if ($entitasSaya = auth()->user()?->entity_id) {
+            $query->where('entity_id', $entitasSaya);
+        }
+
+        return $query;
+    }
+
     private function selectableEntities(): \Illuminate\Support\Collection
     {
+        if ($entitasSaya = auth()->user()?->entity_id) {
+            return \App\Models\Entity::whereKey($entitasSaya)->get();
+        }
+
         $konteks = app(\App\Support\EntityContext::class);
 
         if (! $konteks->isHoldingMode() && ($id = $konteks->installationEntityId())) {
@@ -259,6 +283,10 @@ class ManageUsers extends Component
     /** Instalasi satu entitas: pengguna baru langsung tertaut ke entitas itu. */
     private function installationDefault(): string
     {
+        if ($entitasSaya = auth()->user()?->entity_id) {
+            return (string) $entitasSaya;
+        }
+
         $konteks = app(\App\Support\EntityContext::class);
 
         return $konteks->isHoldingMode() ? '' : (string) ($konteks->installationEntityId() ?? '');
@@ -289,7 +317,7 @@ class ManageUsers extends Component
 
     public function render()
     {
-        $query = User::with(['roles', 'entity']);
+        $query = $this->manageableUsers()->with(['roles', 'entity']);
 
         if ($this->search) {
             $query->where(function($q) {
@@ -315,7 +343,8 @@ class ManageUsers extends Component
             'users' => $users,
             'roles' => $roles,
             'entities' => $this->selectableEntities(),
-            'holdingMode' => app(\App\Support\EntityContext::class)->isHoldingMode(),
+            // Admin yang terikat satu entitas tidak dapat membuat pengguna level holding.
+            'holdingMode' => app(\App\Support\EntityContext::class)->isHoldingMode() && ! auth()->user()?->entity_id,
             'units' => $this->unitsForSelectedEntity(),
         ])->layout('layouts.app', ['title' => 'Manage User']);
     }

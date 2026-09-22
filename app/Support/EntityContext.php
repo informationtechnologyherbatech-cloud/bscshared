@@ -42,6 +42,9 @@ class EntityContext
     /** false = belum dicari; null = kode di .env tidak dikenal/nonaktif. */
     private int|null|false $installation = false;
 
+    /** Entitas yang sudah dimuat dalam request ini (navbar, layout & komponen memanggil entity() berulang). */
+    private array $loaded = [];
+
     public function id(): ?int
     {
         if ($this->override !== false) {
@@ -76,7 +79,7 @@ class EntityContext
     {
         $id = $this->id();
 
-        return $id ? Entity::find($id) : null;
+        return $id ? ($this->loaded[$id] ??= Entity::find($id)) : null;
     }
 
     /**
@@ -160,6 +163,7 @@ class EntityContext
     {
         $this->override = false;
         $this->accessible = [];
+        $this->loaded = [];
         $this->default = null;
         $this->defaultResolved = false;
         $this->installation = false;

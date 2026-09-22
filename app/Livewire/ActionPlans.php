@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use Livewire\Component;
+use Livewire\WithPagination;
 use Livewire\Attributes\Url;
 use App\Models\ActionPlan;
 use App\Models\DepartmentObjective;
@@ -10,6 +11,8 @@ use App\Models\WorkUnit;
 
 class ActionPlans extends Component
 {
+    use WithPagination;
+
     public $title = '';
     public $ownerDept = '';
     public $objectiveId = null;
@@ -94,6 +97,11 @@ class ActionPlans extends Component
         session()->flash('message', 'Progres program kerja ' . $plan->title . ' diperbarui menjadi ' . $prog . '%!');
     }
 
+    public function updatedSelectedStatus(): void
+    {
+        $this->resetPage();
+    }
+
     public function cancelEdit()
     {
         $this->editingPlanId = null;
@@ -117,7 +125,7 @@ class ActionPlans extends Component
             }
         }
 
-        $actionPlans = $query->get();
+        $actionPlans = $query->latest('id')->paginate(25);
         // Hanya sasaran periode terbaru — sebelumnya semua periode, sehingga kode
         // KPI yang sama muncul berulang kali di pilihan.
         $offTargetObjectives = DepartmentObjective::where('period', \App\Models\Period::currentPeriod())

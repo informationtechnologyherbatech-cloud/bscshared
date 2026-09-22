@@ -50,6 +50,10 @@
 
             ketik(e) {
                 const el = e.target;
+                if (e.inputType === 'insertFromPaste') {
+                    const t = el.value.replace(/^\s*Rp\s*/i, '').trim();
+                    if (/^-?\d+\.\d{1,2}$/.test(t)) el.value = t.replace('.', ',');
+                }
                 const pos = el.selectionStart ?? el.value.length;
                 const hitung = (s) => s.replace(/[^\d,]/g, '').length;
                 const sebelum = hitung(el.value.slice(0, pos));

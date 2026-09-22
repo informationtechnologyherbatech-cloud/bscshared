@@ -15,13 +15,17 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::updateOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => bcrypt(env('TEST_USER_PASSWORD') ?: 'Bsc#Test2026'),
-            ]
-        );
+        // Akun uji hanya untuk lingkungan pengembangan: di produksi akun berkata sandi
+        // bawaan ini (tanpa entitas = level holding) tidak boleh dibuat/di-reset.
+        if (app()->environment(['local', 'testing'])) {
+            User::updateOrCreate(
+                ['email' => 'test@example.com'],
+                [
+                    'name' => 'Test User',
+                    'password' => bcrypt(env('TEST_USER_PASSWORD') ?: 'Bsc#Test2026'),
+                ]
+            );
+        }
 
         $this->call(EntityStructureSeeder::class);
         $this->call(RatioCatalogSeeder::class);

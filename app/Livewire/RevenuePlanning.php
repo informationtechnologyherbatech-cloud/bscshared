@@ -386,13 +386,35 @@ class RevenuePlanning extends Component
 
         $fasing = $hasil['phasing'] ?? RevenueForecast::phase($hasil['approved'], array_fill_keys(array_keys($hasil['monthly']), 1 / 12));
 
-        DB::transaction(function () use ($fasing) {
+        // Bulan pada periode CLOSED tidak ditimpa. Sisa target (disahkan − target
+        // bulan yang ditutup) dibagi ke bulan terbuka mengikuti pola yang sama,
+        // sehingga jumlah 12 bulan tetap sama dengan target yang disahkan.
+        $ditutup = Period::closedIn($this->year);
+        $dilewati = [];
+
+        if ($ditutup !== []) {
+            $terbuka = [];
             foreach ($fasing as $bulan => $target) {
-                RevenueTarget::updateOrCreate(['period' => $this->year.'-'.$bulan], ['target' => $target]);
+                $periode = $this->year.'-'.str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
+                in_array($periode, $ditutup, true) ? $dilewati[] = $periode : $terbuka[$bulan] = $target;
+            }
+
+            $sisa = max(0.0, (float) $hasil['approved'] - (float) RevenueTarget::whereIn('period', $ditutup)->sum('target'));
+            $bobot = array_sum($terbuka);
+            $fasing = $bobot > 0 ? RevenueForecast::phase($sisa, array_map(fn ($t) => $t / $bobot, $terbuka)) : [];
+        }
+
+        DB::transaction(function () use ($fasing, $ditutup) {
+            foreach ($fasing as $bulan => $target) {
+                $periode = $this->year.'-'.str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
+                if (! in_array($periode, $ditutup, true)) {
+                    RevenueTarget::updateOrCreate(['period' => $periode], ['target' => $target]);
+                }
             }
         });
 
         session()->flash('message', 'Target bulanan '.$this->year.' diisi '.($hasil['phasing'] ? 'mengikuti indeks musiman '.$this->baseYear() : 'rata 12 bulan (belum ada realisasi '.$this->baseYear().')')
+            .($dilewati ? '. Bulan pada periode yang sudah DITUTUP tidak diubah: '.implode(', ', $dilewati) : '')
             .'. Lihat di menu Target Revenue.');
     }
 

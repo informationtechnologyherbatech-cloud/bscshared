@@ -70,7 +70,10 @@ class ActivePeriodTest extends TestCase
         Livewire::test(RatioCatalog::class)->assertSet('year', '2026');
         Livewire::test(RevenuePlanning::class)->assertSet('year', '2027');
 
-        $this->get('/')->assertSee('data-periode-aktif>2026-08', false);
+        $this->get('/')
+            ->assertSee('data-periode-aktif="2026-08"', false)
+            ->assertSee('Agustus 2026')
+            ->assertSee('data-cal-month>AGU', false);
     }
 
     public function test_a_period_that_does_not_exist_is_refused(): void

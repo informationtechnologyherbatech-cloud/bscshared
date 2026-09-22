@@ -83,6 +83,13 @@ return new class extends Migration
         // rupiah) tidak muat di decimal(10,2).
         DB::table('financial_ratios')->where('source', 'computed')->delete();
 
+        // Rasio manual di luar jangkauan decimal(10,2) dipotong agar penyempitan kolom
+        // tidak gagal di MySQL mode strict (sama dengan rollback 140000).
+        foreach (['target', 'actual'] as $kolom) {
+            DB::table('financial_ratios')->where($kolom, '>', 99999999.99)->update([$kolom => 99999999.99]);
+            DB::table('financial_ratios')->where($kolom, '<', -99999999.99)->update([$kolom => -99999999.99]);
+        }
+
         Schema::table('financial_ratios', function (Blueprint $table) {
             $table->dropColumn(['ratio_code', 'unit', 'polarity', 'weight', 'rubric_score', 'weighted_score', 'source']);
             $table->decimal('target', 10, 2)->default(0)->change();

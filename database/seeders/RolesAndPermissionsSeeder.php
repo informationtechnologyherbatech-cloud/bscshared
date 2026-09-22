@@ -125,6 +125,9 @@ class RolesAndPermissionsSeeder extends Seeder
                 'name' => 'Super Admin',
                 'password' => bcrypt(env('SUPERADMIN_PASSWORD') ?: 'Bsc#Admin2026'),
                 'is_active' => true,
+                // Kata sandi bawaan tercantum di repositori → di server (bukan lokal/testing)
+                // wajib diganti saat login pertama.
+                'must_change_password' => ! env('SUPERADMIN_PASSWORD') && ! app()->environment(['local', 'testing']),
             ]
         );
         if (!$superAdmin->hasRole('Super Admin')) {

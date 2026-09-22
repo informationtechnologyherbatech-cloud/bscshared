@@ -318,7 +318,10 @@ class KpiCascades extends Component
             // Ganti kode → rujukan KPI turunan dan monitoring ikut diperbarui.
             if ($kodeLama && $kodeLama !== $kpi->code) {
                 KpiCascade::where('year', $kpi->year)->where('parent_code', $kodeLama)->update(['parent_code' => $kpi->code]);
-                DepartmentObjective::where('kpi_cascade_id', $kpi->id)->update(['kpi_code' => $kpi->code]);
+                // Sasaran pada periode CLOSED tetap memakai kode lama (riwayat tidak diubah).
+                DepartmentObjective::where('kpi_cascade_id', $kpi->id)
+                    ->whereNotIn('period', Period::closedIn((string) $kpi->year))
+                    ->update(['kpi_code' => $kpi->code]);
             }
         });
 

@@ -152,10 +152,17 @@ class BscDataSeeder extends Seeder
 
     private function seed(): void
     {
+        // Periode yang sudah DITUTUP tidak ditimpa data contoh (dan tidak dibuka lagi).
+        if (Period::where('period', '2026-08')->first()?->isClosed()) {
+            $this->command?->warn('Periode 2026-08 entitas ini sudah DITUTUP — data contoh dilewati.');
+
+            return;
+        }
+
         $this->seedRevenue();
 
         // 1. Period
-        $period = Period::updateOrCreate(
+        $period = Period::firstOrCreate(
             ['period' => '2026-08'],
             [
                 'status' => 'OPEN',

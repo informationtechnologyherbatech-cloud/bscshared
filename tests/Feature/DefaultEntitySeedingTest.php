@@ -144,7 +144,7 @@ class DefaultEntitySeedingTest extends TestCase
         $this->assertSame(6, KpiTest::where('uji_b_result', 'LOLOS')->count()); // 6 Driver
         // T4: program kerja untuk sasaran yang Waspada.
         $this->assertSame(3, ActionPlan::count());
-        $this->assertSame(['SCM-01', 'SCM-03', 'BMK-02'], ActionPlan::with('objective')->get()->pluck('objective.kpi_code')->all());
+        $this->assertEqualsCanonicalizing(['SCM-01', 'SCM-03', 'BMK-02'], ActionPlan::with('objective')->get()->pluck('objective.kpi_code')->all());
     }
 
     public function test_the_demo_seeder_can_be_run_again_without_duplicates(): void

@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\Schema;
  *    level holding yang dapat berpindah antarentitas).
  * 3. Periode menjadi unik per entitas — tiap entitas membuka, mengunci, dan
  *    menilai periodenya sendiri.
- * 4. Data yang sudah ada dipindahkan ke HERBATECH: seluruh contoh data berupa
- *    departemen manufaktur (OPS, QC, ...) dan aplikasi ini semula dibangun
- *    untuk Herbatech. Kode departemen yang dipakai data tetapi tidak ada di
+ * 4. Data yang sudah ada dipindahkan ke entitas instalasi (BSC_DEFAULT_ENTITY di
+ *    .env; bila kodenya tidak dikenal, HERBATECH — aplikasi ini semula dibangun
+ *    untuk Herbatech), supaya tetap tampil pada instalasi satu entitas. Kode departemen yang dipakai data tetapi tidak ada di
  *    katalog dibuatkan unit kerjanya, agar tidak ada data yatim.
  */
 return new class extends Migration
@@ -85,25 +85,26 @@ return new class extends Migration
         // sehingga keduanya tidak mungkin berbeda.
         (new EntityStructureSeeder)->run();
 
-        $herbatech = DB::table('entities')->where('code', 'HERBATECH')->value('id');
+        $pemilik = DB::table('entities')->where('code', strtoupper((string) config('bsc.default_entity')))->value('id')
+            ?? DB::table('entities')->where('code', 'HERBATECH')->value('id');
 
         foreach (self::TABEL_BERENTITAS as $tabel) {
-            DB::table($tabel)->whereNull('entity_id')->update(['entity_id' => $herbatech]);
+            DB::table($tabel)->whereNull('entity_id')->update(['entity_id' => $pemilik]);
         }
 
         // Kode departemen yang sudah dipakai data tetapi belum ada di katalog.
-        $dipakai = DB::table('department_objectives')->where('entity_id', $herbatech)->pluck('dept_code')
-            ->merge(DB::table('action_plans')->where('entity_id', $herbatech)->pluck('owner_dept'))
+        $dipakai = DB::table('department_objectives')->where('entity_id', $pemilik)->pluck('dept_code')
+            ->merge(DB::table('action_plans')->where('entity_id', $pemilik)->pluck('owner_dept'))
             ->filter()
             ->map(fn ($kode) => strtoupper(trim($kode)))
             ->unique();
 
-        $sudahAda = DB::table('work_units')->where('entity_id', $herbatech)->pluck('code');
-        $urutan = (int) DB::table('work_units')->where('entity_id', $herbatech)->max('sort');
+        $sudahAda = DB::table('work_units')->where('entity_id', $pemilik)->pluck('code');
+        $urutan = (int) DB::table('work_units')->where('entity_id', $pemilik)->max('sort');
 
         foreach ($dipakai->diff($sudahAda) as $kode) {
             DB::table('work_units')->insert([
-                'entity_id' => $herbatech,
+                'entity_id' => $pemilik,
                 'code' => $kode,
                 'name' => $kode,
                 'stream' => null,

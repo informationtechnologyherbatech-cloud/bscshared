@@ -45,6 +45,16 @@ class Period extends Model
         return static::defaultFrom($daftar);
     }
 
+    /**
+     * Periode berstatus CLOSED dalam satu tahun — datanya tidak boleh diubah.
+     *
+     * @return array<int, string>
+     */
+    public static function closedIn(string $year): array
+    {
+        return static::where('period', 'like', $year.'-%')->where('status', 'CLOSED')->pluck('period')->all();
+    }
+
     /** Tahun periode aktif (YYYY). */
     public static function activeYear(): string
     {

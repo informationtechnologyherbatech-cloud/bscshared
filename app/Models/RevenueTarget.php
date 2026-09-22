@@ -49,7 +49,10 @@ class RevenueTarget extends Model
      *     belum difasing ke bulanan), atau
      *   - belum ada realisasi sama sekali (bukan 0%: belum ada datanya).
      *
-     * @return array{score: float|null, reason: string|null, target_ytd: float, actual_ytd: float, months_actual: int, annual: float|null}
+     * Bulan bertarget yang realisasinya belum diisi tetap dihitung (sebagai 0, sesuai
+     * rumus workbook) dan dicantumkan di months_missing agar tampilan bisa memperingatkan.
+     *
+     * @return array{score: float|null, reason: string|null, target_ytd: float, actual_ytd: float, months_actual: int, months_missing: array<int, string>, annual: float|null}
      */
     public static function cumulative(string $period): array
     {
@@ -58,7 +61,8 @@ class RevenueTarget extends Model
         $baris = static::query()
             ->where('period', '>=', $tahun.'-01')
             ->where('period', '<=', $period)
-            ->get(['target', 'actual']);
+            ->orderBy('period')
+            ->get(['period', 'target', 'actual']);
 
         $target = (float) $baris->sum('target');
         $denganRealisasi = $baris->filter(fn ($b) => $b->actual !== null);
@@ -78,6 +82,9 @@ class RevenueTarget extends Model
             'target_ytd' => $target,
             'actual_ytd' => $realisasi,
             'months_actual' => $denganRealisasi->count(),
+            'months_missing' => $alasan === null
+                ? $baris->filter(fn ($b) => $b->actual === null && (float) $b->target > 0)->pluck('period')->values()->all()
+                : [],
             'annual' => $setahun ? ($setahun->revised_target ?? $setahun->approved_target) : null,
         ];
     }

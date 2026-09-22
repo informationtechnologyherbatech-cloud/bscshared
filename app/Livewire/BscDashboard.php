@@ -151,6 +151,10 @@ class BscDashboard extends Component
                 'period' => $periodStr,
                 'category' => $baseR->category,
                 'ratio_name' => $baseR->ratio_name,
+                'ratio_code' => $baseR->ratio_code,
+                'unit' => $baseR->unit,
+                'polarity' => $baseR->polarity,
+                'weight' => $baseR->weight,
                 'target' => $baseR->target,
                 'actual' => 0.00,
                 'achievement_pct' => 0.00,
@@ -164,7 +168,7 @@ class BscDashboard extends Component
 
         $this->periods = Period::list();
         $this->selectedPeriod = $periodStr;
-        $this->shareActivePeriod($periodStr);
+        Period::setActive($periodStr);
         $this->newPeriodInput = '';
         $this->showCreatePeriodModal = false;
 
@@ -172,6 +176,9 @@ class BscDashboard extends Component
             . ($sumber ? ' dari templat ' . $sumber : '')
             . ($sinkron['created'] ? ', ' . $sinkron['created'] . ' KPI Lolos dari Cascade KPI ditambahkan' : '')
             . ' (realisasi diinisialisasi 0 per aturan PRD G-05).');
+
+        // Muat ulang agar periode baru ikut tampil di pilihan periode navbar.
+        $this->redirect(route('dashboard'));
     }
 
     public function inspectItem($type, $id)
@@ -307,14 +314,14 @@ class BscDashboard extends Component
         $isStale = $hoursSinceSync >= (int) config('bsc.stale_after_hours', 26);
         
         $ratiosQuery = FinancialRatio::where('period', $this->selectedPeriod);
-        $ratios = $ratiosQuery->get();
+        $ratios = $ratiosQuery->orderBy('id')->get();
         // F2 dari Scorecard — sumber yang sama dengan konsolidasi holding.
         $ratioScore = Scorecard::ratioScore($this->selectedPeriod);
         $hasRatioScore = $ratioScore !== null;
         $avgRatioScore = $ratioScore ?? 0;
 
         $objectivesQuery = DepartmentObjective::where('period', $this->selectedPeriod);
-        $objectives = $objectivesQuery->get();
+        $objectives = $objectivesQuery->orderBy('id')->get();
         $avgObjScore = $objectives->count() > 0 ? round($objectives->avg('achievement_pct'), 2) : 0;
 
         // Program kerja tidak punya kolom periode; keterkaitannya lewat sasaran mutu

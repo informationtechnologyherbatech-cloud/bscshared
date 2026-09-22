@@ -22,9 +22,8 @@ use Livewire\Component;
  */
 class AccountBalances extends Component
 {
-    use FollowsActivePeriod;
-
     use AuthorizesWrites;
+    use FollowsActivePeriod;
 
     #[Url]
     public string $period = '';

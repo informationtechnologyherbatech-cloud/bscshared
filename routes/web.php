@@ -120,7 +120,11 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
             return redirect()->back()->with('error', 'Periode '.$periode.' belum dibuat.');
         }
 
+        // Hanya kembali ke halaman aplikasi ini (Referer dari host lain diabaikan).
         $asal = url()->previous();
+        if (! in_array(parse_url($asal, PHP_URL_HOST), [$request->getHost(), parse_url((string) config('app.url'), PHP_URL_HOST)], true)) {
+            $asal = route('dashboard');
+        }
         $bagian = parse_url($asal);
         parse_str($bagian['query'] ?? '', $query);
         unset($query['period'], $query['selectedPeriod'], $query['year']);

@@ -51,7 +51,15 @@ class MonitoringSync
                 ];
 
                 if ($objektif) {
-                    $capaian = RatioLibrary::achievement((float) $objektif->actual, (float) $definisi['target'], $kpi->polarity) ?? 0;
+                    // Sasaran yang realisasinya belum dilaporkan (masih keadaan awal:
+                    // 0 / 0% / Di Bawah Target) tidak dihitung ulang — kalau dihitung,
+                    // KPI berpolaritas Turun dengan realisasi 0 langsung "Tercapai" 100%.
+                    $belumDilaporkan = (float) $objektif->actual == 0.0
+                        && (float) $objektif->achievement_pct == 0.0
+                        && $objektif->status === 'Di Bawah Target';
+                    $capaian = $belumDilaporkan
+                        ? 0.0
+                        : RatioLibrary::objectiveAchievement((float) $objektif->actual, (float) $definisi['target'], $kpi->polarity);
                     $objektif->update($definisi + ['achievement_pct' => $capaian, 'status' => self::status($capaian)]);
                     $hasil['updated']++;
                 } else {

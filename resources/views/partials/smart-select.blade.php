@@ -61,7 +61,9 @@
     const KODE = /^\s*([A-Z0-9][A-Z0-9._\/-]{1,11})\s+[—–-]\s+(.+)$/; // "SCM — Supply Chain"
     let aktif = null;            // { select, panel, input, list, items, index }
 
-    const eligible = (s) => s instanceof HTMLSelectElement && !s.multiple && !(s.size > 1) && !s.hasAttribute('data-native');
+    const sentuh = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const eligible = (s) => !sentuh && s instanceof HTMLSelectElement && !s.multiple && !(s.size > 1) && !s.hasAttribute('data-native');
+    let urutId = 0;
     const norm = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const esc = (t) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -109,6 +111,9 @@
             const el = document.createElement('div');
             el.className = 'ss-opt';
             el.setAttribute('role', 'option');
+            el.id = aktif.panel.id + '-o' + aktif.visible.length;
+            el.setAttribute('aria-selected', o.selected ? 'true' : 'false');
+            if (o.disabled) el.setAttribute('aria-disabled', 'true');
             if (o.selected) el.classList.add('is-selected');
             if (o.disabled) el.classList.add('is-disabled');
             if (o.value === '') el.classList.add('is-placeholder');
@@ -141,6 +146,7 @@
         const el = aktif.visible[i];
         if (!el) return;
         el.classList.add('is-active');
+        (aktif.input || aktif.select).setAttribute('aria-activedescendant', el.id);
         if (gulir) el.scrollIntoView({ block: 'nearest' });
     }
 
@@ -187,7 +193,10 @@
         const jumlah = items.filter((it) => it.option).length;
         const panel = document.createElement('div');
         panel.className = 'ss-panel';
+        panel.id = 'ss-panel-' + (++urutId);
         panel.setAttribute('role', 'listbox');
+        const label = select.getAttribute('aria-label') || select.labels?.[0]?.textContent?.trim() || 'Pilihan';
+        panel.setAttribute('aria-label', label);
 
         let input = null;
         if (jumlah > CARI_MIN || awal) {
@@ -197,6 +206,9 @@
             panel.appendChild(cari);
             input = cari.querySelector('input');
             input.value = awal;
+            input.setAttribute('role', 'combobox');
+            input.setAttribute('aria-controls', panel.id);
+            input.setAttribute('aria-expanded', 'true');
         }
         const list = document.createElement('div');
         list.className = 'ss-list';
@@ -212,6 +224,7 @@
         aktif = { select, panel, input, list, items, index: -1, visible: [] };
         select.classList.add('ss-open');
         select.setAttribute('aria-expanded', 'true');
+        select.setAttribute('aria-controls', panel.id);
 
         render();
         posisikan();
@@ -229,6 +242,7 @@
         panel.remove();
         select.classList.remove('ss-open');
         select.setAttribute('aria-expanded', 'false');
+        select.removeAttribute('aria-activedescendant');
         aktif = null;
         if (fokusKembali && document.contains(select)) select.focus({ preventScroll: true });
     }
@@ -252,8 +266,8 @@
             e.preventDefault();
             const el = aktif.visible[aktif.index];
             if (el) pilih(el._option);
-        } else if (e.key === 'Escape') { e.preventDefault(); tutup(); }
-        else if (e.key === 'Tab') { tutup(false); }
+        } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); tutup(); }
+        else if (e.key === 'Tab') { tutup(true); }
     }
 
     // Klik pada select: cegah daftar bawaan, buka panel.

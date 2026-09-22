@@ -73,7 +73,10 @@ class Consolidation
         $targetBersih = $targetKotor - $elimRencana;
         $realisasiBersih = $realisasiKotor - $elimRealisasi;
 
-        $f1 = $targetBersih > 0 ? round(min(100.0, max(0.0, $realisasiBersih / $targetBersih * 100)), 2) : null;
+        // Belum ada realisasi di entitas mana pun = belum ada data (null), bukan 0% —
+        // sama seperti F1 per entitas.
+        $adaRealisasi = count(array_filter($baris, fn ($b) => $b['f1'] !== null)) > 0;
+        $f1 = $targetBersih > 0 && $adaRealisasi ? round(min(100.0, max(0.0, $realisasiBersih / $targetBersih * 100)), 2) : null;
 
         // F2 grup: dibobot target revenue YTD; bila belum ada target sama sekali,
         // rata-rata sederhana entitas yang punya F2.

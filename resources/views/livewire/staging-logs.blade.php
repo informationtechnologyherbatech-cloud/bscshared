@@ -146,6 +146,12 @@
                                 </tbody>
                             </table>
                         </div>
+                        @if($logs->hasPages())
+                            <div class="d-flex justify-content-between align-items-center flex-wrap px-3 pt-3">
+                                <small class="text-muted mb-2">Menampilkan {{ $logs->firstItem() }}–{{ $logs->lastItem() }} dari {{ $logs->total() }}</small>
+                                {{ $logs->links() }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

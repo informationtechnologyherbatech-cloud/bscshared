@@ -48,13 +48,14 @@ class DepartmentObjectives extends Component
             session()->flash('error', 'Akses ditolak: butuh manage objectives / can_write_kpi (HRIS, FAT, Kadep, Operator, Super Admin). Viewer tidak dapat mengubah KPI.');
             return;
         }
-        $periodObj = Period::where('period', $this->selectedPeriod)->first();
-        if ($periodObj && $periodObj->isClosed()) {
-            session()->flash('error', 'Periode ' . $this->selectedPeriod . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
+        // Kunci CLOSED mengikuti periode milik sasaran itu sendiri, bukan periode
+        // yang sedang dipilih di halaman (id dapat berasal dari periode lain).
+        $obj = DepartmentObjective::findOrFail($id);
+        if (Period::where('period', $obj->period)->first()?->isClosed()) {
+            session()->flash('error', 'Periode ' . $obj->period . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
             return;
         }
 
-        $obj = DepartmentObjective::findOrFail($id);
         $this->editingObjId = $obj->id;
         $this->editTarget = $obj->target;
         $this->editActual = $obj->actual;
@@ -69,21 +70,19 @@ class DepartmentObjectives extends Component
             return;
         }
 
-        $periodObj = Period::where('period', $this->selectedPeriod)->first();
-        if ($periodObj && $periodObj->isClosed()) {
-            session()->flash('error', 'Periode ' . $this->selectedPeriod . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
+        $obj = DepartmentObjective::findOrFail($this->editingObjId);
+        if (Period::where('period', $obj->period)->first()?->isClosed()) {
+            session()->flash('error', 'Periode ' . $obj->period . ' telah DITUTUP (CLOSED). Data tidak dapat diubah.');
             $this->editingObjId = null;
             return;
         }
-
-        $obj = DepartmentObjective::findOrFail($this->editingObjId);
         $target = floatval($this->editTarget);
         $actual = floatval($this->editActual);
 
         // Capaian menurut polaritas — Naik, Turun, dan Rentang — dibatasi 100%,
         // sama dengan rasio keuangan. Rentang sebelumnya dihitung seperti Naik.
-        // Target 0 tidak dapat dinilai; dianggap tercapai seperti sebelumnya.
-        $ach = \App\Support\Bsc\RatioLibrary::achievement($actual, $target, $obj->polarity ?: 'Naik') ?? 100.0;
+        // Target 0 dinilai menurut arah polaritas — aturan yang sama dengan monitoring.
+        $ach = \App\Support\Bsc\RatioLibrary::objectiveAchievement($actual, $target, $obj->polarity);
 
         $status = 'Waspada';
         if ($ach >= 100) {
@@ -129,7 +128,7 @@ class DepartmentObjectives extends Component
             }
         }
 
-        $objectives = $query->get();
+        $objectives = $query->orderBy('id')->get(); // urutan input, tidak bergantung indeks
 
         // Daftar departemen dari master Unit Kerja entitas aktif — sebelumnya hanya
         // diturunkan dari DISTINCT dept_code, sehingga unit yang belum punya sasaran

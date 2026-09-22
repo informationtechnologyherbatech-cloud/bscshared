@@ -186,11 +186,12 @@
                             <div class="form-group col-md-2">
                                 <label class="small">Rencana (Rp)</label>
                                 <x-input-rupiah wire:model="form.planned_amount" class="form-control form-control-sm text-right {{ $errors->has('form.planned_amount') ? 'is-invalid' : '' }}" />
+                                @error('form.planned_amount') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
                             </div>
                             <div class="form-group col-md-2">
                                 <label class="small">Realisasi (Rp)</label>
                                 <x-input-rupiah wire:model="form.actual_amount" class="form-control form-control-sm text-right {{ $errors->has('form.actual_amount') ? 'is-invalid' : '' }}" />
-                                @error('form.actual_amount') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                @error('form.actual_amount') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
                             </div>
                         </div>
                         <div class="form-row align-items-end">

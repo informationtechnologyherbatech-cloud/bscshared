@@ -55,7 +55,7 @@
             @if($entitasAktif)
             <li class="nav-item dropdown">
                 @if($konteks->canSwitch(auth()->user()))
-                    <a class="nav-link nb-chip" data-toggle="dropdown" href="#" title="Pilih entitas yang ditampilkan">
+                    <a class="nav-link nb-chip nb-entity-chip" data-toggle="dropdown" href="#" title="Pilih entitas yang ditampilkan">
                         @if($logoAktif)<span class="nb-chip-icon nb-chip-logo"><img src="{{ $logoAktif }}" alt="{{ $entitasAktif->name }}"></span>@else<span class="nb-chip-icon"><i class="fas fa-building"></i></span>@endif
                         <span class="nb-chip-text">
                             <small>Entitas</small>
@@ -92,7 +92,7 @@
                         @endforeach
                     </div>
                 @else
-                    <span class="nav-link nb-chip" title="{{ $entitasAktif->legal_name }}">
+                    <span class="nav-link nb-chip nb-entity-chip" title="{{ $entitasAktif->legal_name }}">
                         @if($logoAktif)<span class="nb-chip-icon nb-chip-logo"><img src="{{ $logoAktif }}" alt="{{ $entitasAktif->name }}"></span>@else<span class="nb-chip-icon"><i class="fas fa-building"></i></span>@endif
                         <span class="nb-chip-text">
                             <small>Entitas</small>
@@ -111,12 +111,16 @@
             @php($periodeAktif = \App\Models\Period::active())
             @php($bulanIni = now()->format('Y-m'))
             @php($namaBulan = ['01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April', '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus', '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'])
-            <li class="nav-item dropdown d-none d-sm-block">
+            <li class="nav-item dropdown">
                 <a class="nav-link nb-chip" data-toggle="dropdown" href="#" title="Periode yang ditampilkan di semua halaman">
-                    <span class="nb-chip-icon"><i class="fas fa-calendar-days"></i></span>
+                    {{-- Mini kalender: tahun di pita atas, singkatan bulan di badan. --}}
+                    <span class="nb-cal" aria-hidden="true">
+                        <span class="nb-cal-year" data-cal-year>{{ substr($periodeAktif, 0, 4) }}</span>
+                        <span class="nb-cal-month" data-cal-month>{{ mb_strtoupper(mb_substr($namaBulan[substr($periodeAktif, 5, 2)] ?? '', 0, 3)) }}</span>
+                    </span>
                     <span class="nb-chip-text">
                         <small>Periode</small>
-                        <strong data-periode-aktif>{{ $periodeAktif }}</strong>
+                        <strong data-periode-aktif="{{ $periodeAktif }}">{{ ($namaBulan[substr($periodeAktif, 5, 2)] ?? $periodeAktif) }} {{ substr($periodeAktif, 0, 4) }}</strong>
                     </span>
                     <i class="fas fa-chevron-down nb-chip-caret"></i>
                 </a>
@@ -489,7 +493,18 @@
     window.addEventListener('periode-aktif', (e) => {
         const periode = e.detail?.period;
         if (!periode) return;
-        document.querySelectorAll('[data-periode-aktif]').forEach((el) => { el.textContent = periode; });
+        if (document.querySelector('.nb-period-menu') && !document.querySelector('.nb-period-item[data-periode="' + periode + '"]')) {
+            window.location.reload();
+            return;
+        }
+        const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        const nama = BULAN[Number(periode.slice(5, 7)) - 1] || periode;
+        document.querySelectorAll('[data-periode-aktif]').forEach((el) => {
+            el.dataset.periodeAktif = periode;
+            el.textContent = nama + ' ' + periode.slice(0, 4);
+        });
+        document.querySelectorAll('[data-cal-year]').forEach((el) => { el.textContent = periode.slice(0, 4); });
+        document.querySelectorAll('[data-cal-month]').forEach((el) => { el.textContent = nama.slice(0, 3).toUpperCase(); });
         document.querySelectorAll('.nb-period-item').forEach((el) => el.classList.toggle('is-active', el.dataset.periode === periode));
     });
 </script>
@@ -498,7 +513,7 @@
     (() => {
         const tutupModal = (modal) => modal && modal.querySelector('.modal-close')?.click();
         document.addEventListener('keydown', (e) => {
-            if (e.key !== 'Escape' || document.querySelector('.ss-panel')) return;
+            if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('.ss-panel')) return;
             const semua = document.querySelectorAll('.modal-lw');
             tutupModal(semua[semua.length - 1]);
         });

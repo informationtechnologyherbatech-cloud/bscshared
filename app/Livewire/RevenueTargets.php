@@ -199,8 +199,23 @@ class RevenueTargets extends Component
             ]);
         }
 
+        // Bulan pada periode CLOSED tidak diubah; kunci baris hanya '01'..'12'
+        // (rows adalah properti publik yang dapat dimanipulasi dari peramban).
+        $ditutup = Period::closedIn($this->year);
+        $dilewati = [];
+
         foreach ($this->rows as $bulan => $baris) {
+            $bulan = str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
+            if (! isset(self::BULAN[$bulan]) || ! is_array($baris)) {
+                continue;
+            }
             $periode = $this->year.'-'.$bulan;
+            if (in_array($periode, $ditutup, true)) {
+                $dilewati[] = $periode;
+
+                continue;
+            }
+            $baris += ['target' => '', 'actual' => ''];
             $target = $baris['target'] === '' ? null : (float) $baris['target'];
             $actual = $baris['actual'] === '' ? null : (float) $baris['actual'];
 
@@ -217,7 +232,8 @@ class RevenueTargets extends Component
         }
 
         $this->loadYear();
-        session()->flash('message', 'Target & realisasi revenue '.$this->year.' tersimpan.');
+        session()->flash('message', 'Target & realisasi revenue '.$this->year.' tersimpan.'
+            .($dilewati ? ' Bulan pada periode yang sudah DITUTUP tidak diubah: '.implode(', ', $dilewati).'.' : ''));
 
         // F1 dihitung dari target & realisasi BULANAN; target setahun saja belum cukup.
         $adaTargetBulanan = collect($this->rows)->contains(fn ($r) => (float) ($r['target'] ?: 0) > 0);

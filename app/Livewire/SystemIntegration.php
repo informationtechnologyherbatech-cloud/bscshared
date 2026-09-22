@@ -135,7 +135,7 @@ class SystemIntegration extends Component
         // Target KPI yang tertaut cascade ditetapkan di Cascade KPI, bukan oleh payload.
         // Capaian mengikuti polaritas (Naik/Turun/Rentang), sama dengan Objective Departemen.
         $target = $obj->kpi_cascade_id ? (float) $obj->target : (float) $this->targetPayload;
-        $ach = RatioLibrary::achievement((float) $this->actualPayload, $target, $obj->polarity ?: RatioLibrary::NAIK) ?? 100.0;
+        $ach = RatioLibrary::objectiveAchievement((float) $this->actualPayload, $target, $obj->polarity);
 
         $obj->update([
             'actual' => $this->actualPayload,
@@ -167,6 +167,11 @@ class SystemIntegration extends Component
     public function processFinancePayload()
     {
         if ($this->lacksPermission('manage integration')) {
+            return;
+        }
+        // Menulis pos akun & menghitung ulang rasio: wajib juga berhak atas rasio
+        // (sama dengan menu Pos Akun) — Admin HRIS tidak boleh mengubah data keuangan.
+        if ($this->lacksPermission('manage ratios')) {
             return;
         }
 

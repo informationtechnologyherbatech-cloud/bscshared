@@ -180,7 +180,11 @@ class IndicatorTest
         $baik = match ($polaritas) {
             RatioLibrary::NAIK => $bergerak && $deltaKlaim > 0,
             RatioLibrary::TURUN => $bergerak && $deltaKlaim < 0,
-            default => null, // Rentang — dinilai manual
+            // Rentang: baik bila skenario mendekatkan rasio ke targetnya. Tanpa
+            // target, tidak dapat dinilai otomatis (null → REVISI, cek manual).
+            default => ! $bergerak ? false : (isset($r['target'], $r['baseline'], $r['scenario'])
+                ? abs($r['scenario'] - $r['target']) < abs($r['baseline'] - $r['target'])
+                : null),
         };
 
         return [

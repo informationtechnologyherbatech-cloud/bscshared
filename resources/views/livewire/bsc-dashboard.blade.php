@@ -690,6 +690,13 @@
                                             @php($selisih = $rd['actual_ytd'] - $rd['target_ytd'])
                                             <span class="{{ $selisih < 0 ? 'text-danger' : 'text-success' }}">Selisih: {{ rupiah($selisih) }}</span>
                                         </div>
+                                        @if(! empty($rd['months_missing']))
+                                            <div class="alert alert-warning small mt-3 mb-0 py-2">
+                                                <i class="fas fa-triangle-exclamation mr-1"></i>
+                                                Realisasi <strong>{{ implode(', ', $rd['months_missing']) }}</strong> belum diisi, sehingga dihitung 0 dan menurunkan F1.
+                                                Isi di <a class="font-weight-bold" href="{{ route('revenue', ['year' => substr($selectedPeriod, 0, 4)]) }}">Target &amp; Realisasi</a>.
+                                            </div>
+                                        @endif
                                     @else
                                         <div class="alert alert-light border small mt-3 mb-0">
                                             <i class="fas fa-info-circle text-info mr-1"></i>
