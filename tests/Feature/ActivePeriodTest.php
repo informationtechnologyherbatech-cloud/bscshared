@@ -99,6 +99,22 @@ class ActivePeriodTest extends TestCase
         $this->assertSame('2026-07', Period::active());
     }
 
+    public function test_the_drill_down_link_opens_the_full_ratio_list(): void
+    {
+        Livewire::test(BscDashboard::class)
+            ->set('selectedPeriod', '2026-08')
+            ->call('selectLevel', 2)
+            ->assertSee('Buka menu Rasio Keuangan')
+            ->assertDontSee('Utuh')
+            ->assertDontSee('status=all', false);
+
+        // Tautan lama dengan status=all tidak lagi menyaring semuanya habis.
+        Livewire::withQueryParams(['status' => 'all', 'period' => '2026-08'])
+            ->test(FinancialRatios::class)
+            ->assertSet('selectedStatus', '')
+            ->assertViewHas('ratios', fn ($r) => $r->count() === 19);
+    }
+
     public function test_each_entity_keeps_its_own_active_period(): void
     {
         Period::setActive('2026-07');

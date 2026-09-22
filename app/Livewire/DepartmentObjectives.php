@@ -27,8 +27,11 @@ class DepartmentObjectives extends Component
 
     public function mount()
     {
-        if (request()->query('status')) {
+        if (request()->query('status') && request()->query('status') !== 'all') {
             $this->selectedStatus = request()->query('status');
+        }
+        if ($this->selectedStatus === 'all') {
+            $this->selectedStatus = ''; // "Semua" dari dashboard = tanpa saringan
         }
         // Bawaan: periode aktif di navbar; ?period= dari tautan halaman lain menggantikannya.
         $this->selectedPeriod = $this->initialPeriod(request()->query('period') ?: $this->selectedPeriod);
@@ -119,7 +122,9 @@ class DepartmentObjectives extends Component
         if ($this->selectedStatus) {
             if ($this->selectedStatus === 'bermasalah') {
                 $query->whereIn('status', ['Waspada', 'Di Bawah Target', 'Off-Target']);
-            } else {
+            } elseif ($this->selectedStatus === 'Di Bawah Target') {
+                $query->whereIn('status', ['Di Bawah Target', 'Off-Target']);
+            } elseif ($this->selectedStatus !== 'all') {
                 $query->where('status', $this->selectedStatus);
             }
         }

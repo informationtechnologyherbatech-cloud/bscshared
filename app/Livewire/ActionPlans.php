@@ -22,8 +22,11 @@ class ActionPlans extends Component
 
     public function mount()
     {
-        if (request()->query('status')) {
+        if (request()->query('status') && request()->query('status') !== 'all') {
             $this->selectedStatus = request()->query('status');
+        }
+        if ($this->selectedStatus === 'all') {
+            $this->selectedStatus = ''; // "Semua" dari dashboard = tanpa saringan
         }
     }
 

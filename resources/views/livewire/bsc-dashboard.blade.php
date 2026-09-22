@@ -580,21 +580,23 @@
                     </h4>
 
                     <div>
+                        {{-- Filter "Semua" tidak diteruskan: halaman tujuan membacanya sebagai status. --}}
+                        @php($saringStatus = $statusFilter !== 'all' ? ['status' => $statusFilter] : [])
                         @if($activeLevel === 2)
-                            <a href="{{ route('financial-ratios', ['status' => $statusFilter, 'period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
-                                Halaman Rasio Utuh <i class="fas fa-external-link-alt ml-1"></i>
+                            <a href="{{ route('financial-ratios', $saringStatus + ['period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
+                                Buka menu Rasio Keuangan <i class="fas fa-arrow-right ml-1"></i>
                             </a>
                         @elseif($activeLevel === 3)
-                            <a href="{{ route('department-objectives', ['status' => $statusFilter, 'period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
-                                Halaman Objective Utuh <i class="fas fa-external-link-alt ml-1"></i>
+                            <a href="{{ route('department-objectives', $saringStatus + ['period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
+                                Buka menu Objective Departemen <i class="fas fa-arrow-right ml-1"></i>
                             </a>
                         @elseif($activeLevel === 4)
-                            <a href="{{ route('action-plans', ['status' => $statusFilter]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
-                                Halaman Action Plans Utuh <i class="fas fa-external-link-alt ml-1"></i>
+                            <a href="{{ route('action-plans', $saringStatus) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
+                                Buka menu Program Kerja <i class="fas fa-arrow-right ml-1"></i>
                             </a>
                         @else
                             <a href="{{ route('bsc-wiring', ['period' => $selectedPeriod]) }}" class="btn btn-sm btn-light text-teal font-weight-bold">
-                                Lihat Wiring Causes <i class="fas fa-project-diagram ml-1"></i>
+                                Buka Wiring / Peta Hubungan <i class="fas fa-arrow-right ml-1"></i>
                             </a>
                         @endif
                     </div>
