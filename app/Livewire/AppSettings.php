@@ -327,6 +327,8 @@ class AppSettings extends Component
         $raw = 'bsc_live_' . Str::random(32);
         ApiKey::create([
             'name' => $this->newKeyName,
+            // Kunci menyebut entitas pemiliknya: tidak dapat dipakai di pemasangan entitas lain.
+            'entity_code' => strtoupper((string) config('bsc.default_entity')) ?: null,
             'key' => $raw,
             'is_active' => true,
         ]);

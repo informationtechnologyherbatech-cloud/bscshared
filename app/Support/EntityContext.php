@@ -159,14 +159,24 @@ class EntityContext
         }
     }
 
-    public function forget(): void
+    /**
+     * Buang ingatan sementara (entitas termuat, daftar akses, entitas instalasi)
+     * TANPA membatalkan pilihan entitas yang sedang berlaku — dipakai saat membaca
+     * database entitas lain, karena id entitas berbeda di tiap database.
+     */
+    public function flushCache(): void
     {
-        $this->override = false;
         $this->accessible = [];
         $this->loaded = [];
         $this->default = null;
         $this->defaultResolved = false;
         $this->installation = false;
+    }
+
+    public function forget(): void
+    {
+        $this->override = false;
+        $this->flushCache();
     }
 
     /**

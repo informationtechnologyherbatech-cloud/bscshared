@@ -229,6 +229,12 @@
                             <p>Konsolidasi Holding</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ route('entity-sources') }}" class="nav-link {{ request()->routeIs('entity-sources') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-network-wired"></i>
+                            <p>Sumber Data Entitas</p>
+                        </a>
+                    </li>
                     @endif
 
                     @canany(['manage revenue','view dashboard'])
@@ -441,6 +447,7 @@
 
     <!-- Content Wrapper. Contains page content -->
     <div class="content-wrapper">
+        @include('partials.sumber-entitas')
         {{ $slot }}
     </div>
     <!-- /.content-wrapper -->

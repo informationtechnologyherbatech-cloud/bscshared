@@ -1,5 +1,19 @@
 <?php
 
+/*
+| Kode entitas diambil dari config/entity.php supaya daftarnya tidak ditulis dua
+| kali; tiap entitas dapat menunjuk ke API atau database sendiri (lihat "sources").
+*/
+$sumberEntitas = [];
+
+foreach (array_keys((array) ((require __DIR__.'/entity.php')['profiles'] ?? [])) as $kodeEntitas) {
+    $sumberEntitas[$kodeEntitas] = [
+        'api_url' => env('BSC_SOURCE_'.$kodeEntitas.'_URL'),
+        'api_key' => env('BSC_SOURCE_'.$kodeEntitas.'_KEY'),
+        'database' => env('BSC_SOURCE_'.$kodeEntitas.'_DB'),
+    ];
+}
+
 return [
 
     /*
@@ -129,5 +143,52 @@ return [
         65 => 60,
         0 => 50,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sumber Data Tiap Entitas (isolasi data antarentitas)
+    |--------------------------------------------------------------------------
+    |
+    | Tiap entitas menyimpan datanya di databasenya sendiri; holding (EMC) punya
+    | database sendiri yang TIDAK menyimpan data entitas — holding hanya membaca
+    | ringkasan saat halaman Konsolidasi dibuka. Tiga kemungkinan per entitas:
+    |
+    |   1. API      — entitas berada di server lain.
+    |                 BSC_SOURCE_ERDIGMA_URL=https://bsc.erdigma.co.id
+    |                 BSC_SOURCE_ERDIGMA_KEY=<kunci API entitas itu>
+    |   2. Database — entitas satu server, database terpisah.
+    |                 BSC_SOURCE_ERDIGMA_DB=db_bsc_erdigma
+    |   3. Lokal    — tidak diisi: datanya di database ini juga (pemasangan tunggal
+    |                 atau lingkungan pengembangan). Perilaku lama.
+    |
+    | API menang bila keduanya diisi. Kunci API dibuat di menu Setting Sistem tab
+    | API pada aplikasi ENTITAS, lalu disalin ke .env holding.
+    |
+    */
+
+    'sources' => $sumberEntitas,
+
+    /*
+    | Berapa lama ringkasan entitas disimpan di cache holding (detik) dan batas
+    | waktu satu panggilan API. Cache dibuang oleh tombol "Segarkan".
+    */
+
+    'consolidation_ttl' => (int) env('BSC_CONSOLIDATION_TTL', 300),
+
+    'api_timeout' => (int) env('BSC_API_TIMEOUT', 8),
+
+    /*
+    | Batas ukuran jawaban API entitas (byte) — jawaban raksasa tidak diurai.
+    */
+
+    'api_max_bytes' => (int) env('BSC_API_MAX_BYTES', 2 * 1024 * 1024),
+
+    /*
+    | true = pemasangan holding WAJIB punya sumber (URL atau DB) untuk tiap entitas;
+    | entitas yang belum diatur ditandai galat, bukan dibaca dari database holding.
+    | Disarankan true begitu database per entitas benar-benar dipakai.
+    */
+
+    'require_entity_sources' => (bool) env('BSC_REQUIRE_ENTITY_SOURCES', false),
 
 ];

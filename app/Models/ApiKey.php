@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ApiKey extends Model
 {
-    protected $fillable = ['name', 'key', 'is_active', 'created_by', 'last_used_at'];
+    protected $fillable = ['name', 'entity_code', 'key', 'is_active', 'created_by', 'last_used_at'];
 
     protected $casts = [
         'is_active' => 'boolean',

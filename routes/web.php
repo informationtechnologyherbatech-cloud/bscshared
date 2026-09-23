@@ -15,6 +15,7 @@ use App\Livewire\ManageUsers;
 use App\Livewire\AppSettings;
 use App\Livewire\AccountBalances;
 use App\Livewire\AccountPostMap;
+use App\Livewire\EntitySources;
 use App\Livewire\HoldingConsolidation;
 use App\Livewire\IndicatorTests;
 use App\Livewire\KpiCascades;
@@ -97,6 +98,10 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
 
     // Konsolidasi holding — hanya pengguna level holding (dicek juga di komponen).
     Route::get('/konsolidasi', HoldingConsolidation::class)->middleware('permission:view consolidation')->name('consolidation');
+
+    // Sumber data tiap entitas (pemasangan holding): alamat API + kunci, atau nama
+    // database. Komponennya sendiri menolak pengguna yang terikat satu entitas.
+    Route::get('/sumber-entitas', EntitySources::class)->middleware('permission:view consolidation')->name('entity-sources');
 
     // Struktur unit kerja per entitas — sumber daftar departemen.
     Route::get('/unit-kerja', WorkUnits::class)->middleware('permission:manage units')->name('work-units');

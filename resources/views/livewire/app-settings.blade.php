@@ -389,6 +389,34 @@
                             <i class="fas fa-shield-alt mr-1"></i> Hanya <strong>Super Admin</strong> yang dapat mengelola kunci API Gateway. Kunci bersifat rahasia (G-07).
                         </div>
 
+                        {{-- Yang perlu disalin admin entitas ke .env holding (EMC). --}}
+                        <div class="card card-outline card-teal">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-building-columns mr-1"></i> Dibaca holding (EMC)</h6>
+                            </div>
+                            <div class="card-body">
+                                @if (holding_mode())
+                                    <p class="mb-0 text-muted">
+                                        Pemasangan ini adalah <strong>holding</strong>, jadi tidak melayani permintaan entitas lain.
+                                        Isi <code>BSC_SOURCE_&lt;KODE&gt;_URL</code> dan <code>BSC_SOURCE_&lt;KODE&gt;_KEY</code> pada berkas
+                                        <code>.env</code> di sini dengan alamat &amp; kunci tiap entitas.
+                                    </p>
+                                @else
+                                    <p>
+                                        Holding membaca <strong>ringkasan</strong> entitas ini lewat alamat berikut — hanya skor, revenue
+                                        kumulatif, 19 rasio, dan ringkasan unit kerja. Pos akun, isi sasaran mutu, dan program kerja tidak ikut.
+                                    </p>
+                                    <pre class="bg-light p-2 mb-2"><code>{{ url('/api/v1/consolidation') }}?period={{ active_period() }}</code></pre>
+                                    <p class="mb-0 small text-muted">
+                                        Di <code>.env</code> holding, isikan:
+                                        <code>BSC_SOURCE_{{ config('bsc.default_entity') }}_URL={{ rtrim(config('app.url'), '/') }}</code> dan
+                                        <code>BSC_SOURCE_{{ config('bsc.default_entity') }}_KEY=&lt;kunci aktif di bawah&gt;</code>.
+                                        Selengkapnya: <em>docs/database-per-entitas.md</em>.
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+
                         <div class="card card-outline card-info">
                             <div class="card-header">
                                 <h6 class="card-title mb-0"><i class="fas fa-plus-circle mr-1"></i> Generate Kunci Baru</h6>

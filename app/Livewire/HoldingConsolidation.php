@@ -9,6 +9,7 @@ use App\Models\IntercompanySale;
 use App\Models\Period;
 use App\Support\Bsc\Consolidation;
 use App\Support\EntityContext;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Url;
@@ -188,6 +189,30 @@ class HoldingConsolidation extends Component
 
         IntercompanySale::whereKey($id)->delete();
         session()->flash('message', 'Baris eliminasi dihapus.');
+    }
+
+    /**
+     * Buang ringkasan tersimpan lalu ambil ulang dari sumber tiap entitas
+     * (database entitas atau API-nya).
+     */
+    public function refreshSummaries(): void
+    {
+        $this->ensureHoldingUser();
+
+        // Satu penyegaran tiap 10 detik per pengguna: memanggil server entitas
+        // berkali-kali tidak membuat angkanya lebih baru.
+        $jeda = 'bsc:segarkan:'.(auth()->id() ?? 'x');
+
+        if (Cache::get($jeda)) {
+            session()->flash('error', 'Ringkasan baru saja diambil; coba lagi beberapa detik.');
+
+            return;
+        }
+
+        Cache::put($jeda, true, 10);
+        app(Consolidation::class)->refresh($this->period);
+
+        session()->flash('message', 'Ringkasan entitas diambil ulang dari sumbernya.');
     }
 
     public function render()
