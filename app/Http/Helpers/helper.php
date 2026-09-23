@@ -4,11 +4,14 @@ use App\Models\AccountPostRole;
 use App\Models\AppSetting;
 use App\Models\Entity;
 use App\Models\KpiCascade;
+use App\Models\PairingCode;
 use App\Models\Period;
 use App\Models\RevenueTarget;
 use App\Support\Bsc\AccountPosts;
 use App\Support\Bsc\RatioEngine;
 use App\Support\Bsc\RatioLibrary;
+use App\Support\Bsc\Sources\EntitySourceFactory;
+use App\Support\Bsc\Sources\EntitySourceSettings;
 use App\Support\EntityContext;
 use App\Support\PasswordPolicy;
 use App\Support\Recaptcha;
@@ -269,6 +272,16 @@ if (! function_exists('can_switch_entity')) {
     }
 }
 
+if (! function_exists('is_holding_user')) {
+    /** Pengguna tingkat holding: boleh membuka Konsolidasi & Sumber Data Entitas. */
+    function is_holding_user(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && entity_context()->isHoldingUser($user);
+    }
+}
+
 if (! function_exists('switchable_entities')) {
     /**
      * Entitas yang boleh dibuka pengguna ini.
@@ -288,6 +301,47 @@ if (! function_exists('entity_logo_of')) {
     function entity_logo_of(?string $code): ?string
     {
         return $code ? public_image_url(config('entity.profiles.'.$code.'.logo')) : null;
+    }
+}
+
+if (! function_exists('holding_mode')) {
+    /** Pemasangan ini adalah holding (punya pengalih entitas & menu Konsolidasi). */
+    function holding_mode(): bool
+    {
+        return entity_context()->isHoldingMode();
+    }
+}
+
+if (! function_exists('pairing_ttl')) {
+    /** Berapa menit kode pendaftaran entitas berlaku. */
+    function pairing_ttl(): int
+    {
+        return PairingCode::MASA_BERLAKU;
+    }
+}
+
+if (! function_exists('entity_source_label')) {
+    /** Asal data entitas aktif: database aplikasi ini · database lain · API entitas. */
+    function entity_source_label(): string
+    {
+        $entitas = active_entity();
+
+        return $entitas ? app(EntitySourceFactory::class)->describe($entitas) : 'database aplikasi ini';
+    }
+}
+
+if (! function_exists('entity_source_is_remote')) {
+    /** Benar bila data entitas aktif berada di luar database aplikasi ini. */
+    function entity_source_is_remote(): bool
+    {
+        $entitas = active_entity();
+
+        if (! $entitas) {
+            return false;
+        }
+
+        return app(EntitySourceSettings::class)->for($entitas)['origin'] !== 'tidak diatur'
+            && app(EntitySourceFactory::class)->describe($entitas) !== 'database aplikasi ini';
     }
 }
 

@@ -17,6 +17,12 @@ class AppServiceProvider extends ServiceProvider
         // seluruh kueri dalam permintaan itu, dan penggantian manual (konsol/tes)
         // tidak hilang di tengah jalan.
         $this->app->scoped(\App\Support\EntityContext::class);
+
+        // Sama halnya untuk sumber data entitas: tabelnya dibaca berkali-kali
+        // dalam satu permintaan (tata letak, konsolidasi, layar pengaturan), dan
+        // forget() setelah menyimpan hanya berguna bila semuanya memakai contoh
+        // yang sama.
+        $this->app->scoped(\App\Support\Bsc\Sources\EntitySourceSettings::class);
     }
 
     /**

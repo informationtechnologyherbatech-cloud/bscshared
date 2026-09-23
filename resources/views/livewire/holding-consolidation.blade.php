@@ -51,7 +51,7 @@
                     <div class="small-box bg-teal">
                         <div class="inner">
                             <h3>{!! $g['apex'] === null ? '—' : e(number_format($g['apex'], 1, ',', '.')) !!}</h3>
-                            <p>Skor puncak grup {{ $period }}</p>
+                            <p>Skor puncak grup {{ $period }} @if ($g['unreachable'])<small class="d-block" title="Entitas yang belum terbaca tidak ikut dihitung">belum lengkap</small>@endif</p>
                         </div>
                         <div class="icon"><i class="fas fa-mountain"></i></div>
                     </div>
@@ -60,7 +60,7 @@
                     <div class="small-box bg-info">
                         <div class="inner">
                             <h3>{!! $g['f1'] === null ? '—' : e(number_format($g['f1'], 1, ',', '.')) !!}</h3>
-                            <p>F1 grup — revenue setelah eliminasi</p>
+                            <p>F1 grup — revenue setelah eliminasi @if ($g['unreachable'])<small class="d-block" title="Entitas yang belum terbaca tidak ikut dihitung">belum lengkap</small>@endif</p>
                         </div>
                         <div class="icon"><i class="fas fa-bullseye"></i></div>
                     </div>
@@ -69,7 +69,7 @@
                     <div class="small-box bg-secondary">
                         <div class="inner">
                             <h3>{!! $g['f2'] === null ? '—' : e(number_format($g['f2'], 1, ',', '.')) !!}</h3>
-                            <p>F2 grup — {{ $g['f2_weighting'] === 'revenue' ? 'dibobot target revenue entitas' : 'rata-rata entitas' }}</p>
+                            <p>F2 grup — {{ $g['f2_weighting'] === 'revenue' ? 'dibobot target revenue entitas' : 'rata-rata entitas' }} @if ($g['unreachable'])<small class="d-block" title="Entitas yang belum terbaca tidak ikut dihitung">belum lengkap</small>@endif</p>
                         </div>
                         <div class="icon"><i class="fas fa-coins"></i></div>
                     </div>
@@ -78,14 +78,34 @@
 
             {{-- Per entitas --}}
             <div class="card card-teal card-outline">
-                <div class="card-header">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
                     <h3 class="card-title font-weight-bold"><i class="fas fa-building mr-1"></i> Skor per entitas — {{ $period }}</h3>
+                    <div class="d-flex align-items-center">
+                        @if ($data['group']['fetched_at'])
+                            <small class="text-muted mr-2">Diambil {{ \Illuminate\Support\Carbon::parse($data['group']['fetched_at'])->diffForHumans() }}</small>
+                        @endif
+                        <button type="button" wire:click="refreshSummaries" class="btn btn-sm btn-ghost" title="Ambil ulang dari sumber tiap entitas">
+                            <i class="fas fa-rotate mr-1"></i> Segarkan
+                        </button>
+                    </div>
                 </div>
+                @if ($data['group']['unreachable'])
+                    <div class="alert alert-warning m-3 mb-0 py-2">
+                        <i class="fas fa-triangle-exclamation mr-1"></i>
+                        Sumber data <strong>{{ implode(', ', $data['group']['unreachable']) }}</strong> tidak terjangkau, jadi angka grup belum lengkap.
+                        Periksa sambungan atau kunci API entitas tersebut.
+                        @if (($data['group']['eliminations_skipped'] ?? 0) > 0)
+                            {{ $data['group']['eliminations_skipped'] }} baris eliminasi yang melibatkan entitas itu ikut dikesampingkan,
+                            agar revenue grup tidak dikurangi oleh penjualan yang revenuenya sendiri belum terhitung.
+                        @endif
+                    </div>
+                @endif
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-sm table-hover m-0">
                         <thead class="bg-light">
                             <tr>
                                 <th>Entitas</th>
+                                <th>Sumber data</th>
                                 <th class="text-right">Target revenue YTD</th>
                                 <th class="text-right">Realisasi YTD</th>
                                 <th class="text-center">F1</th>
@@ -93,6 +113,7 @@
                                 <th class="text-center">Skor puncak</th>
                                 <th class="text-center">Sasaran mutu</th>
                                 <th class="text-center">KPI Lolos</th>
+                                <th class="text-center">Telusur</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -101,6 +122,14 @@
                                     <td>
                                         <strong>{{ $b['entity']->name }}</strong>
                                         <small class="d-block text-muted">{{ $b['entity']->legal_name }} · {{ $b['entity']->industryLabel() }}</small>
+                                    </td>
+                                    <td>
+                                        @if ($b['status'] === 'ok')
+                                            <span class="badge badge-light border"><i class="fas fa-plug mr-1"></i>{{ $b['source_label'] }}</span>
+                                        @else
+                                            <span class="badge badge-danger" title="{{ $b['message'] }}"><i class="fas fa-link-slash mr-1"></i>tidak terjangkau</span>
+                                            <small class="d-block text-muted">{{ $b['source_label'] }}</small>
+                                        @endif
                                     </td>
                                     <td class="text-right">{{ $b['revenue_target'] > 0 ? $rp($b['revenue_target']) : '—' }}</td>
                                     <td class="text-right">{{ $b['revenue_target'] > 0 || $b['revenue_actual'] > 0 ? $rp($b['revenue_actual']) : '—' }}</td>
@@ -112,37 +141,90 @@
                                         <small class="d-block text-muted">{{ $b['objectives'] }} sasaran</small>
                                     </td>
                                     <td class="text-center">{{ $b['kpi_approved'] }} / {{ $b['kpi_total'] }}</td>
+                                    <td class="text-center">
+                                        @if ($b['ratios'] || $b['units'])
+                                            <button type="button" class="btn btn-ghost btn-sm" data-toggle="collapse"
+                                                    data-target="#telusur-{{ $b['entity']->code }}" title="Rasio & unit kerja entitas ini">
+                                                <i class="fas fa-magnifying-glass-plus"></i>
+                                            </button>
+                                        @endif
+                                    </td>
                                 </tr>
+                                @if ($b['ratios'] || $b['units'])
+                                    <tr class="collapse bg-light" id="telusur-{{ $b['entity']->code }}">
+                                        <td colspan="10">
+                                            <div class="row">
+                                                <div class="col-lg-7">
+                                                    <h6 class="font-weight-bold"><i class="fas fa-percent mr-1"></i> Rasio keuangan {{ $b['entity']->code }}</h6>
+                                                    <table class="table table-sm mb-3">
+                                                        <thead><tr><th>Rasio</th><th class="text-right">Target</th><th class="text-right">Realisasi</th><th class="text-center">Capaian</th></tr></thead>
+                                                        <tbody>
+                                                            @foreach ($b['ratios'] as $r)
+                                                                <tr>
+                                                                    <td>{{ $r['code'] ?? '?' }} — {{ $r['name'] ?? '' }}</td>
+                                                                    <td class="text-right text-muted">{{ ratio_format($r['target'] ?? null, $r['unit'] ?? '') }}</td>
+                                                                    <td class="text-right">{{ ratio_format($r['actual'] ?? null, $r['unit'] ?? '') }}</td>
+                                                                    <td class="text-center">{!! $skor($r['achievement'] ?? null) !!}</td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <div class="col-lg-5">
+                                                    <h6 class="font-weight-bold"><i class="fas fa-building-user mr-1"></i> Unit kerja</h6>
+                                                    <table class="table table-sm mb-3">
+                                                        <thead><tr><th>Unit</th><th class="text-center">Sasaran</th><th class="text-center">Capaian</th></tr></thead>
+                                                        <tbody>
+                                                            @forelse ($b['units'] as $u)
+                                                                <tr>
+                                                                    <td>{{ $u['code'] ?? '?' }} — {{ $u['name'] ?? '' }}</td>
+                                                                    <td class="text-center">{{ $u['objectives'] ?? 0 }}</td>
+                                                                    <td class="text-center">{!! $skor($u['score'] ?? null) !!}</td>
+                                                                </tr>
+                                                            @empty
+                                                                <tr><td colspan="3" class="text-muted">Belum ada sasaran mutu pada periode ini.</td></tr>
+                                                            @endforelse
+                                                        </tbody>
+                                                    </table>
+                                                    <small class="text-muted">Hanya ringkasan; isi sasaran mutu & pos akun tetap di entitas.</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endif
                             @endforeach
                         </tbody>
                         <tfoot class="bg-light">
                             <tr>
                                 <td>Σ entitas (kotor)</td>
+                                <td></td>
                                 <td class="text-right">{{ $rp($g['revenue_target_gross']) }}</td>
                                 <td class="text-right">{{ $rp($g['revenue_actual_gross']) }}</td>
-                                <td colspan="5"></td>
+                                <td colspan="6"></td>
                             </tr>
                             <tr class="text-danger">
                                 <td>− Eliminasi antarentitas</td>
+                                <td></td>
                                 <td class="text-right">{{ $rp($g['elimination_planned']) }}</td>
                                 <td class="text-right">{{ $rp($g['elimination_actual']) }}</td>
-                                <td colspan="5" class="small text-muted">rencana dikurangkan dari target, realisasi dari realisasi</td>
+                                <td colspan="6" class="small text-muted">rencana dikurangkan dari target, realisasi dari realisasi</td>
                             </tr>
                             <tr class="font-weight-bold">
                                 <td>Grup (bersih)</td>
+                                <td></td>
                                 <td class="text-right">{{ $rp($g['revenue_target_net']) }}</td>
                                 <td class="text-right">{{ $rp($g['revenue_actual_net']) }}</td>
                                 <td class="text-center">{!! $skor($g['f1']) !!}</td>
                                 <td class="text-center">{!! $skor($g['f2']) !!}</td>
                                 <td class="text-center h6 mb-0">{!! $skor($g['apex']) !!}</td>
-                                <td colspan="2"></td>
+                                <td colspan="3"></td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
                 <div class="card-footer small text-muted">
                     Skor tiap entitas dihitung dengan mesin yang sama seperti Piramida BSC entitas itu. F1 grup = realisasi bersih ÷ target
-                    bersih (kumulatif, maks 100). F2 grup = F2 entitas dibobot target revenue YTD-nya — rasio laporan konsolidasi penuh
+                    bersih (kumulatif, maks 100). F2 grup = F2 entitas dibobot target revenue YTD-nya — entitas yang sumbernya tidak terjangkau tidak ikut menambah total kotor, jadi angka grup pada saat itu belum lengkap. Rasio laporan konsolidasi penuh
                     membutuhkan pos akun konsolidasi, yang belum dicatat. Skor puncak = 0,45 × F1 + 0,55 × F2.
                 </div>
             </div>

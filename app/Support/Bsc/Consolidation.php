@@ -2,13 +2,13 @@
 
 namespace App\Support\Bsc;
 
-use App\Models\DepartmentObjective;
 use App\Models\Entity;
 use App\Models\IntercompanySale;
-use App\Models\KpiCascade;
-use App\Models\RevenueTarget;
-use App\Support\EntityContext;
+use App\Support\Bsc\Sources\EntitySourceFactory;
+use App\Support\Bsc\Sources\EntitySourceSettings;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Tampilan holding atas keempat entitas: input tiap entitas boleh berbeda,
@@ -23,10 +23,72 @@ use Illuminate\Support\Collection;
  *             (rasio laporan konsolidasi butuh pos akun konsolidasi, yang belum
  *             dicatat; pembobotan revenue membuat entitas besar berpengaruh besar).
  *   Skor puncak grup = 0,45 × F1 grup + 0,55 × F2 grup.
+ *
+ * Isolasi data: angka tiap entitas TIDAK dibaca dari database holding, melainkan
+ * diminta ke sumbernya (EntitySourceFactory) — database entitas atau API entitas.
+ * Yang menyeberang hanya EntitySummary (skor, revenue kumulatif, 19 rasio, ringkasan
+ * unit kerja); transaksi dan isi sasaran tetap tinggal di entitas masing-masing.
+ * Hasilnya disimpan sebentar di cache (config bsc.consolidation_ttl) dan dapat
+ * disegarkan lewat tombol Segarkan.
  */
 class Consolidation
 {
-    public function __construct(private EntityContext $context) {}
+    public function __construct(private EntitySourceFactory $sources) {}
+
+    /**
+     * Kunci cache ringkasan satu entitas. Ikut memuat identitas pemasangan dan
+     * sidik sumbernya, sehingga dua pemasangan yang berbagi cache tidak saling
+     * menimpa dan pergantian sumber (API ↔ database) tidak dilayani data lama.
+     */
+    public static function cacheKey(Entity $entitas, string $period): string
+    {
+        $sumber = app(EntitySourceSettings::class)->for($entitas);
+        $sidik = substr(sha1(json_encode([
+            config('bsc.default_entity'),
+            config('app.url'),
+            $sumber['driver'],
+            $sumber['api_url'],
+            $sumber['database'],
+        ])), 0, 10);
+
+        return 'bsc:ringkasan:'.$sidik.':'.$entitas->code.':'.$period;
+    }
+
+    /** Buang ringkasan tersimpan agar panggilan berikutnya menarik data baru. */
+    public function refresh(string $period): void
+    {
+        foreach (Entity::active()->get() as $entitas) {
+            Cache::forget(self::cacheKey($entitas, $period));
+        }
+    }
+
+    /**
+     * Buang ringkasan tersimpan untuk SEMUA periode yang masuk akal sedang dibuka.
+     *
+     * Dipakai sesudah sumber data berubah: yang berganti bukan angka satu bulan,
+     * melainkan dari mana angkanya diambil — sehingga simpanan periode lain pun
+     * menjadi milik sumber yang sudah tidak berlaku. Membersihkan satu periode
+     * saja membuat halaman Konsolidasi tetap menampilkan angka sumber lama.
+     */
+    public function refreshAll(): void
+    {
+        $entitas = Entity::active()->get();
+        $tahunIni = (int) now()->format('Y');
+
+        for ($tahun = $tahunIni - 2; $tahun <= $tahunIni + 1; $tahun++) {
+            $periode = [(string) $tahun];
+
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $periode[] = sprintf('%d-%02d', $tahun, $bulan);
+            }
+
+            foreach ($periode as $p) {
+                foreach ($entitas as $e) {
+                    Cache::forget(self::cacheKey($e, $p));
+                }
+            }
+        }
+    }
 
     /**
      * @return array{
@@ -41,35 +103,51 @@ class Consolidation
         $baris = [];
 
         foreach (Entity::active()->get() as $entitas) {
-            $baris[] = $this->context->runAs($entitas->id, function () use ($entitas, $period, $tahun) {
-                $skor = Scorecard::forPeriod($period);
-                $revenue = RevenueTarget::where('period', '>=', $tahun.'-01')->where('period', '<=', $period)->get(['target', 'actual']);
-                $objektif = DepartmentObjective::where('period', $period)->get(['achievement_pct']);
-                $kpi = KpiCascade::where('year', $tahun)->get(['validation_status']);
+            $ringkasan = $this->summary($entitas, $period);
 
-                return [
-                    'entity' => $entitas,
-                    'revenue_target' => (float) $revenue->sum('target'),
-                    'revenue_actual' => (float) $revenue->sum(fn ($r) => (float) ($r->actual ?? 0)),
-                    'f1' => $skor['revenue'],
-                    'f2' => $skor['ratios'],
-                    'apex' => $skor['apex'],
-                    'objectives' => $objektif->count(),
-                    'objective_score' => $objektif->isNotEmpty() ? round((float) $objektif->avg('achievement_pct'), 2) : null,
-                    'kpi_total' => $kpi->count(),
-                    'kpi_approved' => $kpi->where('validation_status', KpiCascade::LOLOS)->count(),
-                ];
-            });
+            $baris[] = [
+                'entity' => $entitas,
+                'revenue_target' => $ringkasan->revenueTarget,
+                'revenue_actual' => $ringkasan->revenueActual,
+                'f1' => $ringkasan->f1,
+                'f2' => $ringkasan->f2,
+                'apex' => $ringkasan->apex,
+                'objectives' => $ringkasan->objectives,
+                'objective_score' => $ringkasan->objectiveScore,
+                'kpi_total' => $ringkasan->kpiTotal,
+                'kpi_approved' => $ringkasan->kpiApproved,
+                // Telusur terbatas: 19 rasio & ringkasan unit kerja, tanpa data mentah.
+                'ratios' => $ringkasan->ratios,
+                'units' => $ringkasan->units,
+                'source' => $ringkasan->source,
+                'source_label' => $this->sources->describe($entitas),
+                'status' => $ringkasan->status,
+                'message' => $ringkasan->message,
+                'fetched_at' => $ringkasan->fetchedAt,
+            ];
         }
 
         $eliminasi = IntercompanySale::with(['seller', 'buyer'])
             ->where('period', '>=', $tahun.'-01')->where('period', '<=', $period)
             ->orderBy('period')->get();
 
+        $takTerjangkau = array_values(array_map(
+            fn ($b) => $b['entity']->code,
+            array_filter($baris, fn ($b) => $b['status'] !== EntitySummary::STATUS_OK)
+        ));
+
         $targetKotor = array_sum(array_column($baris, 'revenue_target'));
         $realisasiKotor = array_sum(array_column($baris, 'revenue_actual'));
-        $elimRencana = (float) $eliminasi->sum(fn ($e) => (float) ($e->planned_amount ?? 0));
-        $elimRealisasi = (float) $eliminasi->sum(fn ($e) => (float) ($e->actual_amount ?? 0));
+
+        // Eliminasi hanya boleh mengurangi revenue yang IKUT terjumlah. Entitas
+        // yang tidak terjangkau menyumbang 0 ke jumlah kotor, jadi memotong
+        // penjualan antarentitasnya membuat revenue grup lebih kecil dari yang
+        // sebenarnya.
+        $terhitung = $eliminasi->reject(fn ($e) => in_array($e->seller?->code, $takTerjangkau, true)
+            || in_array($e->buyer?->code, $takTerjangkau, true));
+
+        $elimRencana = (float) $terhitung->sum(fn ($e) => (float) ($e->planned_amount ?? 0));
+        $elimRealisasi = (float) $terhitung->sum(fn ($e) => (float) ($e->actual_amount ?? 0));
         $targetBersih = $targetKotor - $elimRencana;
         $realisasiBersih = $realisasiKotor - $elimRealisasi;
 
@@ -101,8 +179,49 @@ class Consolidation
                 'f2' => $f2,
                 'f2_weighting' => $bobot > 0 ? 'revenue' : 'equal',
                 'apex' => $f1 === null && $f2 === null ? null : Scorecard::apex(['revenue' => $f1, 'ratios' => $f2]),
+                // Entitas yang sumbernya tidak terjangkau: angkanya kosong, bukan nol,
+                // dan halaman memberi tahu bahwa grup belum lengkap.
+                'unreachable' => $takTerjangkau,
+                'eliminations_skipped' => $eliminasi->count() - $terhitung->count(),
+                'fetched_at' => collect($baris)->pluck('fetched_at')->filter()
+                    ->map(fn ($w) => Carbon::parse($w))->min()?->toIso8601String(),
             ],
             'eliminations' => $eliminasi,
         ];
+    }
+
+    /**
+     * Ringkasan satu entitas dari sumbernya. Sumber jarak jauh (database entitas
+     * atau API) disimpan sebentar di cache supaya membuka halaman tidak memukul
+     * server entitas berulang kali; sumber lokal selalu dibaca langsung.
+     */
+    private function summary(Entity $entitas, string $period): EntitySummary
+    {
+        $sumber = $this->sources->for($entitas);
+
+        if ($sumber->name() === EntitySummary::SUMBER_LOKAL) {
+            return $sumber->summary($entitas, $period);
+        }
+
+        $ttl = (int) config('bsc.consolidation_ttl', 300);
+        $kunci = self::cacheKey($entitas, $period);
+
+        if ($ttl <= 0) {
+            return $sumber->summary($entitas, $period);
+        }
+
+        $tersimpan = Cache::get($kunci);
+
+        if (is_array($tersimpan)) {
+            return EntitySummary::fromArray($tersimpan);
+        }
+
+        $ringkasan = $sumber->summary($entitas, $period);
+
+        // Kegagalan tidak di-cache lama: entitas yang sempat mati harus segera
+        // tampil lagi begitu hidup.
+        Cache::put($kunci, $ringkasan->toArray(), $ringkasan->ok() ? $ttl : min(30, $ttl));
+
+        return $ringkasan;
     }
 }

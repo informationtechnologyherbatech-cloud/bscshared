@@ -202,7 +202,7 @@
                 <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu" data-accordion="false">
                     {{-- Menu dikelompokkan mengikuti tingkat piramida BSC; di tiap kelompok
                          urutannya mengikuti alur kerja: atur → isi → lihat hasil. --}}
-                    @php($menuHolding = auth()->user()?->can('view consolidation') && can_switch_entity())
+                    @php($menuHolding = auth()->user()?->can('view consolidation') && is_holding_user())
                     @if(auth()->user()?->can('view dashboard') || auth()->user()?->can('view wiring') || $menuHolding)
                     <li class="nav-header">RINGKASAN KINERJA</li>
                     @endif
@@ -227,6 +227,12 @@
                         <a href="{{ route('consolidation') }}" class="nav-link {{ request()->routeIs('consolidation') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-city"></i>
                             <p>Konsolidasi Holding</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('entity-sources') }}" class="nav-link {{ request()->routeIs('entity-sources') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-network-wired"></i>
+                            <p>Sumber Data Entitas</p>
                         </a>
                     </li>
                     @endif
@@ -441,6 +447,7 @@
 
     <!-- Content Wrapper. Contains page content -->
     <div class="content-wrapper">
+        @include('partials.sumber-entitas')
         {{ $slot }}
     </div>
     <!-- /.content-wrapper -->

@@ -101,7 +101,18 @@ class EntityContext
     /** Pengguna level holding dapat berpindah antarentitas — hanya di instalasi holding. */
     public function canSwitch(User $user): bool
     {
-        return $this->isHoldingMode() && ! $user->entity_id && $this->accessibleFor($user)->count() > 1;
+        return $this->isHoldingUser($user) && $this->accessibleFor($user)->count() > 1;
+    }
+
+    /**
+     * Pengguna tingkat holding: pada pemasangan holding dan tidak terikat satu
+     * entitas. Berbeda dengan canSwitch(), ini tidak menuntut adanya lebih dari
+     * satu entitas — holding yang untuk sementara hanya punya satu entitas aktif
+     * tetap boleh membuka halaman Konsolidasi dan Sumber Data Entitas.
+     */
+    public function isHoldingUser(User $user): bool
+    {
+        return $this->isHoldingMode() && ! $user->entity_id;
     }
 
     /** Instalasi holding (BSC_HOLDING_MODE=true) atau instalasi satu entitas. */
@@ -159,14 +170,24 @@ class EntityContext
         }
     }
 
-    public function forget(): void
+    /**
+     * Buang ingatan sementara (entitas termuat, daftar akses, entitas instalasi)
+     * TANPA membatalkan pilihan entitas yang sedang berlaku — dipakai saat membaca
+     * database entitas lain, karena id entitas berbeda di tiap database.
+     */
+    public function flushCache(): void
     {
-        $this->override = false;
         $this->accessible = [];
         $this->loaded = [];
         $this->default = null;
         $this->defaultResolved = false;
         $this->installation = false;
+    }
+
+    public function forget(): void
+    {
+        $this->override = false;
+        $this->flushCache();
     }
 
     /**
