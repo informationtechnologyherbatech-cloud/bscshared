@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
@@ -12,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class ApiAccessLog extends Model
 {
+    use Prunable;
+
     public const UPDATED_AT = null;
 
     public const DITERIMA = 'diterima';
@@ -31,6 +35,16 @@ class ApiAccessLog extends Model
     protected function casts(): array
     {
         return ['created_at' => 'datetime'];
+    }
+
+    /**
+     * Jejak ini bertambah pada SETIAP permintaan API, termasuk yang ditolak —
+     * pemanggil tak dikenal pun dapat menambah puluhan ribu baris sehari. Yang
+     * lama dibuang `model:prune`, yang dijadwalkan harian di routes/console.php.
+     */
+    public function prunable(): Builder
+    {
+        return static::where('created_at', '<', now()->subDays((int) config('bsc.api_log_days', 90)));
     }
 
     public function apiKey(): BelongsTo

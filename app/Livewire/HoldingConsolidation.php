@@ -55,7 +55,7 @@ class HoldingConsolidation extends Component
     {
         $user = auth()->user();
 
-        abort_unless($user && app(EntityContext::class)->canSwitch($user), 403,
+        abort_unless($user && app(EntityContext::class)->isHoldingUser($user), 403,
             'Konsolidasi hanya untuk pengguna level holding.');
     }
 

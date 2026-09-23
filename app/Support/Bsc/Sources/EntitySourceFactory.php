@@ -24,6 +24,12 @@ class EntitySourceFactory
     {
         $sumber = $this->settings->for($entitas);
 
+        // Sumber yang belum tentu sah tidak dibaca sama sekali — bukan dialihkan
+        // ke database sendiri, karena itu justru menampilkan angka yang keliru.
+        if ($tertahan = $this->tertahan($entitas, $sumber['origin'])) {
+            return $tertahan;
+        }
+
         if ($sumber['driver'] === EntityDataSource::API && ! empty($sumber['api_url'])) {
             return new ApiEntitySource((string) $sumber['api_url'], $sumber['api_key'] ?? null);
         }
@@ -42,12 +48,28 @@ class EntitySourceFactory
         return new LocalEntitySource($this->context, $this->builder);
     }
 
+    /**
+     * Keadaan yang membuat sebuah sumber tidak boleh dibaca, apa pun drivernya.
+     */
+    private function tertahan(Entity $entitas, string $origin): ?EntitySource
+    {
+        return match ($origin) {
+            EntitySourceSettings::MENUNGGU => new UnconfiguredEntitySource('menunggu verifikasi',
+                'Pendaftaran '.$entitas->code.' belum diperiksa balik oleh holding, jadi angkanya belum dibaca. Buka Sumber Data Entitas untuk menyelesaikannya.'),
+            EntitySourceSettings::RUSAK => new UnconfiguredEntitySource('perlu diatur ulang',
+                'Kredensial '.$entitas->code.' tidak dapat dibuka (kunci aplikasi berganti). Atur ulang sumber datanya.'),
+            default => null,
+        };
+    }
+
     /** Keterangan singkat sumber tiap entitas untuk halaman Konsolidasi & dokumentasi. */
     public function describe(Entity $entitas): string
     {
         $sumber = $this->settings->for($entitas);
 
         return match (true) {
+            $sumber['origin'] === EntitySourceSettings::MENUNGGU => 'menunggu verifikasi',
+            $sumber['origin'] === EntitySourceSettings::RUSAK => 'perlu diatur ulang',
             $sumber['driver'] === EntityDataSource::API && ! empty($sumber['api_url']) => 'API '.preg_replace('#^https?://#', '', (string) $sumber['api_url']),
             $sumber['driver'] === EntityDataSource::DATABASE && ! empty($sumber['database']) => 'database '.$sumber['database'],
             config('bsc.require_entity_sources') && $this->context->isHoldingMode() && $sumber['origin'] === 'tidak diatur' => 'belum diatur',

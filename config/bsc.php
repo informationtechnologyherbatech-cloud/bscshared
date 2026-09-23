@@ -191,4 +191,22 @@ return [
 
     'require_entity_sources' => (bool) env('BSC_REQUIRE_ENTITY_SOURCES', false),
 
+    /*
+    | Berapa lama jejak akses API disimpan (hari) sebelum dipangkas model:prune.
+    */
+
+    'api_log_days' => (int) env('BSC_API_LOG_DAYS', 90),
+
+    /*
+    | Akun Super Admin awal yang dibuat seeder. Dibaca dari sini, BUKAN langsung
+    | dari env(): begitu `config:cache` dijalankan, berkas .env tidak lagi dibaca
+    | dan env() di luar berkas config mengembalikan null — akibatnya pemasangan
+    | baru akan memakai kata sandi bawaan yang tercantum di repositori ini.
+    */
+
+    'superadmin' => [
+        'email' => env('SUPERADMIN_EMAIL') ?: 'superadmin@emc.co.id',
+        'password' => env('SUPERADMIN_PASSWORD') ?: null,
+    ],
+
 ];

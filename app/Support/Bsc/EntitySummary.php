@@ -2,6 +2,9 @@
 
 namespace App\Support\Bsc;
 
+use Illuminate\Support\Carbon;
+use Throwable;
+
 /**
  * Ringkasan kinerja SATU entitas untuk tampilan holding.
  *
@@ -95,32 +98,107 @@ class EntitySummary
         ];
     }
 
-    /** @param  array<string, mixed>  $data */
+    /**
+     * Bentuk ini datang dari SERVER LAIN. Isinya tidak boleh dipercaya begitu
+     * saja: satu angka yang ternyata teks, satu baris rasio tanpa 'name', atau
+     * satu tanggal yang tidak masuk akal cukup untuk merobohkan halaman
+     * Konsolidasi bagi SEMUA pengguna holding — bukan hanya baris entitas itu.
+     * Karena itu tiap nilai dipangkas ke bentuk yang memang dipakai.
+     *
+     * @param  array<string, mixed>  $data
+     */
     public static function fromArray(array $data, ?string $source = null): self
     {
-        $angka = fn (string $kunci) => isset($data[$kunci]) && is_numeric($data[$kunci]) ? (float) $data[$kunci] : null;
+        $angka = fn (string $kunci) => self::angka($data[$kunci] ?? null);
 
         return new self(
-            code: (string) ($data['code'] ?? ''),
-            name: (string) ($data['name'] ?? $data['code'] ?? ''),
-            legalName: (string) ($data['legal_name'] ?? $data['name'] ?? ''),
-            industry: (string) ($data['industry'] ?? ''),
-            period: (string) ($data['period'] ?? ''),
+            code: self::teks($data['code'] ?? null),
+            name: self::teks($data['name'] ?? $data['code'] ?? null),
+            legalName: self::teks($data['legal_name'] ?? $data['name'] ?? null),
+            industry: self::teks($data['industry'] ?? null),
+            period: self::teks($data['period'] ?? null),
             f1: $angka('f1'),
             f2: $angka('f2'),
             apex: $angka('apex'),
-            revenueTarget: (float) ($data['revenue_target'] ?? 0),
-            revenueActual: (float) ($data['revenue_actual'] ?? 0),
-            objectives: (int) ($data['objectives'] ?? 0),
+            revenueTarget: $angka('revenue_target') ?? 0.0,
+            revenueActual: $angka('revenue_actual') ?? 0.0,
+            objectives: (int) ($angka('objectives') ?? 0),
             objectiveScore: $angka('objective_score'),
-            kpiTotal: (int) ($data['kpi_total'] ?? 0),
-            kpiApproved: (int) ($data['kpi_approved'] ?? 0),
-            ratios: is_array($data['ratios'] ?? null) ? $data['ratios'] : [],
-            units: is_array($data['units'] ?? null) ? $data['units'] : [],
-            source: $source ?? (string) ($data['source'] ?? self::SUMBER_LOKAL),
-            status: (string) ($data['status'] ?? self::STATUS_OK),
-            message: $data['message'] ?? null,
-            fetchedAt: $data['fetched_at'] ?? now()->toIso8601String(),
+            kpiTotal: (int) ($angka('kpi_total') ?? 0),
+            kpiApproved: (int) ($angka('kpi_approved') ?? 0),
+            ratios: self::bersihkanBaris($data['ratios'] ?? null, [
+                'code' => 'teks', 'name' => 'teks', 'category' => 'teks', 'unit' => 'teks',
+                'target' => 'angka', 'actual' => 'angka', 'achievement' => 'angka', 'status' => 'teks',
+            ]),
+            units: self::bersihkanBaris($data['units'] ?? null, [
+                'code' => 'teks', 'name' => 'teks', 'objectives' => 'bulat', 'score' => 'angka', 'status' => 'teks',
+            ]),
+            source: $source ?? self::teks($data['source'] ?? null, self::SUMBER_LOKAL),
+            status: self::teks($data['status'] ?? null, self::STATUS_OK),
+            message: isset($data['message']) && is_scalar($data['message']) ? (string) $data['message'] : null,
+            fetchedAt: self::waktu($data['fetched_at'] ?? null),
         );
+    }
+
+    private static function teks(mixed $nilai, string $bawaan = ''): string
+    {
+        return is_scalar($nilai) && (string) $nilai !== '' ? (string) $nilai : $bawaan;
+    }
+
+    private static function angka(mixed $nilai): ?float
+    {
+        return is_numeric($nilai) ? (float) $nilai : null;
+    }
+
+    /** Waktu pengambilan data; yang tidak terbaca dianggap "sekarang". */
+    private static function waktu(mixed $nilai): string
+    {
+        if (! is_string($nilai) || $nilai === '') {
+            return now()->toIso8601String();
+        }
+
+        try {
+            return Carbon::parse($nilai)->toIso8601String();
+        } catch (Throwable) {
+            return now()->toIso8601String();
+        }
+    }
+
+    /**
+     * Pangkas daftar baris (rasio / unit kerja) ke kolom yang memang dipakai,
+     * dengan jenis yang memang diharapkan. Baris yang bukan array dibuang.
+     *
+     * @param  array<string, string>  $bentuk  nama kolom => teks|angka|bulat
+     * @return array<int, array<string, mixed>>
+     */
+    private static function bersihkanBaris(mixed $daftar, array $bentuk): array
+    {
+        if (! is_array($daftar)) {
+            return [];
+        }
+
+        $bersih = [];
+
+        foreach ($daftar as $baris) {
+            if (! is_array($baris)) {
+                continue;
+            }
+
+            $rapi = [];
+
+            foreach ($bentuk as $kolom => $jenis) {
+                $nilai = $baris[$kolom] ?? null;
+
+                $rapi[$kolom] = match ($jenis) {
+                    'angka' => self::angka($nilai),
+                    'bulat' => (int) (self::angka($nilai) ?? 0),
+                    default => self::teks($nilai),
+                };
+            }
+
+            $bersih[] = $rapi;
+        }
+
+        return $bersih;
     }
 }

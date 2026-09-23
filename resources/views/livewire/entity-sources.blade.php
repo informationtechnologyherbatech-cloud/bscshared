@@ -1,4 +1,6 @@
-<div>
+{{-- Pendaftaran mandiri yang belum terverifikasi diselesaikan sesudah halaman
+     tampil, lewat permintaan tersendiri — bukan saat halaman digambar. --}}
+<div wire:init="verifikasiPendaftaranBaru">
     <section class="content-header">
         <div class="container-fluid">
             <div class="row align-items-center">
@@ -160,8 +162,9 @@
     </section>
 
     {{-- Formulir sumber data satu entitas --}}
-    @if ($editingId)
-        @php($entitas = $baris->firstWhere('entity.id', $editingId)['entity'])
+    {{-- Entitas bisa dinonaktifkan selagi formulirnya terbuka; barisnya lalu hilang dari daftar. --}}
+    @php($entitas = $editingId ? ($baris->firstWhere('entity.id', $editingId)['entity'] ?? null) : null)
+    @if ($entitas)
         <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">

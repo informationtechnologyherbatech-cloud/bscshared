@@ -9,6 +9,7 @@ use App\Models\Entity;
 use App\Models\EntityDataSource;
 use App\Models\PairingCode;
 use App\Models\User;
+use App\Support\Bsc\Sources\EntitySourceFactory;
 use App\Support\EntityContext;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -129,7 +130,17 @@ class EntityPairingTest extends TestCase
         // Menunggu pemeriksaan balik, yang dijalankan pada permintaan berikutnya.
         $this->assertSame('menunggu', $sumber->last_status);
 
-        Livewire::test(EntitySources::class)->assertSee('AEJ');
+        // Selama belum terverifikasi, sumbernya TIDAK dibaca sama sekali: siapa pun
+        // yang memegang kode tidak bisa membuat angka karangannya muncul di holding.
+        $this->assertSame('menunggu verifikasi',
+            app(EntitySourceFactory::class)->describe($this->entitas('AEJ')));
+
+        // Pemeriksaan balik berjalan sesudah halaman tampil (wire:init), bukan saat
+        // halaman digambar — jadi membuka halaman tidak pernah mengubah data.
+        Livewire::test(EntitySources::class)
+            ->assertSee('AEJ')
+            ->call('verifikasiPendaftaranBaru');
+
         $this->assertSame('ok', $sumber->fresh()->last_status);
         Http::assertSent(fn ($r) => str_contains($r->url(), '/api/v1/ping') && $r->hasHeader('X-API-KEY', 'bsc_live_dari_entitas'));
 
@@ -225,15 +236,18 @@ class EntityPairingTest extends TestCase
         ])->assertStatus(403);
 
         $this->assertSame(0, EntityDataSource::count());
+        // Kodenya tetap hangus: satu kode = satu percobaan, supaya pemegangnya
+        // tidak dapat menebak-nebak entitas mana yang dimaksud.
+        $this->assertNotNull(PairingCode::first()->used_at);
     }
 
-    public function test_a_registration_is_undone_when_the_address_does_not_check_out(): void
+    public function test_an_unverified_registration_is_held_back_but_never_deleted(): void
     {
         $this->loginHolding();
         [, $kode] = PairingCode::issue($this->entitas('AEJ'));
 
-        // Pendaftaran diterima lebih dulu (status "menunggu"), lalu diperiksa saat
-        // halaman Sumber Data Entitas dibuka — permintaan tersendiri, tanpa saling menunggu.
+        // Pendaftaran diterima lebih dulu (status "menunggu"), lalu diperiksa pada
+        // permintaan tersendiri — tanpa kedua aplikasi saling menunggu.
         Http::fake(['bsc.palsu.test/*' => Http::response($this->pingSah('HERBATECH'), 200)]);
         $this->postJson(route('api.pairing'), [
             'code' => $kode, 'entity_code' => 'AEJ',
@@ -241,32 +255,37 @@ class EntityPairingTest extends TestCase
         ])->assertOk();
         $this->assertSame('menunggu', EntityDataSource::first()->last_status);
 
-        Livewire::test(EntitySources::class)->assertSee('AEJ');
+        Livewire::test(EntitySources::class)->call('verifikasiPendaftaranBaru');
 
-        // Alamat yang melayani entitas lain: pendaftaran dibatalkan seluruhnya,
-        // dan kodenya dikembalikan supaya dapat dicoba lagi.
-        $this->assertSame(0, EntityDataSource::count());
-        $this->assertNull(PairingCode::first()->used_at);
+        // Alamat yang melayani entitas lain tidak lolos. Barisnya TIDAK dihapus —
+        // satu gangguan jaringan tidak boleh menghapus pengaturan yang sudah benar —
+        // tetapi tetap tertahan: selama belum terbukti, sumbernya tidak dibaca.
+        $sumber = EntityDataSource::first();
+        $this->assertNotNull($sumber);
+        $this->assertSame('menunggu', $sumber->last_status);
+        $this->assertStringContainsString('belum terverifikasi', (string) $sumber->last_message);
+        $this->assertSame('menunggu verifikasi',
+            app(EntitySourceFactory::class)->describe($this->entitas('AEJ')));
 
-        // Alamat yang tidak dapat dihubungi: juga dibatalkan.
-        Http::fake(['bsc.mati.test/*' => Http::response('', 500)]);
+        // Kode sekali pakai tetap hangus; kegagalan pemeriksaan tidak menghidupkannya
+        // kembali, sehingga siapa pun yang sempat melihat kode itu tidak dapat
+        // memakainya untuk mendaftarkan alamat lain.
+        $this->assertNotNull(PairingCode::first()->used_at);
         $this->postJson(route('api.pairing'), [
             'code' => $kode, 'entity_code' => 'AEJ',
-            'entity_url' => 'https://bsc.mati.test', 'api_key' => 'k',
-        ])->assertOk();
-        Livewire::test(EntitySources::class)->assertSee('AEJ');
+            'entity_url' => 'https://bsc.penyerang.test', 'api_key' => 'k',
+        ])->assertStatus(401);
 
-        $this->assertSame(0, EntityDataSource::count());
-        $this->assertNull(PairingCode::first()->used_at);
-
-        // Alamat yang benar: pendaftaran bertahan dan statusnya menjadi ok.
+        // Dengan kode baru dan alamat yang benar, pendaftarannya menimpa yang lama.
+        [, $kodeBaru] = PairingCode::issue($this->entitas('AEJ'));
         Http::fake(['bsc.aej.co.id/*' => Http::response($this->pingSah(), 200)]);
         $this->postJson(route('api.pairing'), [
-            'code' => $kode, 'entity_code' => 'AEJ',
+            'code' => $kodeBaru, 'entity_code' => 'AEJ',
             'entity_url' => 'https://bsc.aej.co.id', 'api_key' => 'k',
         ])->assertOk();
-        Livewire::test(EntitySources::class)->assertSee('AEJ');
+        Livewire::test(EntitySources::class)->call('verifikasiPendaftaranBaru');
 
+        $this->assertSame(1, EntityDataSource::count());
         $this->assertSame('ok', EntityDataSource::first()->last_status);
         $this->assertNotNull(PairingCode::first()->used_at);
     }

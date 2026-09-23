@@ -51,7 +51,7 @@
                     <div class="small-box bg-teal">
                         <div class="inner">
                             <h3>{!! $g['apex'] === null ? '—' : e(number_format($g['apex'], 1, ',', '.')) !!}</h3>
-                            <p>Skor puncak grup {{ $period }}</p>
+                            <p>Skor puncak grup {{ $period }} @if ($g['unreachable'])<small class="d-block" title="Entitas yang belum terbaca tidak ikut dihitung">belum lengkap</small>@endif</p>
                         </div>
                         <div class="icon"><i class="fas fa-mountain"></i></div>
                     </div>
@@ -60,7 +60,7 @@
                     <div class="small-box bg-info">
                         <div class="inner">
                             <h3>{!! $g['f1'] === null ? '—' : e(number_format($g['f1'], 1, ',', '.')) !!}</h3>
-                            <p>F1 grup — revenue setelah eliminasi</p>
+                            <p>F1 grup — revenue setelah eliminasi @if ($g['unreachable'])<small class="d-block" title="Entitas yang belum terbaca tidak ikut dihitung">belum lengkap</small>@endif</p>
                         </div>
                         <div class="icon"><i class="fas fa-bullseye"></i></div>
                     </div>
@@ -69,7 +69,7 @@
                     <div class="small-box bg-secondary">
                         <div class="inner">
                             <h3>{!! $g['f2'] === null ? '—' : e(number_format($g['f2'], 1, ',', '.')) !!}</h3>
-                            <p>F2 grup — {{ $g['f2_weighting'] === 'revenue' ? 'dibobot target revenue entitas' : 'rata-rata entitas' }}</p>
+                            <p>F2 grup — {{ $g['f2_weighting'] === 'revenue' ? 'dibobot target revenue entitas' : 'rata-rata entitas' }} @if ($g['unreachable'])<small class="d-block" title="Entitas yang belum terbaca tidak ikut dihitung">belum lengkap</small>@endif</p>
                         </div>
                         <div class="icon"><i class="fas fa-coins"></i></div>
                     </div>
@@ -94,6 +94,10 @@
                         <i class="fas fa-triangle-exclamation mr-1"></i>
                         Sumber data <strong>{{ implode(', ', $data['group']['unreachable']) }}</strong> tidak terjangkau, jadi angka grup belum lengkap.
                         Periksa sambungan atau kunci API entitas tersebut.
+                        @if (($data['group']['eliminations_skipped'] ?? 0) > 0)
+                            {{ $data['group']['eliminations_skipped'] }} baris eliminasi yang melibatkan entitas itu ikut dikesampingkan,
+                            agar revenue grup tidak dikurangi oleh penjualan yang revenuenya sendiri belum terhitung.
+                        @endif
                     </div>
                 @endif
                 <div class="card-body p-0 table-responsive">
@@ -157,7 +161,7 @@
                                                         <tbody>
                                                             @foreach ($b['ratios'] as $r)
                                                                 <tr>
-                                                                    <td>{{ $r['code'] }} — {{ $r['name'] }}</td>
+                                                                    <td>{{ $r['code'] ?? '?' }} — {{ $r['name'] ?? '' }}</td>
                                                                     <td class="text-right text-muted">{{ ratio_format($r['target'] ?? null, $r['unit'] ?? '') }}</td>
                                                                     <td class="text-right">{{ ratio_format($r['actual'] ?? null, $r['unit'] ?? '') }}</td>
                                                                     <td class="text-center">{!! $skor($r['achievement'] ?? null) !!}</td>
@@ -173,8 +177,8 @@
                                                         <tbody>
                                                             @forelse ($b['units'] as $u)
                                                                 <tr>
-                                                                    <td>{{ $u['code'] }} — {{ $u['name'] }}</td>
-                                                                    <td class="text-center">{{ $u['objectives'] }}</td>
+                                                                    <td>{{ $u['code'] ?? '?' }} — {{ $u['name'] ?? '' }}</td>
+                                                                    <td class="text-center">{{ $u['objectives'] ?? 0 }}</td>
                                                                     <td class="text-center">{!! $skor($u['score'] ?? null) !!}</td>
                                                                 </tr>
                                                             @empty

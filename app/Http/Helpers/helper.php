@@ -272,6 +272,16 @@ if (! function_exists('can_switch_entity')) {
     }
 }
 
+if (! function_exists('is_holding_user')) {
+    /** Pengguna tingkat holding: boleh membuka Konsolidasi & Sumber Data Entitas. */
+    function is_holding_user(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && entity_context()->isHoldingUser($user);
+    }
+}
+
 if (! function_exists('switchable_entities')) {
     /**
      * Entitas yang boleh dibuka pengguna ini.

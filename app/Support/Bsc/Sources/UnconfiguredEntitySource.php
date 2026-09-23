@@ -15,16 +15,25 @@ use App\Support\Bsc\EntitySummary;
  */
 class UnconfiguredEntitySource implements EntitySource
 {
+    /**
+     * @param  string  $nama  keterangan singkat sumber untuk di layar
+     * @param  string|null  $alasan  pesan yang dibaca pengguna; kosong = belum diatur
+     */
+    public function __construct(
+        private string $nama = 'belum diatur',
+        private ?string $alasan = null,
+    ) {}
+
     public function summary(Entity $entitas, string $period): EntitySummary
     {
         return EntitySummary::galat(
             $entitas->code, $entitas->name, $period, $this->name(),
-            'Sumber data '.$entitas->code.' belum diatur: isi BSC_SOURCE_'.$entitas->code.'_URL (+_KEY) atau BSC_SOURCE_'.$entitas->code.'_DB di .env holding.'
+            $this->alasan ?? 'Sumber data '.$entitas->code.' belum diatur: isi BSC_SOURCE_'.$entitas->code.'_URL (+_KEY) atau BSC_SOURCE_'.$entitas->code.'_DB di .env holding, atau aturlah dari halaman Sumber Data Entitas.'
         );
     }
 
     public function name(): string
     {
-        return 'belum diatur';
+        return $this->nama;
     }
 }

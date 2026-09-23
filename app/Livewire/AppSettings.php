@@ -427,8 +427,20 @@ class AppSettings extends Component
             'holdingCode' => ['required', 'string', 'max:40'],
         ], [], ['holdingUrl' => 'alamat holding', 'holdingCode' => 'kode pendaftaran']);
 
+        // Kunci API yang baru dibuat dikirim LEWAT alamat ini, jadi alamatnya
+        // harus terenkripsi — kecuali saat holding dan entitas berada di mesin
+        // yang sama (pengembangan).
+        $tuanRumah = (string) parse_url($this->holdingUrl, PHP_URL_HOST);
+        $lokal = in_array($tuanRumah, ['127.0.0.1', 'localhost', '::1'], true);
+
+        if (parse_url($this->holdingUrl, PHP_URL_SCHEME) !== 'https' && ! $lokal && ! app()->environment(['local', 'testing'])) {
+            session()->flash('error', 'Alamat holding harus HTTPS; kunci API dikirim melalui alamat itu.');
+
+            return;
+        }
+
         $kodeEntitas = strtoupper((string) config('bsc.default_entity'));
-        [$kunci, $utuh] = ApiKey::issue('Holding '.parse_url($this->holdingUrl, PHP_URL_HOST), $kodeEntitas);
+        [$kunci, $utuh] = ApiKey::issue('Holding '.$tuanRumah, $kodeEntitas);
 
         try {
             $respons = Http::acceptJson()
@@ -448,10 +460,18 @@ class AppSettings extends Component
             return;
         }
 
-        if ($respons->failed()) {
+        // Hanya 2xx yang berarti diterima. `failed()` membiarkan 3xx lewat —
+        // pengalihan (mis. alamat http yang dibelokkan ke https) akan terbaca
+        // sebagai berhasil padahal holding tidak pernah menerima kuncinya.
+        if (! $respons->successful()) {
             // Kunci yang gagal dipakai langsung dibuang, jangan menumpuk.
             $kunci->delete();
-            session()->flash('error', 'Pendaftaran ditolak holding: '.($respons->json('message') ?? 'status '.$respons->status()).'.');
+
+            $sebab = $respons->redirect()
+                ? 'alamat holding mengalihkan ke '.($respons->header('Location') ?: 'alamat lain').'; pakai alamat yang sebenarnya'
+                : (string) ($respons->json('message') ?? 'status '.$respons->status());
+
+            session()->flash('error', 'Pendaftaran ditolak holding: '.$sebab.'.');
 
             return;
         }

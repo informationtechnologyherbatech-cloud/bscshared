@@ -79,7 +79,11 @@ class ApiKey extends Model
 
     /**
      * IP pemanggil diizinkan? Daftar kosong = dari mana saja (mis. sebelum alamat
-     * holding pasti). Mendukung alamat persis dan awalan CIDR sederhana (10.8.0.0/16).
+     * holding pasti). Mendukung alamat persis dan awalan CIDR (10.8.0.0/16 atau
+     * 2001:db8::/32), IPv4 maupun IPv6.
+     *
+     * Pola yang salah tulis hanya TIDAK COCOK; tidak boleh sampai menggagalkan
+     * permintaan, karena daftar ini diisi manusia dari layar Setting.
      */
     public function allowsIp(?string $ip): bool
     {
@@ -89,12 +93,28 @@ class ApiKey extends Model
             return $daftar === [];
         }
 
+        $alamat = @inet_pton($ip);
+
         foreach ($daftar as $pola) {
             if ($pola === $ip) {
                 return true;
             }
 
-            if (str_contains($pola, '/') && $this->dalamCidr($ip, $pola)) {
+            if ($alamat === false) {
+                continue;
+            }
+
+            if (! str_contains($pola, '/')) {
+                // Alamat persis; dibandingkan dalam bentuk biner supaya ::1 dan
+                // 0:0:0:0:0:0:0:1 dianggap sama.
+                if (@inet_pton($pola) === $alamat) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if ($this->dalamCidr($alamat, $pola)) {
                 return true;
             }
         }
@@ -102,19 +122,38 @@ class ApiKey extends Model
         return false;
     }
 
-    private function dalamCidr(string $ip, string $cidr): bool
+    /** @param  string  $alamat  alamat pemanggil dalam bentuk biner (inet_pton) */
+    private function dalamCidr(string $alamat, string $cidr): bool
     {
         [$jaringan, $bit] = explode('/', $cidr, 2);
-        $alamat = ip2long($ip);
-        $dasar = ip2long($jaringan);
+        $dasar = @inet_pton(trim($jaringan));
+        $bit = trim($bit);
 
-        if ($alamat === false || $dasar === false || ! is_numeric($bit)) {
+        // Keluarga alamat harus sama: 4 bita untuk IPv4, 16 bita untuk IPv6.
+        if ($dasar === false || ! ctype_digit($bit) || strlen($dasar) !== strlen($alamat)) {
             return false;
         }
 
-        $topeng = -1 << (32 - (int) $bit);
+        $panjang = (int) $bit;
 
-        return ($alamat & $topeng) === ($dasar & $topeng);
+        if ($panjang > strlen($dasar) * 8) {
+            return false;
+        }
+
+        $bitaPenuh = intdiv($panjang, 8);
+        $sisaBit = $panjang % 8;
+
+        if ($bitaPenuh > 0 && substr($alamat, 0, $bitaPenuh) !== substr($dasar, 0, $bitaPenuh)) {
+            return false;
+        }
+
+        if ($sisaBit === 0) {
+            return true;
+        }
+
+        $topeng = chr((0xFF << (8 - $sisaBit)) & 0xFF);
+
+        return ($alamat[$bitaPenuh] & $topeng) === ($dasar[$bitaPenuh] & $topeng);
     }
 
     /** Penanda kunci untuk di layar: awalannya saja, tidak pernah utuh. */

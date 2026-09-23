@@ -54,8 +54,8 @@ Sumber Data Entitas → baris AEJ → [Kode]
                     POST /api/v1/pairing ◀──────┘
                     { kode, kode entitas, alamat entitas, kunci }
         ┌─────────────────────────────────────────────┐
-        │ tersimpan "menunggu", lalu diperiksa balik   │
-        │ saat halaman dibuka / tombol Uji ditekan     │
+        │ tersimpan "menunggu" — BELUM dibaca —        │
+        │ lalu diperiksa balik sesudah halaman tampil  │
         │ (GET /api/v1/ping memakai kunci tsb.)        │
         └─────────────────────────────────────────────┘
   Sumber Data Entitas
@@ -80,15 +80,23 @@ Tidak ada kunci yang pernah disalin manusia.
   kode untuk AEJ tidak bisa mendaftarkan Herbatech (**403**);
 - yang tersimpan di holding hanya sidik jari kodenya, dan kode baru membatalkan
   kode lama entitas itu;
-- holding **memeriksa balik** ke alamat yang dikirim: alamat yang ternyata
-  melayani entitas lain, atau tidak dapat dihubungi, dibatalkan seluruhnya dan
-  kodenya dikembalikan agar dapat dicoba lagi. Pemeriksaan ini sengaja dijalankan
-  pada permintaan berikutnya (saat halaman *Sumber Data Entitas* dibuka atau
-  tombol **Uji** ditekan), bukan di tengah permintaan pendaftaran: selama
-  pendaftaran masih terbuka, aplikasi entitas sedang sibuk melayaninya dan tidak
-  dapat menjawab panggilan balik — pada server berpekerja tunggal keduanya akan
-  saling menunggu;
-- alamat wajib HTTPS di luar lingkungan pengembangan;
+- holding **memeriksa balik** ke alamat yang dikirim. Sampai pemeriksaan itu
+  berhasil, sumbernya berstatus **menunggu verifikasi** dan **tidak dibaca sama
+  sekali** — pendaftaran yang belum terbukti tidak pernah menjadi angka di layar
+  Konsolidasi. Pemeriksaan sengaja dijalankan pada permintaan berikutnya (sesudah
+  halaman *Sumber Data Entitas* tampil), bukan di tengah permintaan pendaftaran:
+  selama pendaftaran masih terbuka, aplikasi entitas sedang sibuk melayaninya dan
+  tidak dapat menjawab panggilan balik — pada server berpekerja tunggal keduanya
+  akan saling menunggu;
+- pendaftaran yang belum lolos pemeriksaan **tidak dihapus** (satu gangguan
+  jaringan tidak boleh menghapus pengaturan yang sudah benar) dan kodenya **tidak
+  dihidupkan kembali**: kode sekali pakai tetap sekali pakai, sehingga orang yang
+  sempat melihat kode itu tidak dapat memakainya untuk alamat lain. Bila alamatnya
+  memang keliru, terbitkan kode baru dan daftarkan ulang;
+- kode juga hangus bila dipakai untuk entitas yang keliru, dan pesan penolakannya
+  tidak menyebutkan entitas mana yang sebenarnya dimaksud;
+- alamat wajib HTTPS di luar lingkungan pengembangan, dan tidak boleh menunjuk ke
+  alamat jaringan dalam milik holding sendiri (localhost, 10.x, 192.168.x);
 - endpoint pendaftaran dibatasi 10 permintaan per menit, dan hanya dilayani
   pemasangan holding (entitas menjawab **409**);
 - pendaftaran yang ditolak tidak meninggalkan kunci menganggur di entitas.

@@ -25,6 +25,15 @@ return Application::configure(basePath: dirname(__DIR__))
             }
             return route('login');
         });
+        // Di belakang nginx/CDN, alamat pemanggil yang sebenarnya ada di header
+        // X-Forwarded-For. Tanpa ini semua permintaan terbaca beralamat proksi,
+        // sehingga pembatas IP kunci API dan throttle kehilangan artinya.
+        // Diisi lewat TRUSTED_PROXIES (daftar IP/CIDR, atau * bila proksinya
+        // terpercaya dan tidak dapat dilewati langsung).
+        if ($proksi = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(at: $proksi === '*' ? '*' : array_map('trim', explode(',', (string) $proksi)));
+        }
+
         // Header keamanan (nosniff, anti-clickjacking, CSP) untuk seluruh halaman web.
         $middleware->web(append: [
             \App\Http\Middleware\SecurityHeaders::class,

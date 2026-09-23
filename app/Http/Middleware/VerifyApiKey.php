@@ -30,9 +30,12 @@ class VerifyApiKey
         $tercatat = ApiKey::where('key_hash', ApiKey::fingerprint($kunci))->first();
 
         if (! $tercatat || ! $tercatat->is_active) {
-            // Awalan kunci ikut dicatat supaya ketahuan kunci mana yang dicoba.
+            // Kunci yang tidak dikenal ditandai dengan potongan SIDIK JARInya,
+            // bukan potongan kuncinya: percobaan yang sama tetap dapat dikenali,
+            // tanpa menyalin sebagian kunci sungguhan ke dalam jejak akses —
+            // kunci yang salah ketik pun tetap kunci orang.
             return $this->tolak($request, null, 401, ApiAccessLog::KUNCI_SALAH,
-                'Kunci API tidak dikenal atau sudah dinonaktifkan.', substr($kunci, 0, 16));
+                'Kunci API tidak dikenal atau sudah dinonaktifkan.', '?'.substr(ApiKey::fingerprint($kunci), 0, 12));
         }
 
         if ($tercatat->isExpired()) {

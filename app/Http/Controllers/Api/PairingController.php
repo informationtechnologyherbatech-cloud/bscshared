@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\EntityDataSource;
 use App\Models\PairingCode;
-use App\Models\Period;
 use App\Support\Bsc\Consolidation;
 use App\Support\Bsc\Sources\EntitySourceSettings;
 use App\Support\EntityContext;
@@ -28,8 +27,9 @@ use Illuminate\Support\Facades\Log;
  *     sibuk melayaninya dan tidak dapat menjawab panggilan balik; pada server
  *     berpekerja tunggal keduanya akan saling menunggu sampai batas waktu.
  *     Karena itu sumber data disimpan berstatus "menunggu", lalu diperiksa saat
- *     halaman Sumber Data Entitas dibuka atau tombol Uji ditekan. Alamat yang
- *     ternyata keliru dibatalkan di situ;
+ *     halaman Sumber Data Entitas dibuka. SELAMA berstatus "menunggu" sumbernya
+ *     TIDAK dibaca sama sekali (lihat EntitySourceFactory), jadi pendaftaran yang
+ *     belum terbukti tidak pernah menjadi angka di layar holding;
  *   - alamat wajib HTTPS di luar lingkungan pengembangan;
  *   - hanya pemasangan holding yang melayani; entitas menolaknya (409).
  */
@@ -48,7 +48,19 @@ class PairingController extends Controller
             'api_key' => ['required', 'string', 'max:255'],
         ]);
 
-        $kode = PairingCode::usable($data['code']);
+        // Alamat diperiksa LEBIH DULU, selagi kode belum terpakai: alamat yang
+        // ditolak di sini tidak menyentuh jaringan sama sekali, jadi tidak ada
+        // gunanya menghanguskan kode pendaftaran karenanya.
+        $alamat = rtrim($data['entity_url'], '/');
+
+        if ($pesan = $this->alamatTidakAman($alamat)) {
+            return response()->json(['message' => $pesan], 422);
+        }
+
+        // Sekali pakai, dan dipakai SEKARANG — termasuk bila entitasnya nanti
+        // ternyata tidak cocok. Kode yang ditolak tetap hangus supaya tidak bisa
+        // dicoba berulang kali untuk menebak entitas.
+        $kode = PairingCode::claim($data['code'], $request->ip());
 
         if (! $kode) {
             Log::warning('Pendaftaran entitas ditolak: kode tidak berlaku, dari '.$request->ip());
@@ -58,16 +70,12 @@ class PairingController extends Controller
 
         $entitas = $kode->entity;
 
-        if (strtoupper($data['entity_code']) !== strtoupper((string) $entitas->code)) {
-            return response()->json([
-                'message' => 'Kode ini untuk entitas '.$entitas->code.', bukan '.strtoupper($data['entity_code']).'.',
-            ], 403);
-        }
+        if (! $entitas || strtoupper($data['entity_code']) !== strtoupper((string) $entitas->code)) {
+            Log::warning('Pendaftaran entitas ditolak: kode '.($entitas->code ?? '?').' dipakai untuk '
+                .strtoupper($data['entity_code']).', dari '.$request->ip());
 
-        $alamat = rtrim($data['entity_url'], '/');
-
-        if ($pesan = $this->alamatTidakAman($alamat)) {
-            return response()->json(['message' => $pesan], 422);
+            // Pesan tidak menyebutkan entitas mana yang sebenarnya dimaksud.
+            return response()->json(['message' => 'Kode pendaftaran tidak cocok dengan entitas ini.'], 403);
         }
 
         $sumber = EntityDataSource::updateOrCreate(['entity_id' => $entitas->id], [
@@ -81,10 +89,10 @@ class PairingController extends Controller
             'last_checked_at' => now(),
         ]);
 
-        $kode->forceFill(['used_at' => now(), 'used_ip' => $request->ip(), 'used_url' => $alamat])->save();
+        $kode->forceFill(['used_url' => $alamat])->save();
 
         app(EntitySourceSettings::class)->forget();
-        app(Consolidation::class)->refresh((string) Period::active());
+        app(Consolidation::class)->refreshAll();
 
         Log::info('Entitas '.$entitas->code.' mendaftar ke holding dari '.$alamat.' ('.$request->ip().'); menunggu pemeriksaan balik.');
 
@@ -97,14 +105,44 @@ class PairingController extends Controller
         ]]);
     }
 
-    /** Kunci API melintasi jaringan: alamat wajib HTTPS di luar pengembangan. */
+    /**
+     * Alamat yang akan dipanggil holding. Dua hal dijaga:
+     *
+     *   - kunci API melintasi jaringan, jadi alamat wajib HTTPS di luar pengembangan;
+     *   - alamatnya tidak boleh menunjuk ke dalam jaringan holding sendiri. Kalau
+     *     boleh, pemegang kode pendaftaran dapat menyuruh holding memanggil
+     *     alamat internalnya dan membaca hasilnya dari pesan galat — pemindai
+     *     jaringan gratis yang berjalan dari dalam.
+     */
     private function alamatTidakAman(string $alamat): ?string
     {
         $bagian = parse_url($alamat);
-        $lokal = in_array($bagian['host'] ?? '', ['127.0.0.1', 'localhost', '::1'], true);
+        $tuanRumah = (string) ($bagian['host'] ?? '');
+        $lokal = in_array($tuanRumah, ['127.0.0.1', 'localhost', '::1'], true);
+        $pengembangan = app()->environment(['local', 'testing']);
 
-        if (($bagian['scheme'] ?? '') !== 'https' && ! $lokal && ! app()->environment(['local', 'testing'])) {
+        if (($bagian['scheme'] ?? '') !== 'https' && ! $lokal && ! $pengembangan) {
             return 'Alamat entitas harus HTTPS.';
+        }
+
+        if ($pengembangan) {
+            return null;
+        }
+
+        if ($lokal) {
+            return 'Alamat entitas tidak boleh menunjuk ke server holding sendiri.';
+        }
+
+        // Nama yang menunjuk ke alamat pribadi juga ditolak, bukan hanya alamat
+        // pribadi yang ditulis langsung.
+        // Nama yang tidak dapat dipecahkan dibiarkan lewat: belum tentu keliru
+        // (mis. entitas hanya beralamat IPv6), dan penjaga sebenarnya tetap kode
+        // pendaftaran + HTTPS.
+        $ip = filter_var($tuanRumah, FILTER_VALIDATE_IP) ?: gethostbyname($tuanRumah);
+
+        if (filter_var($ip, FILTER_VALIDATE_IP)
+            && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            return 'Alamat entitas harus dapat dihubungi dari jaringan umum, bukan alamat jaringan dalam.';
         }
 
         return null;

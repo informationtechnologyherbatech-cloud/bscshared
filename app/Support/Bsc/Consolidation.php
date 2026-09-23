@@ -63,6 +63,34 @@ class Consolidation
     }
 
     /**
+     * Buang ringkasan tersimpan untuk SEMUA periode yang masuk akal sedang dibuka.
+     *
+     * Dipakai sesudah sumber data berubah: yang berganti bukan angka satu bulan,
+     * melainkan dari mana angkanya diambil — sehingga simpanan periode lain pun
+     * menjadi milik sumber yang sudah tidak berlaku. Membersihkan satu periode
+     * saja membuat halaman Konsolidasi tetap menampilkan angka sumber lama.
+     */
+    public function refreshAll(): void
+    {
+        $entitas = Entity::active()->get();
+        $tahunIni = (int) now()->format('Y');
+
+        for ($tahun = $tahunIni - 2; $tahun <= $tahunIni + 1; $tahun++) {
+            $periode = [(string) $tahun];
+
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $periode[] = sprintf('%d-%02d', $tahun, $bulan);
+            }
+
+            foreach ($periode as $p) {
+                foreach ($entitas as $e) {
+                    Cache::forget(self::cacheKey($e, $p));
+                }
+            }
+        }
+    }
+
+    /**
      * @return array{
      *     entities: array<int, array<string, mixed>>,
      *     group: array<string, mixed>,
@@ -103,10 +131,23 @@ class Consolidation
             ->where('period', '>=', $tahun.'-01')->where('period', '<=', $period)
             ->orderBy('period')->get();
 
+        $takTerjangkau = array_values(array_map(
+            fn ($b) => $b['entity']->code,
+            array_filter($baris, fn ($b) => $b['status'] !== EntitySummary::STATUS_OK)
+        ));
+
         $targetKotor = array_sum(array_column($baris, 'revenue_target'));
         $realisasiKotor = array_sum(array_column($baris, 'revenue_actual'));
-        $elimRencana = (float) $eliminasi->sum(fn ($e) => (float) ($e->planned_amount ?? 0));
-        $elimRealisasi = (float) $eliminasi->sum(fn ($e) => (float) ($e->actual_amount ?? 0));
+
+        // Eliminasi hanya boleh mengurangi revenue yang IKUT terjumlah. Entitas
+        // yang tidak terjangkau menyumbang 0 ke jumlah kotor, jadi memotong
+        // penjualan antarentitasnya membuat revenue grup lebih kecil dari yang
+        // sebenarnya.
+        $terhitung = $eliminasi->reject(fn ($e) => in_array($e->seller?->code, $takTerjangkau, true)
+            || in_array($e->buyer?->code, $takTerjangkau, true));
+
+        $elimRencana = (float) $terhitung->sum(fn ($e) => (float) ($e->planned_amount ?? 0));
+        $elimRealisasi = (float) $terhitung->sum(fn ($e) => (float) ($e->actual_amount ?? 0));
         $targetBersih = $targetKotor - $elimRencana;
         $realisasiBersih = $realisasiKotor - $elimRealisasi;
 
@@ -140,10 +181,8 @@ class Consolidation
                 'apex' => $f1 === null && $f2 === null ? null : Scorecard::apex(['revenue' => $f1, 'ratios' => $f2]),
                 // Entitas yang sumbernya tidak terjangkau: angkanya kosong, bukan nol,
                 // dan halaman memberi tahu bahwa grup belum lengkap.
-                'unreachable' => array_values(array_map(
-                    fn ($b) => $b['entity']->code,
-                    array_filter($baris, fn ($b) => $b['status'] !== EntitySummary::STATUS_OK)
-                )),
+                'unreachable' => $takTerjangkau,
+                'eliminations_skipped' => $eliminasi->count() - $terhitung->count(),
                 'fetched_at' => collect($baris)->pluck('fetched_at')->filter()
                     ->map(fn ($w) => Carbon::parse($w))->min()?->toIso8601String(),
             ],

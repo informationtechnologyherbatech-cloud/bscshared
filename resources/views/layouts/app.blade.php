@@ -202,7 +202,7 @@
                 <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu" data-accordion="false">
                     {{-- Menu dikelompokkan mengikuti tingkat piramida BSC; di tiap kelompok
                          urutannya mengikuti alur kerja: atur → isi → lihat hasil. --}}
-                    @php($menuHolding = auth()->user()?->can('view consolidation') && can_switch_entity())
+                    @php($menuHolding = auth()->user()?->can('view consolidation') && is_holding_user())
                     @if(auth()->user()?->can('view dashboard') || auth()->user()?->can('view wiring') || $menuHolding)
                     <li class="nav-header">RINGKASAN KINERJA</li>
                     @endif

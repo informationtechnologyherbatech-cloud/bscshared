@@ -168,7 +168,13 @@ class ApiCredentialSecurityTest extends TestCase
             $this->assertNotSame($utuh, $baris->prefix);
             $this->assertStringNotContainsString($utuh, json_encode($baris->toArray()));
         }
-        $this->assertSame('bsc_live_tebakan', $jejak[1]->prefix);
+
+        // Kunci yang TIDAK dikenal ditandai potongan sidik jarinya, bukan potongan
+        // kuncinya: percobaan yang sama tetap dapat dikenali, tetapi jejak akses
+        // tidak pernah memuat sebagian kunci sungguhan yang salah ketik.
+        $dicoba = 'bsc_live_tebakan_orang_lain';
+        $this->assertSame('?'.substr(ApiKey::fingerprint($dicoba), 0, 12), $jejak[1]->prefix);
+        $this->assertStringNotContainsString(substr($dicoba, 0, 12), (string) $jejak[1]->prefix);
     }
 
     public function test_the_settings_page_shows_the_access_trail(): void

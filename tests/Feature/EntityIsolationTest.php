@@ -18,6 +18,7 @@ use App\Support\EntityContext;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -35,6 +36,12 @@ class EntityIsolationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Pembatas laju hidup di penyimpanan cache, bukan di database, jadi ia
+        // tidak ikut bersih bersama RefreshDatabase. Tanpa ini, uji yang sengaja
+        // menghabiskan jatah panggilan akan menjatuhkan uji API berikutnya
+        // begitu penyimpanan cache-nya bukan 'array'.
+        Cache::flush();
 
         $this->seed(DatabaseSeeder::class); // contoh Erdigma 2026-08
     }
@@ -210,32 +217,41 @@ class EntityIsolationTest extends TestCase
     public function test_holding_reads_an_entity_that_lives_in_its_own_database(): void
     {
         $berkas = storage_path('framework/testing/entitas_aej_uji.sqlite');
-        @unlink($berkas);
+        $bersihkan = function () use ($berkas) {
+            // Berkasnya baru dapat dihapus setelah sambungannya ditutup; tanpa ini
+            // berkas 400 KB tertinggal dan uji berikutnya membaca data lama.
+            DB::purge('aej_uji');
+            @unlink($berkas);
+        };
+
+        $bersihkan();
         touch($berkas);
 
-        // Database terpisah milik AEJ: dimigrasikan & diisi sendiri.
-        Config::set('database.connections.aej_uji', ['driver' => 'sqlite', 'database' => $berkas, 'prefix' => '', 'foreign_key_constraints' => true]);
-        Artisan::call('migrate', ['--database' => 'aej_uji', '--force' => true]);
+        try {
+            // Database terpisah milik AEJ: dimigrasikan & diisi sendiri.
+            Config::set('database.connections.aej_uji', ['driver' => 'sqlite', 'database' => $berkas, 'prefix' => '', 'foreign_key_constraints' => true]);
+            Artisan::call('migrate', ['--database' => 'aej_uji', '--force' => true]);
 
-        $aejId = DB::connection('aej_uji')->table('entities')->where('code', 'AEJ')->value('id');
-        DB::connection('aej_uji')->table('periods')->insert(['entity_id' => $aejId, 'period' => '2026-08', 'status' => 'OPEN', 'apex_score' => 0, 'created_at' => now(), 'updated_at' => now()]);
-        foreach ([['2026-07', 100, 100], ['2026-08', 100, 90]] as [$p, $t, $a]) {
-            DB::connection('aej_uji')->table('revenue_targets')->insert(['entity_id' => $aejId, 'period' => $p, 'target' => $t, 'actual' => $a, 'created_at' => now(), 'updated_at' => now()]);
+            $aejId = DB::connection('aej_uji')->table('entities')->where('code', 'AEJ')->value('id');
+            DB::connection('aej_uji')->table('periods')->insert(['entity_id' => $aejId, 'period' => '2026-08', 'status' => 'OPEN', 'apex_score' => 0, 'created_at' => now(), 'updated_at' => now()]);
+            foreach ([['2026-07', 100, 100], ['2026-08', 100, 90]] as [$p, $t, $a]) {
+                DB::connection('aej_uji')->table('revenue_targets')->insert(['entity_id' => $aejId, 'period' => $p, 'target' => $t, 'actual' => $a, 'created_at' => now(), 'updated_at' => now()]);
+            }
+
+            Config::set('bsc.sources.AEJ', ['api_url' => null, 'api_key' => null, 'database' => $berkas]);
+            $hasil = app(Consolidation::class)->forPeriod('2026-08');
+            $aej = collect($hasil['entities'])->firstWhere('entity.code', 'AEJ');
+
+            $this->assertSame(EntitySummary::SUMBER_DATABASE, $aej['source']);
+            $this->assertSame(95.0, $aej['f1']); // 190 ÷ 200 dari database AEJ
+            $this->assertSame(200.0, $aej['revenue_target']);
+
+            // Database holding tidak ikut kemasukan data AEJ, dan konteks entitas pulih.
+            $this->assertSame(0, RevenueTarget::withoutGlobalScopes()->where('entity_id', $this->entitas('AEJ')->id)->count());
+            $this->assertSame(config('database.default'), DB::getDefaultConnection());
+        } finally {
+            $bersihkan();
         }
-
-        Config::set('bsc.sources.AEJ', ['api_url' => null, 'api_key' => null, 'database' => $berkas]);
-        $hasil = app(Consolidation::class)->forPeriod('2026-08');
-        $aej = collect($hasil['entities'])->firstWhere('entity.code', 'AEJ');
-
-        $this->assertSame(EntitySummary::SUMBER_DATABASE, $aej['source']);
-        $this->assertSame(95.0, $aej['f1']); // 190 ÷ 200 dari database AEJ
-        $this->assertSame(200.0, $aej['revenue_target']);
-
-        // Database holding tidak ikut kemasukan data AEJ, dan konteks entitas pulih.
-        $this->assertSame(0, RevenueTarget::withoutGlobalScopes()->where('entity_id', $this->entitas('AEJ')->id)->count());
-        $this->assertSame(config('database.default'), DB::getDefaultConnection());
-
-        @unlink($berkas);
     }
 
     public function test_an_unreadable_entity_database_does_not_break_the_page(): void
@@ -257,9 +273,28 @@ class EntityIsolationTest extends TestCase
         $konteks = app(EntityContext::class);
         $konteks->forget();
 
+        $herbatech = $this->entitas('HERBATECH')->id;
+
+        // Baris milik entitas lain benar-benar DIBUAT lebih dulu — tanpa ini
+        // hitungannya nol dengan sendirinya dan tidak membuktikan apa pun.
+        // withoutGlobalScopes() hanya melepas saringan kueri, jadi entity_id
+        // ditulis apa adanya lewat forceFill agar tidak ikut distempel.
+        $milikOrangLain = Period::withoutGlobalScopes()->make(['period' => '2026-09', 'status' => 'OPEN', 'apex_score' => 0]);
+        $milikOrangLain->forceFill(['entity_id' => $herbatech])->save();
+
+        // Pembatas baru hidup bila ada pengguna yang login — pada konsol, antrean
+        // dan seeder ia memang sengaja tidak aktif.
+        $pengguna = User::create([
+            'name' => 'Staf Erdigma', 'email' => 'staf@erdigma.test',
+            'password' => bcrypt('x'), 'is_active' => true, 'entity_id' => $this->entitas('ERDIGMA')->id,
+        ]);
+        $pengguna->assignRole('Super Admin');
+        $this->actingAs($pengguna);
+        $konteks->forget();
+
         // Data Erdigma ada; data entitas lain tidak terlihat dari pemasangan ini.
         $this->assertGreaterThan(0, Period::count());
-        $herbatech = $this->entitas('HERBATECH')->id;
+        $this->assertSame(1, Period::withoutGlobalScopes()->where('entity_id', $herbatech)->count());
         $this->assertSame(0, Period::query()->where('entity_id', $herbatech)->count());
     }
 

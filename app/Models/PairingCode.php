@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
@@ -15,6 +17,8 @@ use Illuminate\Support\Str;
  */
 class PairingCode extends Model
 {
+    use Prunable;
+
     /** Berapa lama kode berlaku (menit). */
     public const MASA_BERLAKU = 15;
 
@@ -73,6 +77,34 @@ class PairingCode extends Model
             ->whereNull('used_at')
             ->where('expires_at', '>', now())
             ->first();
+    }
+
+    /**
+     * Pakai kode itu SEKALI — dan pastikan hanya satu permintaan yang berhasil.
+     *
+     * Memeriksa lalu menandai dalam dua langkah terpisah membuka celah: dua
+     * pendaftaran yang datang bersamaan sama-sama lolos pemeriksaan sebelum
+     * salah satunya sempat menandai kodenya terpakai. Penandaan di sini
+     * dikerjakan satu perintah UPDATE bersyarat, jadi yang kedua pasti gagal.
+     */
+    public static function claim(string $code, ?string $ip = null): ?self
+    {
+        $baris = static::usable($code);
+
+        if (! $baris) {
+            return null;
+        }
+
+        $berhasil = static::where('id', $baris->id)->whereNull('used_at')
+            ->update(['used_at' => now(), 'used_ip' => $ip]);
+
+        return $berhasil === 1 ? $baris->refresh() : null;
+    }
+
+    /** Kode kedaluwarsa hanya berguna sebagai jejak sebentar. */
+    public function prunable(): Builder
+    {
+        return static::where('expires_at', '<', now()->subDays(30));
     }
 
     public function isExpired(): bool

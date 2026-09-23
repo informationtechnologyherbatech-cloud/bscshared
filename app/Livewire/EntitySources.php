@@ -66,7 +66,7 @@ class EntitySources extends Component
     {
         $user = auth()->user();
 
-        abort_unless($user && app(EntityContext::class)->canSwitch($user), 403,
+        abort_unless($user && app(EntityContext::class)->isHoldingUser($user), 403,
             'Pengaturan sumber data hanya untuk pengguna level holding.');
     }
 
@@ -187,7 +187,7 @@ class EntitySources extends Component
 
         app(EntitySourceSettings::class)->forget();
         // Ringkasan lama milik sumber sebelumnya tidak boleh ikut terbawa.
-        app(Consolidation::class)->refresh($this->period());
+        app(Consolidation::class)->refreshAll();
 
         $this->editingId = null;
         $this->apiKey = '';
@@ -203,19 +203,19 @@ class EntitySources extends Component
     {
         $this->ensureHoldingUser();
 
+        if ($this->lacksPermission('manage consolidation')) {
+            return;
+        }
+
         $entitas = Entity::findOrFail($entityId);
         $sumber = app(EntitySourceSettings::class)->for($entitas);
         [$status, $pesan] = $this->periksa($entitas, $sumber);
 
-        EntityDataSource::updateOrCreate(['entity_id' => $entitas->id], [
-            'driver' => $sumber['driver'],
-            'api_url' => $sumber['api_url'],
-            'api_key' => $sumber['api_key'],
-            'database_name' => $sumber['database'],
-            'db_host' => $sumber['db']['host'] ?? null,
-            'db_port' => $sumber['db']['port'] ?? null,
-            'db_username' => $sumber['db']['username'] ?? null,
-            'db_password' => $sumber['db']['password'] ?? null,
+        // Uji hanya MELAPORKAN; ia tidak membuat baris pengaturan. Menuliskan
+        // baris di sini akan diam-diam memindahkan sumber dari .env ke layar —
+        // dan pada entitas yang belum diatur sama sekali, membuat holding
+        // membaca databasenya sendiri lalu menampilkannya sebagai data entitas.
+        EntityDataSource::where('entity_id', $entitas->id)->update([
             'last_status' => $status,
             'last_message' => $pesan,
             'last_checked_at' => now(),
@@ -232,6 +232,10 @@ class EntitySources extends Component
      */
     private function periksa(Entity $entitas, array $sumber): array
     {
+        if ($sumber['origin'] === EntitySourceSettings::RUSAK) {
+            return ['galat', 'kredensial tersimpan tidak dapat dibuka (kunci aplikasi berganti); atur ulang sumber datanya.'];
+        }
+
         if ($sumber['driver'] === EntityDataSource::API && $sumber['api_url']) {
             try {
                 $respons = Http::withHeaders(array_filter(['X-API-KEY' => $sumber['api_key']]))
@@ -270,16 +274,36 @@ class EntitySources extends Component
                 : ['galat', (string) $ringkasan->message];
         }
 
+        // Belum diatur pada pemasangan holding yang ketat: jangan dilaporkan "ok",
+        // karena tidak ada satu pun data entitas yang benar-benar terbaca.
+        if ($sumber['origin'] === 'tidak diatur' && config('bsc.require_entity_sources')
+            && app(EntityContext::class)->isHoldingMode()) {
+            return ['galat', 'sumber data belum diatur; holding tidak membaca entitas ini.'];
+        }
+
         return ['ok', 'memakai database aplikasi ini (lokal).'];
     }
 
     /**
-     * Selesaikan pendaftaran mandiri: alamat yang benar ditandai tersambung,
-     * yang keliru dibatalkan agar tidak ada sumber palsu yang menetap.
+     * Selesaikan pendaftaran mandiri: alamat yang benar ditandai tersambung.
+     *
+     * Dijalankan sebagai permintaan TERSENDIRI (wire:init), sesudah halaman
+     * tampil — bukan di tengah render — supaya aplikasi entitas tidak sedang
+     * sibuk melayani pendaftarannya sendiri saat dipanggil balik, dan supaya
+     * halaman ini tidak pernah mengubah data hanya karena dibuka.
+     *
+     * Yang gagal TIDAK dihapus dan kodenya TIDAK dihidupkan kembali: satu gangguan
+     * jaringan sesaat tidak boleh menghapus pengaturan yang sudah benar, dan kode
+     * pendaftaran sekali pakai harus tetap sekali pakai. Selama belum terverifikasi
+     * sumbernya memang tidak dibaca (lihat EntitySourceFactory), jadi menahannya
+     * sudah cukup aman; admin dapat membuangnya sendiri dari tombol Atur.
      */
-    private function verifikasiPendaftaranBaru(): void
+    public function verifikasiPendaftaranBaru(): void
     {
+        $this->ensureHoldingUser();
+
         $menunggu = EntityDataSource::with('entity')->where('last_status', 'menunggu')->get();
+        $gagal = [];
 
         foreach ($menunggu as $sumber) {
             if (! $sumber->entity) {
@@ -305,16 +329,25 @@ class EntitySources extends Component
                 continue;
             }
 
-            // Alamat keliru/tak terjangkau: pendaftaran dibatalkan, kode dikembalikan.
-            $sumber->delete();
-            PairingCode::where('entity_id', $sumber->entity_id)->whereNotNull('used_at')
-                ->where('expires_at', '>', now())
-                ->update(['used_at' => null, 'used_ip' => null, 'used_url' => null]);
-            session()->flash('error', $sumber->entity->name.': pendaftaran dibatalkan — '.$pesan);
+            // Belum terbukti: statusnya tetap "menunggu" — sumbernya tidak dibaca,
+            // dan percobaan berikutnya terjadi saat halaman ini dibuka lagi.
+            $sumber->forceFill([
+                'last_message' => 'didaftarkan sendiri oleh aplikasi entitas, belum terverifikasi — '.$pesan,
+                'last_checked_at' => now(),
+            ])->save();
+
+            $gagal[] = $sumber->entity->name.': '.$pesan;
+        }
+
+        if ($gagal !== []) {
+            session()->flash('error', 'Pendaftaran belum terverifikasi — '.implode('; ', $gagal));
         }
 
         if ($menunggu->isNotEmpty()) {
             app(EntitySourceSettings::class)->forget();
+            // Sumber yang baru saja terbukti kini boleh dibaca; simpanan
+            // "menunggu verifikasi" tidak boleh menutupinya.
+            app(Consolidation::class)->refreshAll();
         }
     }
 
@@ -329,11 +362,6 @@ class EntitySources extends Component
         $pengaturan = app(EntitySourceSettings::class);
 
         $kodeAktif = PairingCode::whereNull('used_at')->where('expires_at', '>', now())->get()->keyBy('entity_id');
-
-        // Entitas yang baru mendaftarkan diri diperiksa di sini — pada permintaan
-        // TERSENDIRI, sehingga aplikasi entitas tidak sedang sibuk melayani
-        // pendaftarannya dan dapat menjawab panggilan balik.
-        $this->verifikasiPendaftaranBaru();
 
         $baris = Entity::active()->get()->map(fn (Entity $e) => [
             'entity' => $e,

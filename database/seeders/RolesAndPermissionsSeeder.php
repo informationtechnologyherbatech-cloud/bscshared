@@ -118,15 +118,20 @@ class RolesAndPermissionsSeeder extends Seeder
         // Kata sandi awal diambil dari SUPERADMIN_PASSWORD agar instalasi baru
         // tidak memakai kata sandi yang mudah ditebak. Akun yang sudah ada
         // tidak diubah (firstOrCreate).
+        // Dibaca lewat config, bukan env(): sesudah `config:cache` berkas .env
+        // tidak dibaca lagi, sehingga env() di sini akan selalu kosong dan
+        // pemasangan baru diam-diam memakai kata sandi bawaan repositori.
+        $sandiDitetapkan = config('bsc.superadmin.password');
+
         $superAdmin = User::firstOrCreate(
-            ['email' => env('SUPERADMIN_EMAIL') ?: 'superadmin@emc.co.id'],
+            ['email' => config('bsc.superadmin.email')],
             [
                 'name' => 'Super Admin',
-                'password' => bcrypt(env('SUPERADMIN_PASSWORD') ?: 'Bsc#Admin2026'),
+                'password' => bcrypt($sandiDitetapkan ?: 'Bsc#Admin2026'),
                 'is_active' => true,
                 // Kata sandi bawaan tercantum di repositori → di server (bukan lokal/testing)
                 // wajib diganti saat login pertama.
-                'must_change_password' => ! env('SUPERADMIN_PASSWORD') && ! app()->environment(['local', 'testing']),
+                'must_change_password' => ! $sandiDitetapkan && ! app()->environment(['local', 'testing']),
             ]
         );
         if (! $superAdmin->hasRole('Super Admin')) {

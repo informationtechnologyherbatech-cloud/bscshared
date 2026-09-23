@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Throwable;
 
 /**
  * Di mana data sebuah entitas berada, menurut pengaturan di layar holding.
@@ -52,7 +53,13 @@ class EntityDataSource extends Model
     /** Kunci API untuk ditampilkan: hanya ujungnya, isinya tidak pernah tampil utuh. */
     public function maskedKey(): ?string
     {
-        $kunci = (string) $this->api_key;
+        try {
+            $kunci = (string) $this->api_key;
+        } catch (Throwable) {
+            // Kunci aplikasi berganti: nilainya tidak dapat dibuka lagi. Layar
+            // tetap harus tampil supaya sumbernya bisa diatur ulang dari sini.
+            return 'tidak terbaca';
+        }
 
         return $kunci === '' ? null : str_repeat('•', 8).substr($kunci, -4);
     }

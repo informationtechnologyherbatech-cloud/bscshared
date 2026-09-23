@@ -20,6 +20,12 @@ use Throwable;
  */
 class EntitySourceSettings
 {
+    /** Sudah didaftarkan aplikasi entitas, tetapi panggilan balik holding belum berhasil. */
+    public const MENUNGGU = 'menunggu';
+
+    /** Kredensialnya tersimpan tetapi tidak dapat dibuka lagi (APP_KEY berganti). */
+    public const RUSAK = 'perlu diatur ulang';
+
     /**
      * Baris pengaturan yang sudah dibaca dalam permintaan ini (false = belum ada).
      *
@@ -73,19 +79,39 @@ class EntitySourceSettings
         $baris = $this->record($entitas);
 
         if ($baris) {
+            try {
+                // Kedua nilai ini baru dibuka (didekripsi) saat dibaca.
+                $kunci = $baris->api_key;
+                $sandi = $baris->db_password;
+                $rusak = false;
+            } catch (Throwable) {
+                // APP_KEY berganti, atau database holding dipulihkan ke pemasangan
+                // lain: kredensialnya tidak dapat dibuka lagi. Lebih baik berkata
+                // "perlu diatur ulang" daripada menggagalkan seluruh halaman.
+                $kunci = null;
+                $sandi = null;
+                $rusak = true;
+            }
+
             return [
                 'driver' => $baris->driver,
                 'api_url' => $baris->api_url,
-                'api_key' => $baris->api_key,
+                'api_key' => $kunci,
                 'database' => $baris->database_name,
                 // Kredensial baca-saja khusus entitas ini; kosong = kredensial aplikasi ini.
                 'db' => [
                     'host' => $baris->db_host,
                     'port' => $baris->db_port,
                     'username' => $baris->db_username,
-                    'password' => $baris->db_password,
+                    'password' => $sandi,
                 ],
-                'origin' => 'layar',
+                'origin' => match (true) {
+                    $rusak => self::RUSAK,
+                    // Entitas yang mendaftarkan dirinya sendiri belum diperiksa
+                    // balik oleh holding; sumbernya belum boleh dibaca.
+                    $baris->last_status === 'menunggu' => self::MENUNGGU,
+                    default => 'layar',
+                },
             ];
         }
 
