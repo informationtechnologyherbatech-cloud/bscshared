@@ -3,16 +3,18 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
+use App\Models\ApiAccessLog;
+use App\Models\ApiKey;
+use App\Models\AppSetting;
+use App\Models\Entity;
+use App\Support\EntityContext;
+use App\Support\Recaptcha;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use Livewire\Attributes\Url;
-use App\Models\AppSetting;
-use App\Models\ApiKey;
-use App\Support\Recaptcha;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Artisan;
 
 class AppSettings extends Component
 {
@@ -32,23 +34,46 @@ class AppSettings extends Component
 
     // Identitas aplikasi
     public $app_name = '';
+
     public $app_tagline = '';
+
     public $app_year = '';
+
     public $app_primary_color = '#17a2b8';
+
     public $logoUpload;
+
     public $faviconUpload;
 
     // Identitas entitas pengguna aplikasi
     public $entity_name = '';
+
     public $company_name = '';
+
     public $company_address = '';
+
     public $company_phone = '';
+
     public $company_email = '';
+
     public $company_website = '';
 
     // API Key fields
-    public $showKeyId = null; // for reveal
+    /** Kunci yang baru dibuat — ditampilkan SEKALI lalu hilang dari ingatan. */
+    public ?string $kunciBaru = null;
+
     public $newKeyName = 'Gateway Key';
+
+    /** Daftar IP holding yang boleh memakai kunci (kosong = dari mana saja). */
+    public string $newKeyIps = '';
+
+    /** Tanggal kedaluwarsa kunci (kosong = tanpa batas). */
+    public string $newKeyExpires = '';
+
+    /** Pendaftaran mandiri ke holding: alamat holding & kode pendaftarannya. */
+    public string $holdingUrl = '';
+
+    public string $holdingCode = '';
 
     public function mount()
     {
@@ -323,21 +348,31 @@ class AppSettings extends Component
             return;
         }
 
-        $this->validate(['newKeyName' => 'required|string|min:3|max:100']);
-        $raw = 'bsc_live_' . Str::random(32);
-        ApiKey::create([
-            'name' => $this->newKeyName,
-            // Kunci menyebut entitas pemiliknya: tidak dapat dipakai di pemasangan entitas lain.
-            'entity_code' => strtoupper((string) config('bsc.default_entity')) ?: null,
-            'key' => $raw,
-            'is_active' => true,
-        ]);
+        $this->validate([
+            'newKeyName' => 'required|string|min:3|max:100',
+            // Daftar IP dipisah koma; boleh alamat persis atau rentang CIDR (10.8.0.0/16).
+            'newKeyIps' => ['nullable', 'string', 'max:255', 'regex:/^[0-9a-fA-F:.\/,\s]+$/'],
+            'newKeyExpires' => ['nullable', 'date', 'after:today'],
+        ], [
+            'newKeyIps.regex' => 'Daftar IP hanya boleh berisi alamat IP, rentang CIDR, dan koma.',
+            'newKeyExpires.after' => 'Tanggal kedaluwarsa harus setelah hari ini.',
+        ], ['newKeyName' => 'nama kunci', 'newKeyIps' => 'daftar IP', 'newKeyExpires' => 'kedaluwarsa']);
 
-        // Deactivate old keys (keep history but only one active)
-        ApiKey::where('key', '!=', $raw)->update(['is_active' => false]);
+        // Kunci utuh hanya dikembalikan sekali di sini; yang tersimpan sidik jarinya.
+        [, $kunci] = ApiKey::issue(
+            $this->newKeyName,
+            strtoupper((string) config('bsc.default_entity')) ?: null,
+            $this->newKeyIps,
+            $this->newKeyExpires ?: null,
+        );
 
+        // Kunci lama sengaja TIDAK langsung dinonaktifkan: rotasi butuh dua kunci
+        // aktif sebentar (pasang kunci baru di holding, baru matikan yang lama).
+        $this->kunciBaru = $kunci;
         $this->newKeyName = 'Gateway Key';
-        session()->flash('message', 'Kunci API baru berhasil digenerate!');
+        $this->newKeyIps = '';
+        $this->newKeyExpires = '';
+        session()->flash('message', 'Kunci API baru dibuat. Salin sekarang — kunci ini tidak dapat ditampilkan lagi.');
     }
 
     public function toggleKey($id)
@@ -347,8 +382,8 @@ class AppSettings extends Component
         }
 
         $k = ApiKey::findOrFail($id);
-        $k->update(['is_active' => !$k->is_active]);
-        session()->flash('message', 'Status kunci ' . $k->name . ' diubah!');
+        $k->update(['is_active' => ! $k->is_active]);
+        session()->flash('message', 'Status kunci '.$k->name.' diubah!');
     }
 
     public function deleteKey($id)
@@ -361,23 +396,81 @@ class AppSettings extends Component
         // Guard: at least one active key must remain
         if ($k->is_active && ApiKey::where('is_active', true)->count() <= 1) {
             session()->flash('error', 'Tidak dapat menghapus kunci aktif terakhir!');
+
             return;
         }
         $k->delete();
-        session()->flash('message', 'Kunci ' . $k->name . ' dihapus!');
+        session()->flash('message', 'Kunci '.$k->name.' dihapus!');
     }
 
-    public function revealKey($id)
+    /**
+     * Daftarkan pemasangan ini ke holding memakai kode pendaftaran dari sana.
+     *
+     * Aplikasi ini membuat kunci APInya sendiri lalu mengirimkannya ke holding,
+     * sehingga di holding tidak ada kunci yang perlu diketik. Kunci tetap hanya
+     * tersimpan sebagai sidik jari di sini.
+     */
+    public function daftarKeHolding(): void
     {
-        if (! auth()->user()?->can('manage apikey')) {
+        if ($this->lacksPermission('manage apikey')) {
             return;
         }
-        $this->showKeyId = $this->showKeyId === $id ? null : $id;
+
+        if (app(EntityContext::class)->isHoldingMode()) {
+            session()->flash('error', 'Pemasangan ini holding; yang mendaftar adalah aplikasi entitas.');
+
+            return;
+        }
+
+        $this->validate([
+            'holdingUrl' => ['required', 'url', 'max:255'],
+            'holdingCode' => ['required', 'string', 'max:40'],
+        ], [], ['holdingUrl' => 'alamat holding', 'holdingCode' => 'kode pendaftaran']);
+
+        $kodeEntitas = strtoupper((string) config('bsc.default_entity'));
+        [$kunci, $utuh] = ApiKey::issue('Holding '.parse_url($this->holdingUrl, PHP_URL_HOST), $kodeEntitas);
+
+        try {
+            $respons = Http::acceptJson()
+                ->withoutRedirecting()
+                ->timeout((int) config('bsc.api_timeout', 8))
+                ->post(rtrim($this->holdingUrl, '/').'/api/v1/pairing', [
+                    'code' => trim($this->holdingCode),
+                    'entity_code' => $kodeEntitas,
+                    'entity_url' => rtrim((string) config('app.url'), '/'),
+                    'api_key' => $utuh,
+                ]);
+        } catch (\Throwable $e) {
+            report($e);
+            $kunci->delete();
+            session()->flash('error', 'Holding tidak dapat dihubungi dari sini. Periksa alamatnya.');
+
+            return;
+        }
+
+        if ($respons->failed()) {
+            // Kunci yang gagal dipakai langsung dibuang, jangan menumpuk.
+            $kunci->delete();
+            session()->flash('error', 'Pendaftaran ditolak holding: '.($respons->json('message') ?? 'status '.$respons->status()).'.');
+
+            return;
+        }
+
+        $this->holdingCode = '';
+        session()->flash('message', (string) ($respons->json('data.message') ?? 'Terhubung ke holding.').' Kunci dibuat & dikirim otomatis — tidak perlu disalin.');
+    }
+
+    /** Tutup tampilan kunci yang baru dibuat. */
+    public function hideNewKey(): void
+    {
+        $this->kunciBaru = null;
     }
 
     public function render()
     {
         $apiKeys = ApiKey::latest()->get();
+        // Jejak akses terakhir: memperlihatkan percobaan yang ditolak, bukan hanya yang berhasil.
+        $jejakApi = ApiAccessLog::latest('id')->limit(15)->get();
         $recaptchaSecretTersimpan = app(Recaptcha::class)->secretKey() !== null;
         $logoPath = AppSetting::getValue('app_logo', '');
 
@@ -389,26 +482,27 @@ class AppSettings extends Component
             'App Env' => config('app.env'),
             'App Debug' => config('app.debug') ? 'true' : 'false',
             'App URL' => config('app.url'),
-            'Database Driver' => config('database.default') . ' (' . DB::connection()->getDriverName() . ')',
+            'Database Driver' => config('database.default').' ('.DB::connection()->getDriverName().')',
             'Database Name' => DB::connection()->getDatabaseName(),
             'Cache Store' => config('cache.default'),
             'Queue Connection' => config('queue.default'),
-            'Session Driver' => config('session.driver') . ' (' . config('session.lifetime') . ' menit)',
+            'Session Driver' => config('session.driver').' ('.config('session.lifetime').' menit)',
             'Timezone' => config('app.timezone'),
             'Storage Link' => is_link(public_path('storage')) ? 'OK (linked)' : 'Missing (run storage:link)',
         ];
 
         return view('livewire.app-settings', [
             'apiKeys' => $apiKeys,
+            'jejakApi' => $jejakApi,
             'recaptchaSecretTersimpan' => $recaptchaSecretTersimpan,
             'logoPath' => $logoPath,
             'systemInfo' => $systemInfo,
             'installation' => [
                 'holding' => (bool) config('bsc.holding_mode'),
                 'code' => config('bsc.default_entity'),
-                'entity' => \App\Models\Entity::configuredDefault(),
+                'entity' => Entity::configuredDefault(),
                 'defaults' => ['entity_name' => config('entity.defaults.entity_name'), 'company_name' => config('entity.defaults.company_name')],
-                'entities' => \App\Models\Entity::active()->get(),
+                'entities' => Entity::active()->get(),
             ],
         ])->layout('layouts.app', ['title' => 'Setting Sistem']);
     }

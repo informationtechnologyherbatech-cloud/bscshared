@@ -4,6 +4,7 @@ use App\Models\AccountPostRole;
 use App\Models\AppSetting;
 use App\Models\Entity;
 use App\Models\KpiCascade;
+use App\Models\PairingCode;
 use App\Models\Period;
 use App\Models\RevenueTarget;
 use App\Support\Bsc\AccountPosts;
@@ -298,6 +299,14 @@ if (! function_exists('holding_mode')) {
     function holding_mode(): bool
     {
         return entity_context()->isHoldingMode();
+    }
+}
+
+if (! function_exists('pairing_ttl')) {
+    /** Berapa menit kode pendaftaran entitas berlaku. */
+    function pairing_ttl(): int
+    {
+        return PairingCode::MASA_BERLAKU;
     }
 }
 

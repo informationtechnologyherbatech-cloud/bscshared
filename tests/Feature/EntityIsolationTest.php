@@ -44,9 +44,12 @@ class EntityIsolationTest extends TestCase
         return Entity::where('code', $kode)->firstOrFail();
     }
 
-    private function kunciApi(string $kunci = 'bsc_live_uji'): ApiKey
+    /** Terbitkan kunci lalu kembalikan nilai utuhnya (hanya ada saat dibuat). */
+    private function kunciApi(?string $entityCode = null, ?string $ips = null, ?string $expires = null): string
     {
-        return ApiKey::create(['name' => 'Uji', 'key' => $kunci, 'is_active' => true]);
+        [, $kunci] = ApiKey::issue('Uji', $entityCode, $ips, $expires);
+
+        return $kunci;
     }
 
     /* ─────────────────────────── API di sisi entitas ─────────────────────────── */
@@ -54,13 +57,14 @@ class EntityIsolationTest extends TestCase
     public function test_the_entity_api_needs_an_active_key(): void
     {
         Config::set('bsc.holding_mode', false);
-        $this->kunciApi();
+        $kunci = $this->kunciApi();
 
         $this->getJson('/api/v1/consolidation?period=2026-08')->assertStatus(401);
         $this->withHeader('X-API-KEY', 'salah')->getJson('/api/v1/consolidation?period=2026-08')->assertStatus(401);
+        $this->withHeader('X-API-KEY', $kunci)->getJson('/api/v1/consolidation?period=2026-08')->assertOk();
 
         ApiKey::query()->update(['is_active' => false]);
-        $this->withHeader('X-API-KEY', 'bsc_live_uji')->getJson('/api/v1/consolidation?period=2026-08')->assertStatus(401);
+        $this->withHeader('X-API-KEY', $kunci)->getJson('/api/v1/consolidation?period=2026-08')->assertStatus(401);
     }
 
     public function test_the_entity_api_only_serves_its_own_entity_and_only_a_summary(): void
@@ -68,10 +72,10 @@ class EntityIsolationTest extends TestCase
         Config::set('bsc.holding_mode', false);
         Config::set('bsc.default_entity', 'ERDIGMA');
         app(EntityContext::class)->forget();
-        $this->kunciApi();
+        $kunci = $this->kunciApi();
 
         // Kode entitas lain pada permintaan diabaikan — tetap entitas pemasangan ini.
-        $respons = $this->withHeader('X-API-KEY', 'bsc_live_uji')
+        $respons = $this->withHeader('X-API-KEY', $kunci)
             ->getJson('/api/v1/consolidation?period=2026-08&entity=AEJ')
             ->assertOk();
 
@@ -93,9 +97,8 @@ class EntityIsolationTest extends TestCase
     {
         Config::set('bsc.holding_mode', true);
         app(EntityContext::class)->forget();
-        $this->kunciApi();
 
-        $this->withHeader('X-API-KEY', 'bsc_live_uji')
+        $this->withHeader('X-API-KEY', $this->kunciApi())
             ->getJson('/api/v1/consolidation?period=2026-08')
             ->assertStatus(409);
     }
@@ -103,9 +106,8 @@ class EntityIsolationTest extends TestCase
     public function test_the_ping_endpoint_exposes_no_performance_figures(): void
     {
         Config::set('bsc.holding_mode', false);
-        $this->kunciApi();
 
-        $data = $this->withHeader('X-API-KEY', 'bsc_live_uji')->getJson('/api/v1/ping')->assertOk()->json('data');
+        $data = $this->withHeader('X-API-KEY', $this->kunciApi())->getJson('/api/v1/ping')->assertOk()->json('data');
 
         $this->assertSame(['entity', 'entity_code', 'app', 'version', 'time'], array_keys($data));
     }
@@ -305,13 +307,12 @@ class EntityIsolationTest extends TestCase
         Config::set('bsc.holding_mode', false);
         Config::set('bsc.default_entity', 'ERDIGMA');
         app(EntityContext::class)->forget();
-        ApiKey::create(['name' => 'Kunci AEJ', 'entity_code' => 'AEJ', 'key' => 'bsc_live_aej', 'is_active' => true]);
+        $kunciAej = $this->kunciApi('AEJ');
 
-        $this->withHeader('X-API-KEY', 'bsc_live_aej')->getJson('/api/v1/consolidation')->assertStatus(403);
+        $this->withHeader('X-API-KEY', $kunciAej)->getJson('/api/v1/consolidation')->assertStatus(403);
 
         // Kunci milik entitas pemasangan ini tetap dilayani.
-        ApiKey::create(['name' => 'Kunci Erdigma', 'entity_code' => 'ERDIGMA', 'key' => 'bsc_live_erd', 'is_active' => true]);
-        $this->withHeader('X-API-KEY', 'bsc_live_erd')->getJson('/api/v1/consolidation')->assertOk();
+        $this->withHeader('X-API-KEY', $this->kunciApi('ERDIGMA'))->getJson('/api/v1/consolidation')->assertOk();
     }
 
     public function test_an_answer_without_an_entity_code_is_refused(): void

@@ -408,7 +408,8 @@
                                     </p>
                                     <pre class="bg-light p-2 mb-2"><code>{{ url('/api/v1/consolidation') }}?period={{ active_period() }}</code></pre>
                                     <p class="mb-0 small text-muted">
-                                        Di <code>.env</code> holding, isikan:
+                                        Di aplikasi holding, buka <em>Sumber Data Entitas → Atur</em>, pilih <strong>API</strong>, lalu tempel alamat di atas
+                                        beserta kunci yang dibuat di bawah. Alternatif lewat berkas <code>.env</code> holding:
                                         <code>BSC_SOURCE_{{ config('bsc.default_entity') }}_URL={{ rtrim(config('app.url'), '/') }}</code> dan
                                         <code>BSC_SOURCE_{{ config('bsc.default_entity') }}_KEY=&lt;kunci aktif di bawah&gt;</code>.
                                         Selengkapnya: <em>docs/database-per-entitas.md</em>.
@@ -417,25 +418,99 @@
                             </div>
                         </div>
 
-                        <div class="card card-outline card-info">
-                            <div class="card-header">
-                                <h6 class="card-title mb-0"><i class="fas fa-plus-circle mr-1"></i> Generate Kunci Baru</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="input-group">
-                                    <input type="text" wire:model="newKeyName" class="form-control" placeholder="Nama kunci, mis: Gateway Default">
-                                    <div class="input-group-append">
-                                        <button wire:click="generateApiKey" class="btn btn-info"><i class="fas fa-key mr-1"></i> Generate Baru</button>
+                        @unless (holding_mode())
+                            <div class="card card-outline card-success">
+                                <div class="card-header">
+                                    <h6 class="card-title mb-0"><i class="fas fa-link mr-1"></i> Daftarkan ke holding</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p>
+                                        Minta <strong>alamat holding</strong> dan <strong>kode pendaftaran</strong> kepada admin holding
+                                        (menu <em>Sumber Data Entitas → Kode</em>). Aplikasi ini akan membuat kunci APInya sendiri dan
+                                        mengirimkannya — kunci tidak perlu disalin, dan di holding tidak ada yang perlu diketik.
+                                    </p>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label class="small font-weight-bold">Alamat holding</label>
+                                            <input type="url" wire:model="holdingUrl" placeholder="https://bsc.emc.co.id"
+                                                   class="form-control {{ $errors->has('holdingUrl') ? 'is-invalid' : '' }}">
+                                            @error('holdingUrl') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group col-md-4">
+                                            <label class="small font-weight-bold">Kode pendaftaran</label>
+                                            <input type="text" wire:model="holdingCode" placeholder="PAIR-XXXX-XXXX"
+                                                   class="form-control {{ $errors->has('holdingCode') ? 'is-invalid' : '' }}">
+                                            @error('holdingCode') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="form-group col-md-2 d-flex align-items-end">
+                                            <button wire:click="daftarKeHolding" class="btn btn-success btn-block"
+                                                    wire:loading.attr="data-loading" wire:target="daftarKeHolding">
+                                                <i class="fas fa-paper-plane mr-1"></i> Daftar
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <small class="text-muted">Generate akan menonaktifkan kunci lama otomatis (hanya 1 aktif).</small>
+                            </div>
+                        @endunless
+                        @if ($kunciBaru)
+                            <div class="card card-outline card-success">
+                                <div class="card-header d-flex align-items-center justify-content-between">
+                                    <h6 class="card-title mb-0"><i class="fas fa-key mr-1"></i> Kunci baru — salin sekarang</h6>
+                                    <button wire:click="hideNewKey" class="btn btn-sm btn-ghost"><i class="fas fa-xmark mr-1"></i> Tutup</button>
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2">
+                                        Kunci di bawah ini <strong>hanya ditampilkan sekali</strong>. Aplikasi ini hanya menyimpan sidik
+                                        jarinya, jadi setelah halaman ditutup kunci tidak dapat dibaca lagi — termasuk oleh Super Admin.
+                                        Tempelkan ke holding: menu <em>Sumber Data Entitas → Atur</em>.
+                                    </p>
+                                    <pre class="bg-light p-2 mb-0"><code id="kunciApiBaru">{{ $kunciBaru }}</code></pre>
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="card card-outline card-info">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-plus-circle mr-1"></i> Buat Kunci Baru</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label class="small font-weight-bold">Nama kunci</label>
+                                        <input type="text" wire:model="newKeyName" placeholder="mis. Holding EMC"
+                                               class="form-control {{ $errors->has('newKeyName') ? 'is-invalid' : '' }}">
+                                        @error('newKeyName') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label class="small font-weight-bold">IP holding yang diizinkan <span class="text-muted">(opsional)</span></label>
+                                        <input type="text" wire:model="newKeyIps" placeholder="103.20.10.5, 10.8.0.0/16"
+                                               class="form-control {{ $errors->has('newKeyIps') ? 'is-invalid' : '' }}">
+                                        <small class="text-muted">Kosong = dari mana saja. Dipisah koma; rentang CIDR boleh.</small>
+                                        @error('newKeyIps') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label class="small font-weight-bold">Berlaku sampai <span class="text-muted">(opsional)</span></label>
+                                        <input type="date" wire:model="newKeyExpires"
+                                               class="form-control {{ $errors->has('newKeyExpires') ? 'is-invalid' : '' }}">
+                                        @error('newKeyExpires') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div class="form-group col-md-1 d-flex align-items-end">
+                                        <button wire:click="generateApiKey" class="btn btn-info btn-block" wire:loading.attr="data-loading" wire:target="generateApiKey">
+                                            <i class="fas fa-key"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    Kunci lama tidak langsung dimatikan — saat rotasi, pasang kunci baru di holding lebih dulu,
+                                    baru nonaktifkan yang lama.
+                                </small>
                             </div>
                         </div>
 
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead class="thead-light">
-                                    <tr><th>#</th><th>Nama</th><th>Kunci</th><th>Status</th><th>Dibuat</th><th class="text-center">Aksi</th></tr>
+                                    <tr><th>#</th><th>Nama</th><th>Penanda kunci</th><th>Pembatas</th><th>Status</th><th>Dipakai terakhir</th><th class="text-center">Aksi</th></tr>
                                 </thead>
                                 <tbody>
                                     @forelse($apiKeys as $k)
@@ -443,22 +518,33 @@
                                             <td>{{ $loop->iteration }}</td>
                                             <td><strong>{{ $k->name }}</strong></td>
                                             <td>
-                                                @if($showKeyId === $k->id)
-                                                    <code>{{ $k->key }}</code>
-                                                    <button wire:click="revealKey({{ $k->id }})" class="btn btn-xs btn-light ml-1"><i class="fas fa-eye-slash"></i></button>
-                                                @else
-                                                    <code>bsc_live_****{{ substr($k->key, -4) }}</code>
-                                                    <button wire:click="revealKey({{ $k->id }})" class="btn btn-xs btn-light ml-1"><i class="fas fa-eye"></i> Lihat</button>
+                                                <code>{{ $k->label() }}</code>
+                                                <small class="d-block text-muted">tersimpan sebagai sidik jari</small>
+                                            </td>
+                                            <td>
+                                                @if ($k->allowed_ips)
+                                                    <small class="d-block"><i class="fas fa-location-crosshairs mr-1"></i>{{ $k->allowed_ips }}</small>
+                                                @endif
+                                                @if ($k->expires_at)
+                                                    <small class="d-block {{ $k->isExpired() ? 'text-danger' : 'text-muted' }}">
+                                                        <i class="fas fa-hourglass-half mr-1"></i>s.d. {{ $k->expires_at->format('d M Y') }}
+                                                    </small>
+                                                @endif
+                                                @if (! $k->allowed_ips && ! $k->expires_at)
+                                                    <small class="text-muted">—</small>
                                                 @endif
                                             </td>
                                             <td>
-                                                @if($k->is_active)
+                                                @if($k->isExpired())
+                                                    <span class="badge badge-danger">Kedaluwarsa</span>
+                                                @elseif($k->is_active)
                                                     <span class="badge badge-success">Aktif</span>
                                                 @else
                                                     <span class="badge badge-secondary">Nonaktif</span>
                                                 @endif
+                                                <small class="d-block text-muted">dibuat {{ $k->created_at->format('d M Y') }}</small>
                                             </td>
-                                            <td><small>{{ $k->created_at->format('d M Y H:i') }}</small></td>
+                                            <td><small>{{ $k->last_used_at?->diffForHumans() ?? 'belum pernah' }}</small></td>
                                             <td class="text-center">
                                                 <div class="btn-group btn-group-sm">
                                                     <button wire:click="toggleKey({{ $k->id }})" class="btn btn-outline-warning" title="Toggle"><i class="fas fa-power-off"></i></button>
@@ -467,14 +553,47 @@
                                             </td>
                                         </tr>
                                     @empty
-                                        <tr><td colspan="6" class="text-center text-muted py-3">Belum ada kunci API.</td></tr>
+                                        <tr><td colspan="7" class="text-center text-muted py-3">Belum ada kunci API.</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
 
-                        <div class="callout callout-secondary mt-3">
-                            <small><strong>Endpoint Inbound:</strong> <code>http://127.0.0.1:8000/api/v1/bsc/sync/finance-coa</code> — Header wajib: <code>X-API-Key</code> + <code>Idempotency-Key</code></small>
+                        {{-- Jejak akses: yang ditolak ikut tercatat, jadi percobaan memakai kunci salah terlihat. --}}
+                        <div class="card card-outline card-secondary mt-3">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0"><i class="fas fa-clipboard-list mr-1"></i> Akses API terakhir</h6>
+                            </div>
+                            <div class="card-body p-0 table-responsive">
+                                <table class="table table-sm mb-0">
+                                    <thead class="thead-light">
+                                        <tr><th>Waktu</th><th>Dari IP</th><th>Permintaan</th><th>Kunci</th><th>Hasil</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse ($jejakApi as $j)
+                                            <tr class="{{ $j->diterima() ? '' : 'text-danger' }}">
+                                                <td><small>{{ $j->created_at?->format('d M H:i:s') }}</small></td>
+                                                <td><small>{{ $j->ip ?? '—' }}</small></td>
+                                                <td><small><code>{{ $j->path }}</code></small></td>
+                                                <td><small>{{ $j->prefix ? $j->prefix.'…' : '—' }}</small></td>
+                                                <td>
+                                                    @if ($j->diterima())
+                                                        <span class="badge badge-success">diterima</span>
+                                                    @else
+                                                        <span class="badge badge-danger">{{ $j->result }}</span>
+                                                        <small class="text-muted">({{ $j->status }})</small>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr><td colspan="5" class="text-center text-muted py-3">Belum ada permintaan API.</td></tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card-footer small text-muted">
+                                Kunci tidak pernah ikut tercatat — hanya awalannya, agar dapat dikenali kunci mana yang dipakai.
+                            </div>
                         </div>
 
                     @elseif($activeTab === 'system')

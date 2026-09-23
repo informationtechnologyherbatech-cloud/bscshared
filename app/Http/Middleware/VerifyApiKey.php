@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ApiAccessLog;
 use App\Models\ApiKey;
 use Closure;
 use Illuminate\Http\Request;
@@ -9,8 +10,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Menjaga API entitas: hanya pemanggil yang membawa kunci API aktif milik
- * pemasangan ini yang dilayani. Kunci dibuat di Setting Sistem tab API dan
- * dipasang di .env holding (BSC_SOURCE_<KODE>_KEY).
+ * pemasangan ini yang dilayani.
+ *
+ * Kunci dicocokkan lewat sidik jarinya (sha256) — entitas tidak menyimpan kunci
+ * yang dapat dipakai. Selain keaktifan, diperiksa pula: kunci milik entitas ini,
+ * belum kedaluwarsa, dan IP pemanggil ada di daftar yang diizinkan. Setiap
+ * permintaan — diterima maupun ditolak — dicatat di jejak akses.
  */
 class VerifyApiKey
 {
@@ -19,20 +24,33 @@ class VerifyApiKey
         $kunci = (string) ($request->header('X-API-KEY') ?? $request->bearerToken() ?? '');
 
         if ($kunci === '') {
-            return response()->json(['message' => 'Kunci API tidak disertakan (header X-API-KEY).'], 401);
+            return $this->tolak($request, null, 401, ApiAccessLog::TANPA_KUNCI, 'Kunci API tidak disertakan (header X-API-KEY).');
         }
 
-        $tercatat = ApiKey::where('key', $kunci)->where('is_active', true)->first();
+        $tercatat = ApiKey::where('key_hash', ApiKey::fingerprint($kunci))->first();
 
-        if (! $tercatat) {
-            return response()->json(['message' => 'Kunci API tidak dikenal atau sudah dinonaktifkan.'], 401);
+        if (! $tercatat || ! $tercatat->is_active) {
+            // Awalan kunci ikut dicatat supaya ketahuan kunci mana yang dicoba.
+            return $this->tolak($request, null, 401, ApiAccessLog::KUNCI_SALAH,
+                'Kunci API tidak dikenal atau sudah dinonaktifkan.', substr($kunci, 0, 16));
+        }
+
+        if ($tercatat->isExpired()) {
+            return $this->tolak($request, $tercatat, 401, ApiAccessLog::KADALUWARSA,
+                'Kunci API sudah kedaluwarsa pada '.$tercatat->expires_at->format('d/m/Y').'.');
         }
 
         // Kunci yang menyebut entitas lain ditolak, walau databasenya kebetulan sama.
         $pemasangan = strtoupper((string) config('bsc.default_entity'));
 
         if ($tercatat->entity_code && $pemasangan && $tercatat->entity_code !== $pemasangan) {
-            return response()->json(['message' => 'Kunci API itu milik entitas '.$tercatat->entity_code.', bukan '.$pemasangan.'.'], 403);
+            return $this->tolak($request, $tercatat, 403, ApiAccessLog::ENTITAS_LAIN,
+                'Kunci API itu milik entitas '.$tercatat->entity_code.', bukan '.$pemasangan.'.');
+        }
+
+        if (! $tercatat->allowsIp($request->ip())) {
+            return $this->tolak($request, $tercatat, 403, ApiAccessLog::IP_DITOLAK,
+                'Alamat IP pemanggil tidak ada di daftar yang diizinkan untuk kunci ini.');
         }
 
         // Jejak pemakaian terakhir, paling sering sekali per menit — holding dapat
@@ -41,6 +59,30 @@ class VerifyApiKey
             $tercatat->forceFill(['last_used_at' => now()])->saveQuietly();
         }
 
-        return $next($request);
+        $respons = $next($request);
+        $this->catat($request, $tercatat, $respons->getStatusCode(), ApiAccessLog::DITERIMA, $tercatat->prefix);
+
+        return $respons;
+    }
+
+    private function tolak(Request $request, ?ApiKey $kunci, int $status, string $hasil, string $pesan, ?string $prefix = null): Response
+    {
+        $this->catat($request, $kunci, $status, $hasil, $prefix ?? $kunci?->prefix);
+
+        return response()->json(['message' => $pesan], $status);
+    }
+
+    private function catat(Request $request, ?ApiKey $kunci, int $status, string $hasil, ?string $prefix): void
+    {
+        ApiAccessLog::create([
+            'api_key_id' => $kunci?->id,
+            'prefix' => $prefix,
+            'ip' => $request->ip(),
+            'path' => $request->path(),
+            'status' => $status,
+            'result' => $hasil,
+            'user_agent' => substr((string) $request->userAgent(), 0, 255),
+            'created_at' => now(),
+        ]);
     }
 }

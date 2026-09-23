@@ -23,14 +23,16 @@ class EntityDataSource extends Model
 
     protected $fillable = [
         'entity_id', 'driver', 'api_url', 'api_key', 'database_name',
+        'db_host', 'db_port', 'db_username', 'db_password',
         'last_status', 'last_message', 'last_checked_at', 'updated_by',
     ];
 
     protected function casts(): array
     {
         return [
-            // Kunci API entitas tersimpan terenkripsi, bukan teks polos.
+            // Kunci API & kata sandi database entitas tersimpan terenkripsi.
             'api_key' => 'encrypted',
+            'db_password' => 'encrypted',
             'last_checked_at' => 'datetime',
         ];
     }

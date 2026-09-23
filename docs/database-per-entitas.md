@@ -35,7 +35,65 @@ Hanya **ringkasan** (`EntitySummary`):
 pengguna, atau baris transaksi apa pun. Aplikasi entitas memang tidak punya
 endpoint untuk itu.
 
-## Mengatur sumber data: lewat layar (disarankan)
+## Menghubungkan entitas: pendaftaran mandiri (paling mudah)
+
+Cara ini **tidak memerlukan satu pun ketikan kunci di holding**. Aplikasi entitas
+membuat kuncinya sendiri lalu mengirimkannya ke holding.
+
+```
+HOLDING (EMC)                                    ENTITAS (mis. AEJ)
+Sumber Data Entitas → baris AEJ → [Kode]
+  Alamat  : https://bsc.emc.co.id
+  Kode    : PAIR-7K3M-XQ92   (15 menit, sekali pakai)
+        │
+        └──────── diberikan ke admin entitas ────────▶
+                                       Setting Sistem → tab API
+                                       → Daftarkan ke holding
+                                         (tempel alamat + kode)
+                                                │
+                    POST /api/v1/pairing ◀──────┘
+                    { kode, kode entitas, alamat entitas, kunci }
+        ┌─────────────────────────────────────────────┐
+        │ tersimpan "menunggu", lalu diperiksa balik   │
+        │ saat halaman dibuka / tombol Uji ditekan     │
+        │ (GET /api/v1/ping memakai kunci tsb.)        │
+        └─────────────────────────────────────────────┘
+  Sumber Data Entitas
+    AEJ · API bsc.aej.co.id · ✅ tersambung     (terisi sendiri)
+```
+
+**Langkah ringkas**
+
+1. **Holding:** menu *Sumber Data Entitas* → tombol **Kode** pada baris entitas.
+   Salin alamat holding dan kode yang muncul.
+2. **Entitas:** *Setting Sistem → tab API → Daftarkan ke holding*. Tempel alamat
+   dan kode, tekan **Daftar**.
+3. **Holding:** buka lagi *Sumber Data Entitas*. Baris entitas itu berubah menjadi
+   **Tersambung**, lengkap dengan alamat dan kunci tersamar.
+
+Kunci dibuat di entitas, dikirim sekali, dan tersimpan terenkripsi di holding.
+Tidak ada kunci yang pernah disalin manusia.
+
+**Yang menjaga alur ini**
+
+- kode **sekali pakai**, berlaku 15 menit, dan hanya untuk entitas yang dipilih —
+  kode untuk AEJ tidak bisa mendaftarkan Herbatech (**403**);
+- yang tersimpan di holding hanya sidik jari kodenya, dan kode baru membatalkan
+  kode lama entitas itu;
+- holding **memeriksa balik** ke alamat yang dikirim: alamat yang ternyata
+  melayani entitas lain, atau tidak dapat dihubungi, dibatalkan seluruhnya dan
+  kodenya dikembalikan agar dapat dicoba lagi. Pemeriksaan ini sengaja dijalankan
+  pada permintaan berikutnya (saat halaman *Sumber Data Entitas* dibuka atau
+  tombol **Uji** ditekan), bukan di tengah permintaan pendaftaran: selama
+  pendaftaran masih terbuka, aplikasi entitas sedang sibuk melayaninya dan tidak
+  dapat menjawab panggilan balik — pada server berpekerja tunggal keduanya akan
+  saling menunggu;
+- alamat wajib HTTPS di luar lingkungan pengembangan;
+- endpoint pendaftaran dibatasi 10 permintaan per menit, dan hanya dilayani
+  pemasangan holding (entitas menjawab **409**);
+- pendaftaran yang ditolak tidak meninggalkan kunci menganggur di entitas.
+
+## Mengatur sumber data secara manual: lewat layar
 
 Pada pemasangan holding, buka **Sumber Data Entitas** di sidebar (di bawah
 Konsolidasi Holding). Untuk tiap entitas, pilih caranya lalu isi keterangannya:
@@ -147,14 +205,77 @@ php artisan migrate --seed
 Database holding hanya berisi daftar entitas, penjualan antarentitas
 (eliminasi), pengguna holding, dan pengaturan aplikasi.
 
+## Pengamanan kredensial
+
+Prinsipnya: **entitas cukup dapat memeriksa kredensial, tidak perlu menyimpan
+bentuk yang bisa dipakai.** Yang memegang rahasianya hanya holding.
+
+### Kunci API disimpan sebagai sidik jari
+
+Entitas menyimpan `sha256` kunci dan 16 huruf awalnya sebagai penanda — persis
+seperti kata sandi. Akibatnya:
+
+- kunci utuh ditampilkan **sekali saja** saat dibuat (Setting Sistem → tab API);
+- setelah itu tidak ada cara membacanya lagi, termasuk oleh Super Admin entitas;
+- cadangan (backup) database entitas **tidak lagi berisi kredensial** yang dapat dipakai;
+- pada pemasangan lama yang masih berbagi satu database, admin entitas A tetap
+  tidak dapat mengintip kunci entitas B.
+
+### Pembatas pemakaian kunci
+
+Saat membuat kunci, dapat diisi:
+
+| Pembatas | Contoh | Akibat |
+|---|---|---|
+| Daftar IP holding | `103.20.10.5, 10.8.0.0/16` | kunci yang bocor tidak berguna dari luar jaringan holding (**403**) |
+| Berlaku sampai | `2027-01-31` | kunci mati sendiri pada tanggal itu (**401**) |
+
+**Rotasi kunci:** buat kunci baru (kunci lama sengaja tidak langsung dimatikan),
+pasang di holding lewat *Sumber Data Entitas → Atur*, pastikan **Uji** berhasil,
+lalu nonaktifkan kunci lama.
+
+### Jejak akses
+
+Setiap permintaan API dicatat di entitas — termasuk yang **ditolak** — beserta
+waktu, IP, jalur, awalan kunci, dan hasilnya (`diterima`, `kunci salah`,
+`kadaluwarsa`, `ip ditolak`, `entitas lain`, `tanpa kunci`). Terlihat di
+Setting Sistem → tab API → *Akses API terakhir*. Kunci tidak pernah ikut tercatat.
+
+### Pengguna database baca-saja per entitas
+
+Untuk mode "database terpisah", isi kredensial khusus di *Sumber Data Entitas →
+Atur*: host, port, pengguna, dan kata sandi (disimpan terenkripsi). Dengan begitu
+kredensial holding tidak perlu punya akses ke semua database entitas.
+
+```sql
+-- Dijalankan di server database entitas
+CREATE USER 'bsc_holding_ro'@'10.8.0.4' IDENTIFIED BY '<sandi panjang>';
+GRANT SELECT ON db_bsc_aej.* TO 'bsc_holding_ro'@'10.8.0.4';
+FLUSH PRIVILEGES;
+```
+
+Dikosongkan = memakai kredensial `DB_*` aplikasi holding (perilaku lama).
+
+### Di sisi holding
+
+Kunci API dan kata sandi database entitas disimpan **terenkripsi** dengan
+`APP_KEY` holding. Karena itu:
+
+- jangan pernah memasukkan `.env` holding ke repositori, dan batasi hak bacanya
+  (`chmod 600`);
+- bila `APP_KEY` diganti, semua kredensial tersimpan harus diisi ulang;
+- admin holding memang dapat mengganti kredensial, tetapi **tidak dapat
+  membacanya kembali** dari layar — yang tampil hanya empat huruf terakhir.
+
 ## API entitas
 
 | Endpoint | Keterangan |
 |---|---|
 | `GET /api/v1/consolidation?period=YYYY-MM` | Ringkasan entitas pemasangan itu. Periode kosong = periode aktif. |
 | `GET /api/v1/ping` | Uji sambungan: nama entitas, versi aplikasi, waktu server. Tanpa angka kinerja. |
+| `POST /api/v1/pairing` | **Hanya di pemasangan holding.** Menerima pendaftaran entitas: kode sekali pakai + alamat & kunci entitas. Tanpa kunci API (dijaga kodenya sendiri). |
 
-Keduanya wajib membawa header `X-API-KEY` berisi kunci aktif. Tanpa kunci atau
+Keduanya wajib membawa header `X-API-KEY` berisi kunci aktif (dicocokkan lewat sidik jarinya; entitas tidak menyimpan kunci yang dapat dipakai). Tanpa kunci atau
 dengan kunci nonaktif: **401**. Kunci milik entitas lain: **403** — tiap kunci
 menyebut entitas pemiliknya, jadi kunci entitas A tidak berlaku di pemasangan
 entitas B sekalipun keduanya berbagi satu database. Permintaan ke pemasangan

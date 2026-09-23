@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Livewire\Concerns\AuthorizesWrites;
 use App\Models\Entity;
 use App\Models\EntityDataSource;
+use App\Models\PairingCode;
 use App\Models\Period;
 use App\Support\Bsc\Consolidation;
 use App\Support\Bsc\Sources\EntitySourceFactory;
@@ -37,6 +38,22 @@ class EntitySources extends Component
 
     public string $databaseName = '';
 
+    /** Kredensial baca-saja khusus entitas ini (kosong = kredensial aplikasi ini). */
+    public string $dbHost = '';
+
+    public string $dbPort = '';
+
+    public string $dbUsername = '';
+
+    public string $dbPassword = '';
+
+    public bool $punyaSandiDb = false;
+
+    /** Kode pendaftaran yang baru diterbitkan — ditampilkan sekali. */
+    public ?string $kodePendaftaran = null;
+
+    public ?int $kodeUntuk = null;
+
     /** Kunci lama dipertahankan bila kolomnya dibiarkan kosong. */
     public bool $punyaKunci = false;
 
@@ -68,13 +85,46 @@ class EntitySources extends Component
         $this->databaseName = (string) ($baris?->database_name ?? $env['database'] ?? '');
         $this->punyaKunci = (bool) ($baris?->api_key ?? $env['api_key'] ?? null);
         $this->apiKey = '';
+        $this->dbHost = (string) ($baris?->db_host ?? '');
+        $this->dbPort = (string) ($baris?->db_port ?? '');
+        $this->dbUsername = (string) ($baris?->db_username ?? '');
+        $this->punyaSandiDb = (bool) $baris?->db_password;
+        $this->dbPassword = '';
         $this->resetErrorBag();
+    }
+
+    /**
+     * Terbitkan kode pendaftaran untuk satu entitas. Admin entitas menempelnya di
+     * aplikasinya, lalu aplikasi entitas mengirim alamat & kuncinya sendiri ke sini —
+     * di holding tidak ada kunci yang perlu diketik.
+     */
+    public function issuePairingCode(int $entityId): void
+    {
+        $this->ensureHoldingUser();
+
+        if ($this->lacksPermission('manage consolidation')) {
+            return;
+        }
+
+        $entitas = Entity::findOrFail($entityId);
+        [, $kode] = PairingCode::issue($entitas);
+
+        $this->kodePendaftaran = $kode;
+        $this->kodeUntuk = $entitas->id;
+        session()->flash('message', 'Kode pendaftaran '.$entitas->name.' dibuat; berlaku '.PairingCode::MASA_BERLAKU.' menit.');
+    }
+
+    public function hidePairingCode(): void
+    {
+        $this->kodePendaftaran = null;
+        $this->kodeUntuk = null;
     }
 
     public function cancel(): void
     {
         $this->editingId = null;
         $this->apiKey = '';
+        $this->dbPassword = '';
         $this->resetErrorBag();
     }
 
@@ -93,6 +143,10 @@ class EntitySources extends Component
             'driver' => ['required', Rule::in([EntityDataSource::LOKAL, EntityDataSource::DATABASE, EntityDataSource::API])],
             'apiUrl' => [Rule::requiredIf($this->driver === EntityDataSource::API), 'nullable', 'url', 'max:255'],
             'databaseName' => [Rule::requiredIf($this->driver === EntityDataSource::DATABASE), 'nullable', 'string', 'max:100'],
+            'dbHost' => ['nullable', 'string', 'max:255'],
+            'dbPort' => ['nullable', 'numeric'],
+            'dbUsername' => ['nullable', 'string', 'max:100'],
+            'dbPassword' => ['nullable', 'string', 'max:255'],
             // Kunci hanya wajib saat alamat API pertama kali diisi.
             'apiKey' => [Rule::requiredIf($this->driver === EntityDataSource::API && ! $this->punyaKunci), 'nullable', 'string', 'max:255'],
         ], [], [
@@ -103,11 +157,23 @@ class EntitySources extends Component
             'driver' => $this->driver,
             'api_url' => $this->driver === EntityDataSource::API ? rtrim($this->apiUrl, '/') : null,
             'database_name' => $this->driver === EntityDataSource::DATABASE ? $this->databaseName : null,
+            'db_host' => $this->driver === EntityDataSource::DATABASE ? ($this->dbHost ?: null) : null,
+            'db_port' => $this->driver === EntityDataSource::DATABASE ? ($this->dbPort ?: null) : null,
+            'db_username' => $this->driver === EntityDataSource::DATABASE ? ($this->dbUsername ?: null) : null,
             'updated_by' => auth()->id(),
             'last_status' => null,
             'last_message' => null,
             'last_checked_at' => null,
         ];
+
+        // Kata sandi database: dibiarkan kosong = sandi lama dipakai.
+        if ($this->driver !== EntityDataSource::DATABASE) {
+            $nilai['db_password'] = null;
+        } elseif ($this->dbPassword !== '') {
+            $nilai['db_password'] = $this->dbPassword;
+        } elseif ($lama?->db_password) {
+            $nilai['db_password'] = $lama->db_password;
+        }
 
         if ($this->driver !== EntityDataSource::API) {
             $nilai['api_key'] = null;
@@ -125,6 +191,7 @@ class EntitySources extends Component
 
         $this->editingId = null;
         $this->apiKey = '';
+        $this->dbPassword = '';
         session()->flash('message', 'Sumber data '.$entitas->name.' disimpan.');
     }
 
@@ -145,6 +212,10 @@ class EntitySources extends Component
             'api_url' => $sumber['api_url'],
             'api_key' => $sumber['api_key'],
             'database_name' => $sumber['database'],
+            'db_host' => $sumber['db']['host'] ?? null,
+            'db_port' => $sumber['db']['port'] ?? null,
+            'db_username' => $sumber['db']['username'] ?? null,
+            'db_password' => $sumber['db']['password'] ?? null,
             'last_status' => $status,
             'last_message' => $pesan,
             'last_checked_at' => now(),
@@ -202,6 +273,51 @@ class EntitySources extends Component
         return ['ok', 'memakai database aplikasi ini (lokal).'];
     }
 
+    /**
+     * Selesaikan pendaftaran mandiri: alamat yang benar ditandai tersambung,
+     * yang keliru dibatalkan agar tidak ada sumber palsu yang menetap.
+     */
+    private function verifikasiPendaftaranBaru(): void
+    {
+        $menunggu = EntityDataSource::with('entity')->where('last_status', 'menunggu')->get();
+
+        foreach ($menunggu as $sumber) {
+            if (! $sumber->entity) {
+                continue;
+            }
+
+            [$status, $pesan] = $this->periksa($sumber->entity, [
+                'driver' => $sumber->driver,
+                'api_url' => $sumber->api_url,
+                'api_key' => $sumber->api_key,
+                'database' => $sumber->database_name,
+                'db' => [],
+                'origin' => 'layar',
+            ]);
+
+            if ($status === 'ok') {
+                $sumber->forceFill([
+                    'last_status' => 'ok',
+                    'last_message' => 'didaftarkan sendiri oleh aplikasi entitas; '.$pesan,
+                    'last_checked_at' => now(),
+                ])->save();
+
+                continue;
+            }
+
+            // Alamat keliru/tak terjangkau: pendaftaran dibatalkan, kode dikembalikan.
+            $sumber->delete();
+            PairingCode::where('entity_id', $sumber->entity_id)->whereNotNull('used_at')
+                ->where('expires_at', '>', now())
+                ->update(['used_at' => null, 'used_ip' => null, 'used_url' => null]);
+            session()->flash('error', $sumber->entity->name.': pendaftaran dibatalkan — '.$pesan);
+        }
+
+        if ($menunggu->isNotEmpty()) {
+            app(EntitySourceSettings::class)->forget();
+        }
+    }
+
     private function period(): string
     {
         return Period::active();
@@ -212,10 +328,18 @@ class EntitySources extends Component
         $this->ensureHoldingUser();
         $pengaturan = app(EntitySourceSettings::class);
 
+        $kodeAktif = PairingCode::whereNull('used_at')->where('expires_at', '>', now())->get()->keyBy('entity_id');
+
+        // Entitas yang baru mendaftarkan diri diperiksa di sini — pada permintaan
+        // TERSENDIRI, sehingga aplikasi entitas tidak sedang sibuk melayani
+        // pendaftarannya dan dapat menjawab panggilan balik.
+        $this->verifikasiPendaftaranBaru();
+
         $baris = Entity::active()->get()->map(fn (Entity $e) => [
             'entity' => $e,
             'source' => $pengaturan->for($e),
             'record' => $pengaturan->record($e),
+            'pairing' => $kodeAktif->get($e->id),
         ]);
 
         return view('livewire.entity-sources', [

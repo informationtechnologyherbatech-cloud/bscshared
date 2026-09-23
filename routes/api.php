@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\EntitySummaryController;
+use App\Http\Controllers\Api\PairingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,6 +19,15 @@ use Illuminate\Support\Facades\Route;
 | di luar entitas ini.
 |
 */
+
+/*
+| Pendaftaran entitas ke holding (pairing) — dipanggil APLIKASI ENTITAS, bukan
+| orang, dan dijaga kode sekali pakai berumur pendek, bukan kunci API. Hanya
+| dilayani pemasangan holding.
+*/
+Route::middleware(['throttle:10,1'])
+    ->post('v1/pairing', PairingController::class)
+    ->name('api.pairing');
 
 Route::middleware(['throttle:60,1', 'api.key'])->prefix('v1')->group(function () {
     Route::get('/consolidation', EntitySummaryController::class)->name('api.consolidation');

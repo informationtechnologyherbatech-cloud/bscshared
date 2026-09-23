@@ -22,11 +22,37 @@ use Throwable;
  */
 class DatabaseEntitySource implements EntitySource
 {
+    /** @param  array<string, ?string>  $credentials  kredensial baca-saja khusus entitas ini */
     public function __construct(
         private EntityContext $context,
         private EntitySummaryBuilder $builder,
         private string $database,
+        private array $credentials = [],
     ) {}
+
+    /**
+     * Susunan koneksi ke database entitas: meniru koneksi bawaan, lalu ditimpa
+     * nama database dan — bila diisi — kredensial baca-saja khusus entitas itu,
+     * sehingga satu pengguna MySQL tidak perlu dapat membaca semua entitas.
+     *
+     * @param  array<string, mixed>  $dasar
+     * @return array<string, mixed>
+     */
+    public function connectionConfig(array $dasar): array
+    {
+        $khusus = array_filter([
+            'host' => $this->credentials['host'] ?? null,
+            'port' => $this->credentials['port'] ?? null,
+            'username' => $this->credentials['username'] ?? null,
+            'password' => $this->credentials['password'] ?? null,
+        ], fn ($nilai) => $nilai !== null && $nilai !== '');
+
+        return array_merge($dasar, $khusus, [
+            'database' => $this->database,
+            // Hanya membaca; jangan ikut menjalankan migrasi/antrian di sini.
+            'sticky' => false,
+        ]);
+    }
 
     public function summary(Entity $entitas, string $period): EntitySummary
     {
@@ -34,11 +60,7 @@ class DatabaseEntitySource implements EntitySource
         $bawaan = (string) Config::get('database.default');
         $dasar = Config::get('database.connections.'.$bawaan, []);
 
-        Config::set('database.connections.'.$koneksi, array_merge($dasar, [
-            'database' => $this->database,
-            // Hanya membaca; jangan ikut menjalankan migrasi/antrian di sini.
-            'sticky' => false,
-        ]));
+        Config::set('database.connections.'.$koneksi, $this->connectionConfig($dasar));
         DB::purge($koneksi);
 
         try {

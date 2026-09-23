@@ -28,6 +28,32 @@
                 </div>
             @endif
 
+            @if ($kodePendaftaran)
+                @php($entitasKode = $baris->firstWhere('entity.id', $kodeUntuk)['entity'] ?? null)
+                <div class="card card-outline card-success">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <h6 class="card-title mb-0"><i class="fas fa-link mr-1"></i> Kode pendaftaran {{ $entitasKode?->name }}</h6>
+                        <button wire:click="hidePairingCode" class="btn btn-sm btn-ghost"><i class="fas fa-xmark mr-1"></i> Tutup</button>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            Berikan dua hal ini kepada admin <strong>{{ $entitasKode?->name }}</strong>. Di aplikasi entitas:
+                            <em>Setting Sistem → tab API → Daftarkan ke holding</em>. Aplikasi entitas akan membuat kuncinya sendiri
+                            dan mengirimkannya ke sini — <strong>tidak ada kunci yang perlu diketik di holding</strong>.
+                        </p>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <small class="text-muted d-block">Alamat holding</small>
+                                <pre class="bg-light p-2 mb-0"><code>{{ rtrim(config('app.url'), '/') }}</code></pre>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <small class="text-muted d-block">Kode pendaftaran (berlaku {{ pairing_ttl() }} menit, sekali pakai)</small>
+                                <pre class="bg-light p-2 mb-0"><code id="kodePendaftaran">{{ $kodePendaftaran }}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
             @unless ($strict)
                 <div class="alert alert-info py-2">
                     <i class="fas fa-circle-info mr-1"></i>
@@ -82,6 +108,11 @@
                                         @else
                                             <small class="text-muted">—</small>
                                         @endif
+                                        @if ($b['pairing'])
+                                            <small class="d-block text-info">
+                                                <i class="fas fa-link mr-1"></i>menunggu pendaftaran ({{ $b['pairing']->expires_at->diffForHumans() }})
+                                            </small>
+                                        @endif
                                     </td>
                                     <td>
                                         @if ($r?->last_checked_at)
@@ -101,6 +132,12 @@
                                             <i class="fas fa-plug-circle-check mr-1"></i> Uji
                                         </button>
                                         @if ($canManage)
+                                            <button wire:click="issuePairingCode({{ $e->id }})" class="btn btn-sm btn-ghost" wire:loading.attr="data-loading" wire:target="issuePairingCode({{ $e->id }})"
+                                                    title="Buat kode agar entitas mendaftarkan dirinya sendiri">
+                                                <i class="fas fa-link mr-1"></i> Kode
+                                            </button>
+                                        @endif
+                                        @if ($canManage)
                                             <button wire:click="edit({{ $e->id }})" class="btn btn-sm btn-teal">
                                                 <i class="fas fa-pen-to-square mr-1"></i> Atur
                                             </button>
@@ -112,7 +149,9 @@
                     </table>
                 </div>
                 <div class="card-footer small text-muted">
-                    Kunci API dibuat di aplikasi entitas (Setting Sistem → tab API), lalu ditempel di sini. Kunci disimpan
+                    <strong>Cara termudah:</strong> tekan <em>Kode</em> pada baris entitas, lalu berikan kode itu ke admin entitas —
+                    aplikasi entitas mendaftarkan dirinya sendiri dan kuncinya terisi otomatis di sini.
+                    Cara manual: kunci dibuat di aplikasi entitas (Setting Sistem → tab API), lalu ditempel lewat tombol <em>Atur</em>. Kunci disimpan
                     terenkripsi dan tidak pernah ditampilkan utuh lagi. Nilai pada berkas <code>.env</code> tetap dipakai untuk
                     entitas yang belum diatur di layar ini.
                 </div>
@@ -165,8 +204,36 @@
                                 <label class="font-weight-bold">Nama database entitas</label>
                                 <input type="text" wire:model="databaseName" placeholder="db_bsc_aej"
                                        class="form-control {{ $errors->has('databaseName') ? 'is-invalid' : '' }}">
-                                <small class="text-muted">Dibuka memakai kredensial <code>DB_*</code> aplikasi ini, hanya untuk dibaca.</small>
                                 @error('databaseName') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                            </div>
+
+                            <p class="small text-muted mb-2">
+                                <i class="fas fa-shield-halved mr-1"></i>
+                                Sebaiknya entitas ini diberi pengguna MySQL <strong>khusus yang hanya boleh membaca</strong>, agar
+                                kredensial holding tidak membuka seluruh entitas. Dikosongkan = memakai kredensial <code>DB_*</code> aplikasi ini.
+                            </p>
+                            <div class="form-row">
+                                <div class="form-group col-md-7">
+                                    <label class="small font-weight-bold">Host</label>
+                                    <input type="text" wire:model="dbHost" placeholder="127.0.0.1" class="form-control {{ $errors->has('dbHost') ? 'is-invalid' : '' }}">
+                                    @error('dbHost') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="form-group col-md-5">
+                                    <label class="small font-weight-bold">Port</label>
+                                    <input type="text" wire:model="dbPort" placeholder="3306" class="form-control {{ $errors->has('dbPort') ? 'is-invalid' : '' }}">
+                                    @error('dbPort') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label class="small font-weight-bold">Pengguna (hanya baca)</label>
+                                    <input type="text" wire:model="dbUsername" placeholder="bsc_holding_ro" class="form-control {{ $errors->has('dbUsername') ? 'is-invalid' : '' }}">
+                                    @error('dbUsername') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label class="small font-weight-bold">Kata sandi {{ $punyaSandiDb ? '(biarkan kosong bila tidak diganti)' : '' }}</label>
+                                    <input type="password" wire:model="dbPassword" autocomplete="new-password" class="form-control {{ $errors->has('dbPassword') ? 'is-invalid' : '' }}">
+                                    <small class="text-muted">Disimpan terenkripsi.</small>
+                                    @error('dbPassword') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                                </div>
                             </div>
                         @else
                             <p class="text-muted mb-0">

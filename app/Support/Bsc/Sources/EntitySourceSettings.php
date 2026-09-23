@@ -28,7 +28,7 @@ class EntitySourceSettings
     private array $memo = [];
 
     /**
-     * @return array{driver: string, api_url: ?string, api_key: ?string, database: ?string, origin: string}
+     * @return array{driver: string, api_url: ?string, api_key: ?string, database: ?string, db: array<string, ?string>, origin: string}
      */
     public function for(Entity $entitas): array
     {
@@ -78,6 +78,13 @@ class EntitySourceSettings
                 'api_url' => $baris->api_url,
                 'api_key' => $baris->api_key,
                 'database' => $baris->database_name,
+                // Kredensial baca-saja khusus entitas ini; kosong = kredensial aplikasi ini.
+                'db' => [
+                    'host' => $baris->db_host,
+                    'port' => $baris->db_port,
+                    'username' => $baris->db_username,
+                    'password' => $baris->db_password,
+                ],
                 'origin' => 'layar',
             ];
         }
@@ -93,6 +100,7 @@ class EntitySourceSettings
             'api_url' => $env['api_url'] ?? null,
             'api_key' => $env['api_key'] ?? null,
             'database' => $env['database'] ?? null,
+            'db' => ['host' => null, 'port' => null, 'username' => null, 'password' => null],
             'origin' => empty($env['api_url']) && empty($env['database']) ? 'tidak diatur' : '.env',
         ];
     }

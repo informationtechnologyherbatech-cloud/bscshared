@@ -29,7 +29,7 @@ class EntitySourceFactory
         }
 
         if ($sumber['driver'] === EntityDataSource::DATABASE && ! empty($sumber['database'])) {
-            return new DatabaseEntitySource($this->context, $this->builder, (string) $sumber['database']);
+            return new DatabaseEntitySource($this->context, $this->builder, (string) $sumber['database'], (array) ($sumber['db'] ?? []));
         }
 
         // Pemasangan holding yang ketat menolak membaca databasenya sendiri ketika

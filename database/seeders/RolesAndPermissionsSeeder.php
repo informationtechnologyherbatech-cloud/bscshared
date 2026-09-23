@@ -2,19 +2,18 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
-use App\Models\User;
 use App\Models\AppSetting;
-use App\Models\ApiKey;
-use Illuminate\Support\Str;
+use App\Models\User;
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         // 13 Menu + granular per PRD §4 & §5 (Tabel 4: 6 peran x 13 menu)
         // Menu mapping: 1 Piramida, 2 Rasio, 3 Objective, 4 Wiring, 5 Dampak/What-If, 6 Simulasi CoA,
@@ -67,46 +66,46 @@ class RolesAndPermissionsSeeder extends Seeder
             'Super Admin' => $permissions,
             // 12/13 — semua kecuali Super Admin (FR-13 Admin). Kelola CoA, rasio, kaskade, stress-test
             'Admin FAT' => [
-                'view dashboard','view ratios','manage ratios',
-                'view objectives','manage objectives','can_write_kpi','can_override',
-                'view wiring','view dampak','can_simulate','view coa','manage coa',
-                'view actionplans','manage actionplans',
-                'view ibp','view sensitivity','view skenario','manage skenario',
+                'view dashboard', 'view ratios', 'manage ratios',
+                'view objectives', 'manage objectives', 'can_write_kpi', 'can_override',
+                'view wiring', 'view dampak', 'can_simulate', 'view coa', 'manage coa',
+                'view actionplans', 'manage actionplans',
+                'view ibp', 'view sensitivity', 'view skenario', 'manage skenario',
                 'view dokumentasi',
-                'view integration','view staging','view gateway','manage integration','manage apikey',
+                'view integration', 'view staging', 'view gateway', 'manage integration', 'manage apikey',
                 'manage revenue',
-                'view consolidation','manage consolidation',
+                'view consolidation', 'manage consolidation',
             ],
             // 9/13 — Kelola Sasaran Mutu, pantau capaian, tindak lanjut program kerja (HRIS & Mutu)
             'Admin HRIS' => [
                 'view dashboard',
-                'view objectives','manage objectives','can_write_kpi',
+                'view objectives', 'manage objectives', 'can_write_kpi',
                 'view wiring',
-                'view actionplans','manage actionplans',
-                'view staging','view gateway','view integration','manage integration',
+                'view actionplans', 'manage actionplans',
+                'view staging', 'view gateway', 'view integration', 'manage integration',
                 'manage units',
-                'view dokumentasi','view ibp',
+                'view dokumentasi', 'view ibp',
             ],
             // 8/13 — Pantau skor unitnya, input realisasi KPI timnya, uji dampak
             'Kepala Departemen' => [
-                'view dashboard','view ratios',
-                'view objectives','manage objectives','can_write_kpi',
-                'view wiring','view dampak','can_simulate',
-                'view actionplans','manage actionplans',
-                'view gateway','view staging',
+                'view dashboard', 'view ratios',
+                'view objectives', 'manage objectives', 'can_write_kpi',
+                'view wiring', 'view dampak', 'can_simulate',
+                'view actionplans', 'manage actionplans',
+                'view gateway', 'view staging',
                 'view dokumentasi',
             ],
             // 4/13 — Input realisasi KPI, perbarui status program kerja (staf harian)
             'Operator' => [
                 'view dashboard',
-                'view objectives','manage objectives','can_write_kpi',
-                'view actionplans','manage actionplans',
+                'view objectives', 'manage objectives', 'can_write_kpi',
+                'view actionplans', 'manage actionplans',
                 'view wiring',
             ],
             // 7/13 baca-saja — Memantau skor dan tren tanpa risiko mengubah data
             'Viewer' => [
-                'view dashboard','view ratios','view objectives','view wiring',
-                'view staging','view gateway','view dokumentasi',
+                'view dashboard', 'view ratios', 'view objectives', 'view wiring',
+                'view staging', 'view gateway', 'view dokumentasi',
             ],
         ];
 
@@ -130,13 +129,13 @@ class RolesAndPermissionsSeeder extends Seeder
                 'must_change_password' => ! env('SUPERADMIN_PASSWORD') && ! app()->environment(['local', 'testing']),
             ]
         );
-        if (!$superAdmin->hasRole('Super Admin')) {
+        if (! $superAdmin->hasRole('Super Admin')) {
             $superAdmin->assignRole('Super Admin');
         }
 
         // Keep test@example.com as Viewer for testing
         $testUser = User::where('email', 'test@example.com')->first();
-        if ($testUser && !$testUser->hasAnyRole(Role::all()->pluck('name')->toArray())) {
+        if ($testUser && ! $testUser->hasAnyRole(Role::all()->pluck('name')->toArray())) {
             $testUser->assignRole('Viewer');
         }
 
@@ -150,14 +149,8 @@ class RolesAndPermissionsSeeder extends Seeder
         }
         AppSetting::flushCache();
 
-        // Default API Key if none
-        if (ApiKey::count() === 0) {
-            ApiKey::create([
-                'name' => 'Gateway Default',
-                'key' => 'bsc_live_' . Str::random(24),
-                'is_active' => true,
-                'created_by' => $superAdmin->id,
-            ]);
-        }
+        // Kunci API TIDAK dibuat otomatis: kunci hanya dapat dibaca sekali saat
+        // dibuat, jadi kunci bawaan yang tak pernah terlihat hanya menambah
+        // kredensial menganggur. Buat lewat Setting Sistem → tab API.
     }
 }
