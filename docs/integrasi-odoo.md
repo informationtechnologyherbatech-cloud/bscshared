@@ -30,6 +30,63 @@ ringkasan entitas lewat `GET /api/v1/consolidation` seperti biasa (lihat
 [Database per Entitas](database-per-entitas.md)). Jadi jalur integrasi ini
 berhenti di batas entitas.
 
+## Yang perlu disiapkan DI ODOO
+
+Tidak ada modul yang perlu dipasang, tidak ada webhook yang perlu dibuat, dan
+tidak ada hak tulis yang perlu diberikan. Yang dibutuhkan hanya empat hal.
+
+**1. Satu pengguna khusus untuk integrasi.**
+*Settings → Users & Companies → Users → New*. Beri nama yang jelas, misalnya
+`integrasi.bsc@entitas.co.id`, bertipe **Internal User**. Jangan memakai akun
+pribadi seseorang: kalau orangnya keluar dan akunnya dinonaktifkan, tarikan ikut
+mati.
+
+**2. Hak akses secukupnya — hanya MEMBACA akuntansi.**
+Pada tab *Access Rights* pengguna itu, beri akses Akuntansi pada tingkat baca
+(di Odoo 16+ namanya *Read-only*; pada versi lain *Billing* adalah pilihan
+terendah yang masih bisa membaca jurnal). Aplikasi ini hanya memanggil
+`search_read` dan `read_group` — tidak pernah menulis, jadi hak tulis tidak
+diperlukan dan sebaiknya tidak diberikan.
+
+**3. Kunci API untuk pengguna itu.**
+Masuk ke Odoo **sebagai pengguna tersebut**, lalu *(ikon pengguna) → My Profile
+→ Account Security → New API Key*. Odoo akan meminta kata sandi pengguna itu,
+lalu menampilkan kuncinya **sekali saja** — salin saat itu juga. Kunci inilah
+yang ditempel di layar Integrasi & Gateway, bukan kata sandinya.
+Pada Odoo di bawah versi 14 fitur kunci API belum ada; pakai kata sandi pengguna
+integrasi tersebut.
+
+**4. Catat tiga keterangan ini:**
+
+| Yang diisi di BSC | Dari mana di Odoo |
+|---|---|
+| **Alamat Odoo** | URL tempat Odoo dibuka, mis. `https://erp.entitas.co.id`. Untuk Odoo Online: `https://namaperusahaan.odoo.com`. |
+| **Nama database** | Terlihat di halaman login Odoo (pemilih database), atau di *Settings → Technical → Database Structure*. Untuk Odoo Online biasanya sama dengan subdomainnya. |
+| **Perusahaan** | Bila database itu memuat lebih dari satu perusahaan, pilih yang menjadi entitas ini. BSC akan menolak menarik sampai dipilih — lihat di bawah. |
+
+### Yang perlu dipastikan pada datanya
+
+- **Jurnal sudah diposting.** Hanya entri berstatus *Posted* yang dihitung; draf
+  diabaikan. Jadi tarikan sebaiknya dijalankan setelah tutup buku bulanan.
+- **Akun punya kode.** Pemetaan bekerja atas kode akun (`code` pada
+  *Accounting → Configuration → Chart of Accounts*). Akun tanpa kode dilewati.
+- **Saldo awal tahun sudah dibukukan** bila ingin rasio memakai rata-rata saldo
+  (pos neraca). Kalau belum, rasio memakai saldo akhir saja — tetap jalan,
+  hanya kurang halus.
+- **Jaringan.** Server BSC harus dapat menghubungi alamat Odoo itu lewat HTTPS.
+  Kalau Odoo berada di jaringan dalam, buka jalannya atau tempatkan BSC di
+  jaringan yang sama.
+
+### Satu database, beberapa perusahaan
+
+Pada grup seperti EMC, satu Odoo sering memuat beberapa perusahaan. Kalau
+perusahaannya tidak dipilih, saldo **semua** perusahaan akan terjumlah menjadi
+satu — angkanya salah tanpa satu pun pesan galat. Karena itu BSC memeriksa
+sendiri: begitu database ternyata memuat lebih dari satu perusahaan dan belum
+ada yang dipilih, tarikan **ditolak** dengan pesan yang menyebutkan nama-nama
+perusahaannya. Pemeriksaan ini juga berlaku pada tarikan terjadwal, yang tidak
+ada orang menungguinya.
+
 ## Menyiapkannya
 
 Menu **Integrasi & Audit → Integrasi & Gateway**, bagian *Hop 1* (butuh izin
@@ -148,6 +205,23 @@ Penjadwal (`php artisan schedule:work` atau cron) menjalankannya tiap hari pukul
 04.30 dengan `withoutOverlapping()`. Pada konsol tidak ada pengguna yang login,
 jadi perintah ini memasang sendiri konteks entitas pemilik tiap sambungan —
 tanpa itu barisnya akan tertulis tanpa tuan.
+
+## Sejauh mana ini sudah teruji
+
+Alur penuhnya sudah dijalankan dari peramban melawan server Odoo tiruan yang
+bicara JSON-RPC sungguhan lewat HTTP: masuk → daftar perusahaan → bagan akun →
+tarik tiga rentang tanggal → pos akun terisi → rasio terhitung. Yang terbukti
+benar di situ: nilai YTD untuk pos aliran, saldo akhir + saldo awal tahun untuk
+pos neraca, realisasi revenue bulan berjalan saja, jurnal draf tidak ikut,
+perusahaan lain tidak ikut, dan kode akun diambil dari bagan akun (bukan
+dipotong dari nama tampilan, yang susunannya berbeda antarversi Odoo).
+
+Yang **belum** dapat dibuktikan di sini: perilaku terhadap **server Odoo
+sungguhan**. Kontrak JSON-RPC yang dipakai adalah yang didokumentasikan Odoo
+(`common.authenticate`, lalu `object.execute_kw`), dengan cadangan ke
+`common.login` untuk versi lama. Uji pertama pada Odoo asli sebaiknya dilakukan
+pada database salinan, lalu bandingkan angka PA01–PA03 dengan laporan Laba Rugi
+Odoo untuk periode yang sama.
 
 ## Yang belum dibangun
 

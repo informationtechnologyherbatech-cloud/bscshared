@@ -11,6 +11,7 @@ use App\Support\Bsc\AccountPosts;
 use App\Support\Bsc\RatioEngine;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Satu-satunya jalan masuk data keuangan dari luar ke Pos Akun.
@@ -47,7 +48,7 @@ class AccountIntake
         }
 
         if (Period::where('period', $period)->first()?->isClosed()) {
-            return new IntakeResult(IntakeResult::DITOLAK, $period,
+            return $this->tolak($period, $sumber, $opsi,
                 'Periode '.$period.' sudah ditutup; datanya tidak diubah.');
         }
 
@@ -61,9 +62,9 @@ class AccountIntake
         [$pos, $saldoAwal, $belumDipetakan, $bermasalah] = $this->terjemahkan($rows);
 
         if ($pos === []) {
-            return new IntakeResult(IntakeResult::DITOLAK, $period,
+            return $this->tolak($period, $sumber, $opsi,
                 'Tidak ada satu pun kode akun yang dikenali. Lengkapi Pemetaan Akun lebih dulu.',
-                unmapped: $belumDipetakan, problems: $bermasalah);
+                $belumDipetakan, $bermasalah);
         }
 
         $revenue = isset($opsi['revenue']) && is_numeric($opsi['revenue']) ? (float) $opsi['revenue'] : null;
@@ -121,6 +122,34 @@ class AccountIntake
             posts: $pos, unmapped: $belumDipetakan, problems: $bermasalah,
             revenue: $revenue, ratios: $jumlahRasio,
         );
+    }
+
+    /**
+     * Tolak sebuah kiriman — DAN catat penolakannya di jejak audit.
+     *
+     * Jejak yang hanya memuat keberhasilan tidak menjawab pertanyaan yang paling
+     * sering diajukan saat angka tidak muncul: "kirimannya sampai atau tidak?".
+     * Penandanya diberi akhiran sendiri supaya kiriman ulang dengan penanda yang
+     * sama nanti tetap dapat diterima.
+     *
+     * @param  array{source?: string, dept_code?: string, idempotency_key?: string}  $opsi
+     * @param  array<int, string>  $belumDipetakan
+     * @param  array<int, string>  $bermasalah
+     */
+    private function tolak(string $period, string $sumber, array $opsi, string $pesan,
+        array $belumDipetakan = [], array $bermasalah = []): IntakeResult
+    {
+        StagingLog::create([
+            'period' => $period,
+            'dept_code' => strtoupper($opsi['dept_code'] ?? 'FIN'),
+            'idempotency_key' => mb_substr(($opsi['idempotency_key'] ?? 'IDEMP').'-TOLAK-'.Str::random(6), 0, 120),
+            'status' => 'ERROR',
+            'source_version' => 1,
+            'message' => $sumber.' ditolak: '.$pesan,
+        ]);
+
+        return new IntakeResult(IntakeResult::DITOLAK, $period, $pesan,
+            unmapped: $belumDipetakan, problems: $bermasalah);
     }
 
     /**

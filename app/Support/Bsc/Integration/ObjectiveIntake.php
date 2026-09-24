@@ -9,6 +9,7 @@ use App\Support\Bsc\MonitoringSync;
 use App\Support\Bsc\RatioLibrary;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Jalan masuk realisasi KPI (sasaran mutu) dari luar — unggahan berkas maupun
@@ -35,8 +36,7 @@ class ObjectiveIntake
         }
 
         if (Period::where('period', $period)->first()?->isClosed()) {
-            return new IntakeResult(IntakeResult::DITOLAK, $period,
-                'Periode '.$period.' sudah ditutup; realisasinya tidak diubah.');
+            return $this->tolak($period, $sumber, $opsi, 'Periode '.$period.' sudah ditutup; realisasinya tidak diubah.');
         }
 
         if (StagingLog::where('idempotency_key', $kunci)->exists()) {
@@ -88,8 +88,8 @@ class ObjectiveIntake
         }
 
         if ($terisi === []) {
-            return new IntakeResult(IntakeResult::DITOLAK, $period,
-                'Tidak ada satu pun KPI yang cocok dengan periode '.$period.'.', problems: $bermasalah);
+            return $this->tolak($period, $sumber, $opsi,
+                'Tidak ada satu pun KPI yang cocok dengan periode '.$period.'.', $bermasalah);
         }
 
         $pesan = $sumber.': '.count($terisi).' realisasi KPI diperbarui ('
@@ -112,5 +112,28 @@ class ObjectiveIntake
         }
 
         return new IntakeResult(IntakeResult::DITERIMA, $period, $pesan, problems: $bermasalah);
+    }
+
+    /**
+     * Tolak kiriman — dan catat penolakannya, sama seperti pemasukan pos akun.
+     * Jejak audit yang hanya memuat keberhasilan tidak menjawab "kirimannya
+     * sampai atau tidak?".
+     *
+     * @param  array{source?: string, idempotency_key?: string}  $opsi
+     * @param  array<int, string>  $bermasalah
+     */
+    private function tolak(string $period, string $sumber, array $opsi, string $pesan, array $bermasalah = []): IntakeResult
+    {
+        StagingLog::create([
+            'period' => $period,
+            'dept_code' => 'BATCH',
+            'idempotency_key' => mb_substr(($opsi['idempotency_key'] ?? 'IDEMP-KPI').'-TOLAK-'.Str::random(6), 0, 120),
+            'status' => 'ERROR',
+            'source_version' => 1,
+            'message' => $sumber.' ditolak: '.$pesan
+                .($bermasalah !== [] ? ' ('.implode('; ', array_slice($bermasalah, 0, 3)).')' : ''),
+        ]);
+
+        return new IntakeResult(IntakeResult::DITOLAK, $period, $pesan, problems: $bermasalah);
     }
 }

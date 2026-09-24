@@ -34,8 +34,13 @@
                 {{-- ─────────────── Sambungan ─────────────── --}}
                 <div class="col-lg-5">
                     <div class="card card-teal card-outline">
-                        <div class="card-header">
-                            <h3 class="card-title font-weight-bold"><i class="fas fa-link mr-1"></i> Sambungan Odoo</h3>
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-link mr-1"></i> Sambungan Odoo</h3>
+                            <button type="button" wire:click="bukaPanduan" class="btn btn-xs btn-ghost"
+                                    title="Apa yang perlu disiapkan di Odoo?">
+                                <i class="fas fa-circle-question"></i>
+                                <span class="d-none d-sm-inline ml-1">Panduan Odoo</span>
+                            </button>
                         </div>
                         <div class="card-body">
                             <form wire:submit.prevent="saveConnection">
@@ -49,6 +54,27 @@
                                     <input type="text" wire:model="databaseName" class="form-control" placeholder="erp_produksi">
                                     @error('databaseName') <small class="text-danger">{{ $message }}</small> @enderror
                                 </div>
+                                @if ($daftarPerusahaan || $sambungan?->company_id)
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Perusahaan di Odoo</label>
+                                        <select wire:model="companyId" id="odooCompany" class="form-control">
+                                            <option value="">Semua (database berisi satu perusahaan)</option>
+                                            @foreach ($daftarPerusahaan as $perusahaan)
+                                                <option value="{{ $perusahaan['id'] }}">{{ $perusahaan['name'] }}</option>
+                                            @endforeach
+                                            @if ($sambungan?->company_id && ! collect($daftarPerusahaan)->contains('id', $sambungan->company_id))
+                                                <option value="{{ $sambungan->company_id }}">
+                                                    {{ $sambungan->company_name ?? 'Perusahaan #'.$sambungan->company_id }}
+                                                </option>
+                                            @endif
+                                        </select>
+                                        <small class="text-muted">
+                                            Satu database Odoo boleh memuat beberapa perusahaan. Kalau tidak dipilih,
+                                            saldo semuanya akan terjumlah menjadi satu.
+                                        </small>
+                                    </div>
+                                @endif
+
                                 <div class="form-group">
                                     <label class="font-weight-bold">Pengguna Odoo</label>
                                     <input type="text" wire:model="username" class="form-control" placeholder="integrasi.bsc@entitas.co.id">
@@ -115,7 +141,7 @@
                             </p>
                             <div class="form-group">
                                 <label class="font-weight-bold">Periode</label>
-                                <input type="month" wire:model="period" class="form-control" style="max-width:200px">
+                                <input type="month" wire:model="period" id="odooPeriod" class="form-control" style="max-width:200px">
                                 @error('period') <small class="text-danger d-block">{{ $message }}</small> @enderror
                             </div>
                             @if ($canManage)
@@ -252,6 +278,100 @@
         </div>
     </section>
 
+    {{-- ─────────────── Panduan sisi Odoo ─────────────── --}}
+    @if ($showPanduan)
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-hd">
+                        <span class="modal-hd-icon"><i class="fas fa-circle-question"></i></span>
+                        <div>
+                            <h5 class="modal-title">Yang perlu disiapkan di Odoo</h5>
+                            <small>Tidak ada modul yang dipasang, tidak ada webhook, dan tidak perlu hak tulis</small>
+                        </div>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">
+                            Aplikasi ini <strong>menarik</strong> angka dari Odoo, bukan menunggu dikirimi. Karena itu yang
+                            dibutuhkan di Odoo hanya satu pengguna yang boleh <strong>membaca</strong> jurnal.
+                        </p>
+
+                        <ol class="pl-3 mb-3">
+                            <li class="mb-2">
+                                <strong>Buat pengguna khusus untuk integrasi.</strong><br>
+                                <span class="text-muted">Settings → Users &amp; Companies → Users → New</span>, bertipe
+                                <em>Internal User</em>, misalnya <code>integrasi.bsc@entitas.co.id</code>.
+                                Jangan memakai akun pribadi seseorang: bila orangnya keluar dan akunnya dinonaktifkan,
+                                tarikan ikut mati.
+                            </li>
+                            <li class="mb-2">
+                                <strong>Beri hak baca akuntansi saja.</strong><br>
+                                Pada tab <em>Access Rights</em>, beri akses Akuntansi tingkat baca — di Odoo 16+ namanya
+                                <em>Read-only</em>; pada versi lain <em>Billing</em> adalah yang terendah dan masih bisa
+                                membaca jurnal. Aplikasi ini hanya memanggil <code>search_read</code> dan
+                                <code>read_group</code>, tidak pernah menulis.
+                            </li>
+                            <li class="mb-2">
+                                <strong>Buat kunci API untuk pengguna itu.</strong><br>
+                                Masuk ke Odoo <strong>sebagai pengguna tersebut</strong>, lalu
+                                <span class="text-muted">(ikon pengguna) → My Profile → Account Security → New API Key</span>.
+                                Odoo meminta kata sandi pengguna itu, lalu menampilkan kuncinya <strong>sekali saja</strong> —
+                                salin saat itu juga dan tempel di kolom <em>Kunci API</em> di sebelah kiri.
+                                <br><small class="text-muted">Odoo di bawah versi 14 belum punya kunci API; pakai kata sandi pengguna integrasi tersebut.</small>
+                            </li>
+                            <li>
+                                <strong>Catat tiga keterangan ini.</strong>
+                                <table class="table table-sm mt-2 mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <td style="width:150px"><strong>Alamat Odoo</strong></td>
+                                            <td>URL tempat Odoo dibuka, mis. <code>https://erp.entitas.co.id</code>.
+                                                Untuk Odoo Online: <code>https://namaperusahaan.odoo.com</code>.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Nama database</strong></td>
+                                            <td>Terlihat pada pemilih database di halaman login Odoo. Untuk Odoo Online
+                                                biasanya sama dengan subdomainnya.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Perusahaan</strong></td>
+                                            <td>Hanya bila database itu memuat lebih dari satu perusahaan — pilih yang
+                                                menjadi entitas ini.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </li>
+                        </ol>
+
+                        <h6 class="font-weight-bold"><i class="fas fa-list-check mr-1 text-teal"></i> Pastikan pada datanya</h6>
+                        <ul class="pl-3">
+                            <li><strong>Jurnal sudah diposting.</strong> Hanya entri berstatus <em>Posted</em> yang dihitung;
+                                draf diabaikan. Jalankan tarikan setelah tutup buku bulanan.</li>
+                            <li><strong>Akun punya kode.</strong> Pemetaan bekerja atas kolom <em>code</em> di
+                                <span class="text-muted">Accounting → Configuration → Chart of Accounts</span>. Akun tanpa kode dilewati.</li>
+                            <li><strong>Saldo awal tahun sudah dibukukan</strong> bila ingin rasio memakai rata-rata saldo
+                                untuk pos neraca. Kalau belum, rasio memakai saldo akhir saja — tetap jalan, hanya kurang halus.</li>
+                            <li><strong>Jaringan.</strong> Server aplikasi ini harus dapat menghubungi alamat Odoo lewat HTTPS.</li>
+                        </ul>
+
+                        <div class="alert alert-warning py-2 small mb-0">
+                            <i class="fas fa-triangle-exclamation mr-1"></i>
+                            <strong>Satu database, beberapa perusahaan.</strong> Bila perusahaannya tidak dipilih, saldo
+                            <em>semua</em> perusahaan akan terjumlah menjadi satu — angkanya salah tanpa pesan galat apa pun.
+                            Karena itu tarikan ditolak sampai perusahaannya dipilih, termasuk pada tarikan terjadwal.
+                        </div>
+                    </div>
+                    <div class="modal-ft">
+                        <button type="button" wire:click="tutupPanduan" class="btn btn-teal btn-sm">
+                            <i class="fas fa-check mr-1"></i> Mengerti
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    @endif
+
     {{-- ─────────────── Formulir pemetaan ─────────────── --}}
     @if ($showMapping)
         <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
@@ -268,7 +388,7 @@
                         <div class="modal-body">
                             <div class="form-group">
                                 <label class="font-weight-bold">Kode akun di Odoo</label>
-                                <input type="text" wire:model="sourceCode" class="form-control" placeholder="4-10001">
+                                <input type="text" wire:model="sourceCode" id="mapSourceCode" class="form-control" placeholder="4-10001">
                                 @error('sourceCode') <small class="text-danger">{{ $message }}</small> @enderror
                             </div>
                             <div class="form-group">
@@ -277,7 +397,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="font-weight-bold">Pos akun BSC</label>
-                                <select wire:model.live="postCode" class="form-control">
+                                <select wire:model.live="postCode" id="mapPostCode" class="form-control">
                                     @foreach ($katalogPos as $kode => $pos)
                                         <option value="{{ $kode }}">{{ $kode }} - {{ $pos['name'] }}</option>
                                     @endforeach

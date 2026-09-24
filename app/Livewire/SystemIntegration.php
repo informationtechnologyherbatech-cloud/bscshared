@@ -55,14 +55,14 @@ class SystemIntegration extends Component
     // dipatok di sini: angka contoh yang dipatok membuat layar tampak berisi
     // padahal entitasnya belum punya data sama sekali.
     public $financePeriod = '';
-    public $salesPayload = 0;      // 4101 - Penjualan Produk
-    public $hppPayload = 0;        // 5101 - HPP
-    public $opexPayload = 0;       // 6101 - Beban Operasional
-    public $kasPayload = 0;        // 1101 - Kas & Bank
-    public $piutangPayload = 0;    // 1201 - Piutang
-    public $persediaanPayload = 0; // 1301 - Persediaan
-    public $hutangPayload = 0;     // 2101 - Hutang Usaha
-    public $modalPayload = 0;      // 3101 - Modal / Ekuitas
+    public $salesPayload = null;      // 4101 - Penjualan Produk
+    public $hppPayload = null;        // 5101 - HPP
+    public $opexPayload = null;       // 6101 - Beban Operasional
+    public $kasPayload = null;        // 1101 - Kas & Bank
+    public $piutangPayload = null;    // 1201 - Piutang
+    public $persediaanPayload = null; // 1301 - Persediaan
+    public $hutangPayload = null;     // 2101 - Hutang Usaha
+    public $modalPayload = null;      // 3101 - Modal / Ekuitas
 
     public function mount()
     {
@@ -97,8 +97,10 @@ class SystemIntegration extends Component
     /** Isian formulir mengikuti pos akun yang tersimpan untuk periode itu. */
     private function isiDariPosAkun(): void
     {
+        // Pos yang belum punya angka dibiarkan KOSONG, bukan diisi 0: menekan
+        // simpan tidak boleh diam-diam mengubah "belum ada data" menjadi "nol".
         foreach ($this->saldoBerjalan($this->financePeriod) as $kolom => $nilai) {
-            $this->{$kolom} = $nilai ?? 0;
+            $this->{$kolom} = $nilai;
         }
     }
 
@@ -187,7 +189,10 @@ class SystemIntegration extends Component
 
         $aturan = ['financePeriod' => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/']];
         foreach (array_keys(self::COA_KE_POS) as $kolom) {
-            $aturan[$kolom] = ['required', 'numeric'];
+            // Boleh dikosongkan: pos yang memang belum punya angka tidak perlu
+            // dipaksa diisi 0. Nol itu DATA — rasio akan menghitungnya sebagai
+            // nilai sungguhan, sedangkan kosong berarti belum ada datanya.
+            $aturan[$kolom] = ['nullable', 'numeric'];
         }
         $this->validate($aturan, ['financePeriod.regex' => 'Periode harus YYYY-MM.'], ['financePeriod' => 'periode']);
 
@@ -197,16 +202,29 @@ class SystemIntegration extends Component
             return;
         }
 
-        DB::transaction(function () {
+        $ditulis = [];
+
+        DB::transaction(function () use (&$ditulis) {
             foreach (self::COA_KE_POS as $kolom => $pos) {
+                if (! is_numeric($this->{$kolom})) {
+                    continue;   // dibiarkan kosong = jangan disentuh
+                }
+
                 AccountBalance::updateOrCreate(
                     ['period' => $this->financePeriod, 'code' => $pos],
                     ['amount' => (float) $this->{$kolom} * 1_000_000]
                 );
+                $ditulis[] = $pos;
             }
 
             app(RatioEngine::class)->materialize($this->financePeriod);
         });
+
+        if ($ditulis === []) {
+            session()->flash('error', 'Tidak ada satu pun angka yang diisi, jadi tidak ada pos akun yang diubah.');
+
+            return;
+        }
 
         $netProfit = (float) $this->salesPayload - (float) $this->hppPayload - (float) $this->opexPayload;
         $idempotencyKey = 'IDEMP-FIN-COA-' . date('Ymd-His');
@@ -217,10 +235,12 @@ class SystemIntegration extends Component
             'idempotency_key' => $idempotencyKey,
             'status' => 'SCORED',
             'source_version' => 1,
-            'message' => 'Penerimaan Data Finance ERP ke Pos Akun (Penjualan: ' . rupiah($this->salesPayload) . ' JT, HPP: ' . rupiah($this->hppPayload) . ' JT, Laba: ' . rupiah($netProfit) . ' JT); rasio keuangan dihitung ulang.',
+            'message' => 'Pengisian manual pos akun (' . implode(', ', $ditulis) . ') — Penjualan: ' . rupiah($this->salesPayload)
+                . ' JT, HPP: ' . rupiah($this->hppPayload) . ' JT, Laba: ' . rupiah($netProfit) . ' JT; rasio keuangan dihitung ulang.',
         ]);
 
-        session()->flash('message', 'Data CoA Finance ' . $this->financePeriod . ' masuk ke Pos Akun dan rasio keuangan dihitung ulang. '
+        session()->flash('message', count($ditulis) . ' pos akun periode ' . $this->financePeriod
+            . ' disimpan dan rasio keuangan dihitung ulang. '
             . 'Pos akun lain (beban tenaga kerja, aset & liabilitas lancar, total aset/liabilitas, modal disetor, data HRIS) dilengkapi di menu Pos Akun.');
     }
 

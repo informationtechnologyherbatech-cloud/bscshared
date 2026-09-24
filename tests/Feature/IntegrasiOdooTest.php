@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\OdooIntegration;
 use App\Livewire\SystemIntegration;
 use App\Models\AccountBalance;
 use App\Models\AccountMapping;
@@ -119,7 +120,16 @@ class IntegrasiOdooTest extends TestCase
 
         $this->assertSame(IntakeResult::DITOLAK, $hasil->outcome);
         $this->assertSame(0, AccountBalance::count());
-        $this->assertSame(0, StagingLog::count());
+
+        // Penolakannya TERCATAT: jejak audit yang hanya memuat keberhasilan tidak
+        // menjawab pertanyaan "kirimannya sampai atau tidak?".
+        $jejak = StagingLog::sole();
+        $this->assertSame('ERROR', $jejak->status);
+        $this->assertStringContainsString('ditolak', $jejak->message);
+        // Penandanya berbeda dari penanda aslinya, supaya kiriman ulang dengan
+        // penanda yang sama nanti tetap dapat diterima.
+        $this->assertNotSame('IDEMP-UJI-5', $jejak->idempotency_key);
+        $this->assertStringStartsWith('IDEMP-UJI-5-TOLAK-', $jejak->idempotency_key);
     }
 
     public function test_the_ratios_are_recalculated_and_the_trail_is_written(): void
@@ -261,18 +271,45 @@ class IntegrasiOdooTest extends TestCase
     }
 
     /**
-     * Odoo palsu: menjawab login, lalu saldo per rentang tanggal. Kuncinya di
-     * sini adalah MEMBEDAKAN tiga rentang yang diminta penarik.
+     * Odoo palsu: menjawab masuk, daftar perusahaan, bagan akun, lalu saldo per
+     * rentang tanggal. Kuncinya di sini adalah MEMBEDAKAN tiga rentang yang
+     * diminta penarik.
+     *
+     * Nama tampilan akun sengaja dibuat TANPA kode di depan (seperti Odoo baru),
+     * supaya terbukti kodenya diambil dari id lewat bagan akun — bukan dipotong
+     * dari nama tampilan.
      *
      * @param  array<string, array<string, float>>  $perRentang  "sejak|sampai" => kode akun => saldo
+     * @param  array<int, array{id: int, name: string}>  $perusahaan
      */
-    private function odooPalsu(array $perRentang): void
+    private function odooPalsu(array $perRentang, array $perusahaan = [['id' => 1, 'name' => 'PT Uji']]): void
     {
-        Http::fake(['erp.uji.test/jsonrpc' => function ($request) use ($perRentang) {
+        // id akun dibuat tetap supaya jawaban read_group dan bagan akun sepakat.
+        $idAkun = [];
+        foreach ($perRentang as $saldo) {
+            foreach (array_keys($saldo) as $kode) {
+                $idAkun[$kode] ??= count($idAkun) + 101;
+            }
+        }
+
+        Http::fake(['erp.uji.test/jsonrpc' => function ($request) use ($perRentang, $perusahaan, $idAkun) {
             $params = $request->data()['params'];
 
-            if ($params['method'] === 'login') {
+            if (in_array($params['method'], ['authenticate', 'login'], true)) {
                 return Http::response(['jsonrpc' => '2.0', 'result' => 7]);
+            }
+
+            $model = $params['args'][3];
+
+            if ($model === 'res.company') {
+                return Http::response(['jsonrpc' => '2.0', 'result' => collect($perusahaan)
+                    ->map(fn ($c) => ['id' => $c['id'], 'name' => $c['name']])->all()]);
+            }
+
+            if ($model === 'account.account') {
+                return Http::response(['jsonrpc' => '2.0', 'result' => collect($idAkun)
+                    ->map(fn ($id, $kode) => ['id' => $id, 'code' => $kode, 'name' => 'Nama Akun'])
+                    ->values()->all()]);
             }
 
             $domain = $params['args'][5][0];
@@ -281,7 +318,7 @@ class IntegrasiOdooTest extends TestCase
             $saldo = $perRentang[$sejak.'|'.$sampai] ?? [];
 
             return Http::response(['jsonrpc' => '2.0', 'result' => collect($saldo)
-                ->map(fn ($nilai, $kode) => ['account_id' => [1, $kode.' Nama Akun'], 'balance' => $nilai])
+                ->map(fn ($nilai, $kode) => ['account_id' => [$idAkun[$kode], 'Nama Akun'], 'balance' => $nilai])
                 ->values()->all()]);
         }]);
     }
@@ -312,6 +349,54 @@ class IntegrasiOdooTest extends TestCase
         $this->assertSame(70_000_000.0, (float) AccountBalance::where('code', 'PA08')->value('opening'));
         // Realisasi revenue = mutasi bulan itu saja, bukan YTD.
         $this->assertSame(150_000_000.0, (float) RevenueTarget::where('period', '2026-08')->value('actual'));
+    }
+
+    public function test_the_account_code_comes_from_the_chart_not_from_the_display_name(): void
+    {
+        $this->petakan('4-10001', 'PA01', balik: true);
+
+        // Nama tampilan akun di Odoo palsu ini adalah "Nama Akun" saja — tanpa
+        // kode di depannya, seperti Odoo baru. Kalau kodenya dipotong dari nama
+        // tampilan, tidak ada satu pun pos yang dikenali.
+        $this->odooPalsu(['2026-01-01|2026-08-31' => ['4-10001' => -812_000_000]]);
+
+        $hasil = app(OdooPuller::class)->pull($this->sambungan(), '2026-08');
+
+        $this->assertTrue($hasil->ok(), $hasil->message);
+        $this->assertSame(812_000_000.0, (float) AccountBalance::where('code', 'PA01')->value('amount'));
+    }
+
+    public function test_a_database_with_several_companies_is_refused_until_one_is_chosen(): void
+    {
+        $this->petakan('4-10001', 'PA01', balik: true);
+        $this->odooPalsu(['2026-01-01|2026-08-31' => ['4-10001' => -812_000_000]], [
+            ['id' => 1, 'name' => 'PT Erdigma'],
+            ['id' => 2, 'name' => 'PT Herbatech'],
+        ]);
+
+        // Menjumlahkan beberapa perusahaan menjadi satu tidak menimbulkan galat —
+        // angkanya sekadar menjadi terlalu besar. Karena itu ditolak di muka,
+        // termasuk pada tarikan terjadwal yang tidak ada orang menungguinya.
+        $this->expectExceptionMessage('memuat 2 perusahaan');
+        app(OdooPuller::class)->pull($this->sambungan(), '2026-08');
+    }
+
+    public function test_choosing_a_company_lets_the_pull_through(): void
+    {
+        $this->petakan('4-10001', 'PA01', balik: true);
+        $this->odooPalsu(['2026-01-01|2026-08-31' => ['4-10001' => -812_000_000]], [
+            ['id' => 1, 'name' => 'PT Erdigma'],
+            ['id' => 2, 'name' => 'PT Herbatech'],
+        ]);
+
+        $sambungan = $this->sambungan();
+        $sambungan->update(['company_id' => 1, 'company_name' => 'PT Erdigma']);
+
+        $this->assertTrue(app(OdooPuller::class)->pull($sambungan, '2026-08')->ok());
+
+        // Perusahaan yang dipilih ikut dikirim sebagai penyaring, bukan hanya disimpan.
+        Http::assertSent(fn ($r) => $r->data()['params']['args'][3] !== 'account.move.line'
+            || collect($r->data()['params']['args'][5][0])->contains(fn ($d) => $d[0] === 'company_id' && $d[2] === 1));
     }
 
     public function test_revenue_is_left_alone_when_the_connection_says_so(): void
@@ -413,6 +498,52 @@ class IntegrasiOdooTest extends TestCase
         $halaman = Livewire::test(SystemIntegration::class);
         $this->assertSame(812.0, $halaman->viewData('saldoBerjalan')['salesPayload']);
         $this->assertSame(812.0, $halaman->get('salesPayload'));
+    }
+
+    public function test_an_empty_field_leaves_the_post_untouched_instead_of_writing_zero(): void
+    {
+        $this->masukSebagaiAdmin();
+        $this->petakan('4-10001', 'PA01', balik: true);
+        app(AccountIntake::class)->apply('2026-08', [['code' => '4-10001', 'amount' => -812_000_000]],
+            ['idempotency_key' => 'IDEMP-KOSONG']);
+
+        // Hanya HPP yang diisi; pos lain dibiarkan kosong. Nol itu DATA — rasio
+        // menghitungnya sebagai nilai sungguhan — jadi kolom kosong tidak boleh
+        // diam-diam menjadi nol.
+        Livewire::test(SystemIntegration::class)
+            ->set('financePeriod', '2026-08')
+            ->set('hppPayload', 430)
+            ->set('kasPayload', null)
+            ->set('piutangPayload', null)
+            ->set('persediaanPayload', null)
+            ->set('hutangPayload', null)
+            ->set('modalPayload', null)
+            ->set('opexPayload', null)
+            ->call('processFinancePayload');
+
+        $this->assertSame(430_000_000.0, (float) AccountBalance::where('code', 'PA02')->value('amount'));
+        // Penjualan hasil tarikan Odoo tetap utuh, pos kosong tidak dibuat.
+        $this->assertSame(812_000_000.0, (float) AccountBalance::where('code', 'PA01')->value('amount'));
+        $this->assertNull(AccountBalance::where('code', 'PA08')->first());
+    }
+
+    public function test_the_odoo_side_guide_is_available_from_the_page_itself(): void
+    {
+        $this->masukSebagaiAdmin();
+
+        // Panduan langkah di Odoo dibaca dari aplikasi, bukan dari berkas dokumen
+        // terpisah — orang yang sedang mengisi sambungan ada di layar ini.
+        $halaman = Livewire::test(OdooIntegration::class)
+            ->assertDontSee('Account Security')
+            ->call('bukaPanduan');
+
+        $halaman->assertSee('Yang perlu disiapkan di Odoo')
+            ->assertSee('Internal User')
+            ->assertSee('New API Key')
+            ->assertSee('Posted')
+            ->assertSee('beberapa perusahaan');
+
+        $halaman->call('tutupPanduan')->assertDontSee('Account Security');
     }
 
     public function test_the_page_no_longer_advertises_an_endpoint_that_does_not_exist(): void

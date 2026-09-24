@@ -118,7 +118,7 @@
                             <div class="info-box bg-light border">
                                 <span class="info-box-icon bg-info"><i class="fas fa-shopping-cart"></i></span>
                                 <div class="info-box-content">
-                                    <span class="info-box-text font-weight-bold text-uppercase">4101 · Penjualan</span>
+                                    <span class="info-box-text font-weight-bold text-uppercase">PA01 · Penjualan</span>
                                     <span class="info-box-number text-info">{!! $saldoBerjalan['salesPayload'] === null ? '<span class="text-muted">belum diisi</span>' : e(rupiah($saldoBerjalan['salesPayload'])).' JT' !!}</span>
                                     <small class="text-muted">Pendapatan Operasional</small>
                                 </div>
@@ -128,7 +128,7 @@
                             <div class="info-box bg-light border">
                                 <span class="info-box-icon bg-danger"><i class="fas fa-boxes"></i></span>
                                 <div class="info-box-content">
-                                    <span class="info-box-text font-weight-bold text-uppercase">5101 · HPP</span>
+                                    <span class="info-box-text font-weight-bold text-uppercase">PA02 · HPP</span>
                                     <span class="info-box-number text-danger">{!! $saldoBerjalan['hppPayload'] === null ? '<span class="text-muted">belum diisi</span>' : e(rupiah($saldoBerjalan['hppPayload'])).' JT' !!}</span>
                                     <small class="text-muted">Beban Pokok Penjualan</small>
                                 </div>
@@ -138,7 +138,7 @@
                             <div class="info-box bg-light border">
                                 <span class="info-box-icon bg-warning"><i class="fas fa-file-invoice"></i></span>
                                 <div class="info-box-content">
-                                    <span class="info-box-text font-weight-bold text-uppercase">6101 · Beban Opex</span>
+                                    <span class="info-box-text font-weight-bold text-uppercase">PA03 · Beban usaha</span>
                                     <span class="info-box-number text-warning">{!! $saldoBerjalan['opexPayload'] === null ? '<span class="text-muted">belum diisi</span>' : e(rupiah($saldoBerjalan['opexPayload'])).' JT' !!}</span>
                                     <small class="text-muted">Beban Operasional & Distribusi</small>
                                 </div>
@@ -169,47 +169,51 @@
                                     @error('financePeriod') <span class="invalid-feedback">{{ $message }}</span> @enderror
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">4101 · Penjualan (JT)</label>
+                                    <label class="small font-weight-bold">PA01 · Penjualan (JT)</label>
                                     <x-input-rupiah wire:model="salesPayload" class="form-control form-control-sm font-weight-bold text-primary text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">5101 · HPP (JT)</label>
+                                    <label class="small font-weight-bold">PA02 · HPP (JT)</label>
                                     <x-input-rupiah wire:model="hppPayload" class="form-control form-control-sm font-weight-bold text-danger text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">6101 · Beban Operasional (JT)</label>
+                                    <label class="small font-weight-bold">PA03 · Beban usaha & lain-lain (JT)</label>
                                     <x-input-rupiah wire:model="opexPayload" class="form-control form-control-sm font-weight-bold text-warning text-right" />
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">1101 · Kas & Bank (JT)</label>
+                                    <label class="small font-weight-bold">PA08 · Kas & setara kas (JT)</label>
                                     <x-input-rupiah wire:model="kasPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">1201 · Piutang Usaha (JT)</label>
+                                    <label class="small font-weight-bold">PA06 · Piutang usaha (JT)</label>
                                     <x-input-rupiah wire:model="piutangPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">1301 · Persediaan Barang (JT)</label>
+                                    <label class="small font-weight-bold">PA05 · Persediaan (JT)</label>
                                     <x-input-rupiah wire:model="persediaanPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">2101 · Hutang Usaha (JT)</label>
+                                    <label class="small font-weight-bold">PA07 · Utang usaha (JT)</label>
                                     <x-input-rupiah wire:model="hutangPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">3101 · Modal / Ekuitas (JT)</label>
+                                    <label class="small font-weight-bold">PA13 · Ekuitas (JT)</label>
                                     <x-input-rupiah wire:model="modalPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="col-md-9 small text-muted d-flex align-items-center">
                                     <span>
                                         <i class="fas fa-info-circle mr-1"></i>
-                                        Saldo masuk ke <a href="{{ route('account-balances', ['period' => $financePeriod]) }}">Pos Akun</a>
-                                        (Penjualan→PA01, HPP→PA02, Beban→PA03, Persediaan→PA05, Piutang→PA06, Hutang→PA07, Kas→PA08, Ekuitas→PA13),
-                                        lalu 19 rasio dihitung ulang dengan target dari Katalog Rasio. Aliran = nilai YTD; neraca = saldo akhir.
+                                        Delapan pos ini masuk ke <a href="{{ route('account-balances', ['period' => $financePeriod]) }}">Pos Akun</a>,
+                                        lalu 19 rasio dihitung ulang dengan target dari Katalog Rasio.
+                                        <strong>Aliran</strong> (PA01–PA03) diisi nilai YTD Januari s.d. periode ini;
+                                        <strong>neraca</strong> (PA05–PA08, PA13) diisi saldo akhir periode.
+                                        Kolom yang <strong>dikosongkan tidak diubah</strong> — nol itu angka, bukan "belum ada data".
+                                        Delapan pos sisanya (PA04 beban tenaga kerja, PA09–PA12 aset &amp; liabilitas, PA14 modal disetor,
+                                        PA15–PA16 data HRIS) beserta <strong>saldo awal tahun</strong> diisi di menu Pos Akun.
                                     </span>
                                 </div>
                             </div>

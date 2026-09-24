@@ -15,7 +15,7 @@ class OdooConnection extends Model
     use BelongsToEntity;
 
     protected $fillable = [
-        'entity_id', 'base_url', 'database_name', 'username', 'api_key',
+        'entity_id', 'base_url', 'database_name', 'company_id', 'company_name', 'username', 'api_key',
         'is_active', 'fills_revenue', 'last_status', 'last_message', 'last_run_at', 'updated_by',
     ];
 

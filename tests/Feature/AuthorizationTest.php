@@ -76,13 +76,22 @@ class AuthorizationTest extends TestCase
 
     /* --------------------------------------------------------- integrasi */
 
-    public function test_a_viewer_cannot_simulate_an_inbound_payload(): void
+    public function test_the_audit_log_page_never_writes_anything(): void
     {
         $this->actingAs($this->userWithRole('Viewer'));
 
-        Livewire::test(StagingLogs::class)->call('simulateInbound');
+        // Halaman ini sengaja tidak punya satu pun tindakan yang menulis: jejak
+        // audit yang isinya dapat dikarang dari layarnya sendiri tidak lagi
+        // menjadi bukti. Dahulu ada tombol "Kirim Payload Simulasi" yang menulis
+        // baris berbunyi "diterima dan berhasil dihitung" padahal tidak ada satu
+        // angka pun yang berubah.
+        Livewire::test(StagingLogs::class)
+            ->set('cari', 'apa saja')
+            ->set('status', 'ERROR')
+            ->call('bersihkanSaringan');
 
         $this->assertSame(0, StagingLog::count());
+        $this->assertFalse(method_exists(StagingLogs::class, 'simulateInbound'));
     }
 
     public function test_a_viewer_cannot_overwrite_financial_ratios_through_the_gateway(): void

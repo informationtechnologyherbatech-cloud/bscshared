@@ -31,6 +31,12 @@ class OdooIntegration extends Component
 
     public string $databaseName = '';
 
+    /** Perusahaan Odoo yang dibaca; kosong = database itu berisi satu perusahaan. */
+    public ?int $companyId = null;
+
+    /** Pilihan perusahaan yang terbaca dari Odoo saat sambungan diuji. */
+    public array $daftarPerusahaan = [];
+
     public string $username = '';
 
     public string $apiKey = '';
@@ -40,6 +46,9 @@ class OdooIntegration extends Component
     public bool $fillsRevenue = true;
 
     public bool $punyaKunci = false;
+
+    /** Panduan langkah di sisi Odoo — dibuka dari ikon "?" pada kartu sambungan. */
+    public bool $showPanduan = false;
 
     /* ── Tarikan ── */
     public string $period = '';
@@ -77,11 +86,22 @@ class OdooIntegration extends Component
         if ($sambungan) {
             $this->baseUrl = (string) $sambungan->base_url;
             $this->databaseName = (string) $sambungan->database_name;
+            $this->companyId = $sambungan->company_id;
             $this->username = (string) $sambungan->username;
             $this->isActive = (bool) $sambungan->is_active;
             $this->fillsRevenue = (bool) $sambungan->fills_revenue;
             $this->punyaKunci = $sambungan->maskedKey() !== null;
         }
+    }
+
+    public function bukaPanduan(): void
+    {
+        $this->showPanduan = true;
+    }
+
+    public function tutupPanduan(): void
+    {
+        $this->showPanduan = false;
     }
 
     public function saveConnection(): void
@@ -103,6 +123,8 @@ class OdooIntegration extends Component
         $nilai = [
             'base_url' => rtrim($this->baseUrl, '/'),
             'database_name' => $this->databaseName,
+            'company_id' => $this->companyId ?: null,
+            'company_name' => collect($this->daftarPerusahaan)->firstWhere('id', $this->companyId)['name'] ?? null,
             'username' => $this->username,
             'is_active' => $this->isActive,
             'fills_revenue' => $this->fillsRevenue,
@@ -139,16 +161,33 @@ class OdooIntegration extends Component
         try {
             $klien = OdooClient::for($sambungan);
             $uid = $klien->login();
+            $this->daftarPerusahaan = $klien->companies();
             $akun = $klien->accounts(5);
 
+            $pesan = 'Tersambung ke Odoo (uid '.$uid.'). Contoh akun: '
+                .collect($akun)->pluck('code')->implode(', ').'.';
+
+            // Beberapa perusahaan dalam satu database tanpa dipilih salah satunya
+            // berarti saldonya akan terjumlah semua — salah, dan diam-diam.
+            $perluDipilih = count($this->daftarPerusahaan) > 1 && ! $sambungan->company_id;
+
             $sambungan->forceFill([
-                'last_status' => 'ok',
-                'last_message' => 'Sambungan diuji: masuk sebagai uid '.$uid.', bagan akun terbaca.',
+                'last_status' => $perluDipilih ? 'galat' : 'ok',
+                'last_message' => $perluDipilih
+                    ? 'Database ini memuat '.count($this->daftarPerusahaan).' perusahaan; pilih salah satu lebih dulu.'
+                    : 'Sambungan diuji: masuk sebagai uid '.$uid.', bagan akun terbaca.',
                 'last_run_at' => now(),
             ])->save();
 
-            session()->flash('message', 'Tersambung ke Odoo (uid '.$uid.'). Contoh akun: '
-                .collect($akun)->pluck('code')->implode(', ').'.');
+            if ($perluDipilih) {
+                session()->flash('error', 'Tersambung, tetapi database Odoo ini memuat '
+                    .count($this->daftarPerusahaan).' perusahaan. Pilih perusahaan entitas ini lalu simpan — '
+                    .'tanpa itu saldo semua perusahaan akan terjumlah menjadi satu.');
+
+                return;
+            }
+
+            session()->flash('message', $pesan);
         } catch (Throwable $e) {
             $this->catatGagal($sambungan, $e);
         }

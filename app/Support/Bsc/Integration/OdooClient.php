@@ -21,11 +21,15 @@ class OdooClient
 {
     private ?int $uid = null;
 
+    /** @var array<int, string>|null kode akun menurut id, dibaca sekali */
+    private ?array $kodeAkun = null;
+
     public function __construct(
         private string $baseUrl,
         private string $database,
         private string $username,
         private string $apiKey,
+        private ?int $companyId = null,
     ) {}
 
     public static function for(OdooConnection $sambungan): self
@@ -35,18 +39,30 @@ class OdooClient
             $sambungan->database_name,
             $sambungan->username,
             (string) $sambungan->api_key,
+            $sambungan->company_id,
         );
     }
 
-    /** uid pengguna Odoo; sekaligus pembuktian bahwa kredensialnya benar. */
+    /**
+     * uid pengguna Odoo; sekaligus pembuktian bahwa kredensialnya benar.
+     *
+     * `authenticate` adalah metode yang didokumentasikan Odoo. `login` masih
+     * dilayani sebagian versi tetapi sudah lama ditinggalkan, jadi dipakai hanya
+     * sebagai cadangan bila server menolak yang pertama.
+     */
     public function login(): int
     {
         if ($this->uid !== null) {
             return $this->uid;
         }
 
-        $uid = $this->call('common', 'login', [$this->database, $this->username, $this->apiKey]);
+        try {
+            $uid = $this->call('common', 'authenticate', [$this->database, $this->username, $this->apiKey, []]);
+        } catch (RuntimeException $e) {
+            $uid = $this->call('common', 'login', [$this->database, $this->username, $this->apiKey]);
+        }
 
+        // Kredensial salah dijawab `false`, bukan galat.
         if (! is_int($uid) || $uid <= 0) {
             throw new RuntimeException('Odoo menolak nama pengguna atau kunci API.');
         }
@@ -62,9 +78,39 @@ class OdooClient
      */
     public function execute(string $model, string $method, array $args = [], array $kwargs = []): mixed
     {
+        // Pada Odoo multi-perusahaan, sebagian nilai (termasuk kode akun) baru
+        // terbaca bila perusahaannya disebutkan dalam konteks.
+        if ($this->companyId !== null) {
+            $kwargs['context'] = array_merge($kwargs['context'] ?? [], [
+                'allowed_company_ids' => [$this->companyId],
+            ]);
+        }
+
         return $this->call('object', 'execute_kw', [
             $this->database, $this->login(), $this->apiKey, $model, $method, $args, $kwargs,
         ]);
+    }
+
+    /**
+     * Perusahaan yang ada di database Odoo ini.
+     *
+     * Satu database Odoo boleh memuat beberapa perusahaan. Kalau begitu keadaannya
+     * dan tidak ada yang dipilih, saldo semua perusahaan akan terjumlah menjadi
+     * satu — angka yang salah tanpa satu pun pesan galat.
+     *
+     * @return array<int, array{id: int, name: string}>
+     */
+    public function companies(): array
+    {
+        $baris = $this->execute('res.company', 'search_read', [[]], [
+            'fields' => ['name'],
+            'order' => 'id asc',
+        ]);
+
+        return collect(is_array($baris) ? $baris : [])
+            ->map(fn ($c) => ['id' => (int) ($c['id'] ?? 0), 'name' => (string) ($c['name'] ?? '')])
+            ->filter(fn ($c) => $c['id'] > 0)
+            ->values()->all();
     }
 
     /**
@@ -72,7 +118,7 @@ class OdooClient
      *
      * @return array<int, array{code: string, name: string}>
      */
-    public function accounts(int $limit = 500): array
+    public function accounts(int $limit = 2000): array
     {
         $baris = $this->execute('account.account', 'search_read', [[]], [
             'fields' => ['code', 'name'],
@@ -81,9 +127,34 @@ class OdooClient
         ]);
 
         return collect(is_array($baris) ? $baris : [])
-            ->map(fn ($a) => ['code' => (string) ($a['code'] ?? ''), 'name' => (string) ($a['name'] ?? '')])
+            ->map(fn ($a) => ['code' => trim((string) ($a['code'] ?? '')), 'name' => (string) ($a['name'] ?? '')])
             ->filter(fn ($a) => $a['code'] !== '')
             ->values()->all();
+    }
+
+    /**
+     * Kode akun menurut idnya — dibaca sekali lalu diingat.
+     *
+     * @return array<int, string>
+     */
+    private function kodePerId(): array
+    {
+        if ($this->kodeAkun !== null) {
+            return $this->kodeAkun;
+        }
+
+        $baris = $this->execute('account.account', 'search_read', [[]], ['fields' => ['code']]);
+        $peta = [];
+
+        foreach (is_array($baris) ? $baris : [] as $a) {
+            $kode = trim((string) ($a['code'] ?? ''));
+
+            if ($kode !== '' && isset($a['id'])) {
+                $peta[(int) $a['id']] = $kode;
+            }
+        }
+
+        return $this->kodeAkun = $peta;
     }
 
     /**
@@ -98,22 +169,38 @@ class OdooClient
      */
     public function balances(string $sejak, string $sampai): array
     {
+        $domain = [
+            ['parent_state', '=', 'posted'],
+            ['date', '>=', $sejak],
+            ['date', '<=', $sampai],
+        ];
+
+        if ($this->companyId !== null) {
+            $domain[] = ['company_id', '=', $this->companyId];
+        }
+
         $baris = $this->execute('account.move.line', 'read_group', [
-            [
-                ['parent_state', '=', 'posted'],
-                ['date', '>=', $sejak],
-                ['date', '<=', $sampai],
-            ],
+            $domain,
             ['balance:sum'],
             ['account_id'],
         ], ['lazy' => false]);
 
+        $kodePerId = $this->kodePerId();
         $hasil = [];
 
         foreach (is_array($baris) ? $baris : [] as $b) {
-            // account_id datang sebagai [id, "KODE Nama Akun"].
+            // account_id datang sebagai [id, "nama tampilan"]. Kodenya diambil
+            // dari ID lewat daftar akun, BUKAN dipotong dari nama tampilannya:
+            // susunan nama itu berbeda antarversi Odoo dan dapat diubah pengguna,
+            // sehingga memotongnya diam-diam menghasilkan kode yang keliru.
             $akun = $b['account_id'] ?? null;
-            $kode = is_array($akun) ? trim(strtok((string) ($akun[1] ?? ''), ' ')) : null;
+            $id = is_array($akun) ? (int) ($akun[0] ?? 0) : 0;
+            $kode = $kodePerId[$id] ?? null;
+
+            if ($kode === null && is_array($akun)) {
+                // Cadangan terakhir bila akun tidak terbaca di daftar.
+                $kode = trim(strtok((string) ($akun[1] ?? ''), ' ')) ?: null;
+            }
 
             if (! $kode) {
                 continue;

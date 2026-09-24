@@ -40,6 +40,20 @@ class OdooPuller
 
         $klien ??= OdooClient::for($sambungan);
 
+        // Penjagaan ini ada DI SINI, bukan hanya di tombol "Uji sambungan":
+        // tarikan terjadwal berjalan tanpa ada orang yang menekan tombol apa pun,
+        // dan menjumlahkan beberapa perusahaan menjadi satu adalah kesalahan yang
+        // tidak menimbulkan galat — angkanya sekadar menjadi terlalu besar.
+        if ($sambungan->company_id === null) {
+            $perusahaan = $klien->companies();
+
+            if (count($perusahaan) > 1) {
+                throw new RuntimeException('Database Odoo ini memuat '.count($perusahaan)
+                    .' perusahaan ('.collect($perusahaan)->pluck('name')->implode(', ')
+                    .'); pilih perusahaan entitas ini lebih dulu agar saldonya tidak tercampur.');
+            }
+        }
+
         $akhir = Carbon::createFromFormat('Y-m-d', $period.'-01')->endOfMonth();
         $awalTahun = $akhir->copy()->startOfYear();
         $akhirTahunLalu = $awalTahun->copy()->subDay();
