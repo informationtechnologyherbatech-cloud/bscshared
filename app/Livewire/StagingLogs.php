@@ -72,10 +72,10 @@ class StagingLogs extends Component
         $hoursSinceLatest = $latestLog ? (int) abs(Carbon::parse($latestLog->created_at)->diffInHours(Carbon::now())) : 0;
         $ambang = (int) config('bsc.stale_after_hours', 26);
         $dataFreshnessStatus = ! $latestLog
-            ? 'BELUM ADA DATA'
+            ? 'Belum ada kiriman'
             : ($hoursSinceLatest < $ambang
-                ? 'TERKINI (' . $hoursSinceLatest . ' jam yang lalu)'
-                : 'BASI (lebih dari ' . $ambang . ' jam — ' . $hoursSinceLatest . ' jam yang lalu)');
+                ? 'Terkini — ' . $hoursSinceLatest . ' jam yang lalu'
+                : 'Perlu diperbarui — ' . $hoursSinceLatest . ' jam yang lalu');
 
         $reconciliationMetrics = [
             'control_total' => $controlTotalMatch . '% Match (' . $scoredCount . '/' . $totalLogsCount . ' Scored)',

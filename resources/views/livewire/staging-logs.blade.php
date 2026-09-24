@@ -58,7 +58,7 @@
                     <div class="info-box bg-light shadow-sm border">
                         <span class="info-box-icon bg-success"><i class="fas fa-clock"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text text-muted small">Kesegaran Data (26 Jam)</span>
+                            <span class="info-box-text text-muted small">Kiriman data terakhir</span>
                             <span class="info-box-number text-dark" style="font-size: 13px;">{{ $reconciliationMetrics['freshness'] }}</span>
                         </div>
                     </div>

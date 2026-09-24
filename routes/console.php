@@ -16,3 +16,8 @@ Artisan::command('inspire', function () {
 Schedule::command('model:prune', [
     '--model' => [ApiAccessLog::class, PairingCode::class],
 ])->daily();
+
+// Angka keuangan ditarik dari Odoo tiap subuh, sesudah jurnal hari sebelumnya
+// dibukukan. Tarikan berikutnya menimpa angka periode berjalan, jadi menjalankan
+// ini berkali-kali aman — yang ditolak hanya kiriman dengan penanda yang sama.
+Schedule::command('bsc:tarik-odoo')->dailyAt('04:30')->withoutOverlapping();

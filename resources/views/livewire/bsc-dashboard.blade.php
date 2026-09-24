@@ -389,7 +389,36 @@
             @if($isStale)
                 <div class="alert alert-warning alert-dismissible fade show border-warning" role="alert">
                     <i class="fas fa-clock mr-2 text-dark"></i>
-                    <strong>Peringatan Kesegaran Data:</strong> Data belum disinkronkan lebih dari 26 jam (Terakhir: {{ $lastSyncTime ? $lastSyncTime->diffForHumans() : 'N/A' }}).
+                    <strong>Angka di halaman ini belum diperbarui.</strong>
+                    Data periode {{ $selectedPeriod }} terakhir berubah
+                    <strong>{{ $lastSyncTime->diffForHumans() }}</strong> ({{ $lastSyncTime->translatedFormat('d M Y, H:i') }}).
+                    Skor di bawah masih dihitung dari data itu.
+                    <div class="mt-2">
+                        <span class="text-muted small mr-1">Perbarui di:</span>
+                        @canany(['manage revenue', 'view dashboard'])
+                            <a href="{{ route('revenue') }}" class="btn btn-sm btn-outline-dark mr-1 mb-1" style="text-decoration:none">
+                                <i class="fas fa-chart-line mr-1"></i> Target &amp; Realisasi
+                            </a>
+                        @endcanany
+                        @canany(['manage ratios', 'view ratios'])
+                            <a href="{{ route('account-balances') }}" class="btn btn-sm btn-outline-dark mr-1 mb-1" style="text-decoration:none">
+                                <i class="fas fa-file-invoice-dollar mr-1"></i> Pos Akun
+                            </a>
+                        @endcanany
+                        @canany(['view objectives', 'view dashboard'])
+                            <a href="{{ route('department-objectives') }}" class="btn btn-sm btn-outline-dark mr-1 mb-1" style="text-decoration:none">
+                                <i class="fas fa-bullseye mr-1"></i> Objective Departemen
+                            </a>
+                        @endcanany
+                        @canany(['view staging', 'view gateway'])
+                            <a href="{{ route('staging-logs') }}" class="btn btn-sm btn-outline-dark mr-1 mb-1" style="text-decoration:none">
+                                <i class="fas fa-satellite-dish mr-1"></i> Periksa kiriman otomatis
+                            </a>
+                        @endcanany
+                    </div>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Tutup">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
             @endif
 

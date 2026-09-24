@@ -8,6 +8,7 @@ tetap berada di [README utama](../README.md).
 |---|---|
 | **[Panduan Pengisian](panduan-pengisian.md)** | **Mulai dari sini.** Langkah mengisi aplikasi dari nol per tingkat piramida (Revenue → Rasio → KPI → Program Kerja), siapa mengisi apa, dan pertanyaan umum. Juga tampil di aplikasi: menu *Dokumentasi Metode*. |
 | **[Database per Entitas & Konsolidasi Holding](database-per-entitas.md)** | Cara memasang satu database per entitas dan holding (EMC) yang membaca ringkasannya lewat API atau koneksi database — apa saja yang boleh menyeberang batas entitas, pengaturan `.env`, endpoint API entitas, dan perilaku bila sebuah entitas tidak terjangkau. |
+| **[Integrasi Odoo → Pos Akun](integrasi-odoo.md)** | Cara angka keuangan berpindah dari Odoo tiap entitas ke Pos Akun & rasio: sambungan JSON-RPC yang **menarik** (bukan menerima), pemetaan kode akun ke PA01–PA16, arti rentang tanggal pos aliran vs neraca, tanda saldo kredit, unggahan CSV, dan aturan yang berlaku untuk semua jalur masuk. |
 | [Buku Panduan Lengkap](buku-panduan-lengkap.md) | Arsitektur sistem & operasional: filosofi BSC Kaplan–Norton, topologi 4 sistem (Odoo ERP → Finance → HRIS → BSC), hierarki piramida 4 level, panduan 12 menu modul, pipeline data 4-hop, formulasi matematika & polaritas, keamanan/kriptografi, dan panduan deployment. |
 | [Dokumentasi Integrasi HRIS & Finance](dokumentasi-integrasi-hris-finance.md) | Blueprint integrasi enterprise: perubahan yang dibutuhkan di sisi HRIS dan Finance, skema database, katalog master 64 sasaran mutu untuk 11 departemen, kontrak API gateway BSC, SOP bulanan, matriks RACI, dan panduan pemecahan masalah. |
 | [Panduan Dokumentasi API & Postman](panduan-dokumentasi-api-postman.md) | Standar penulisan dokumentasi API: struktur folder Postman collection, environment & variabel, header wajib, spesifikasi payload tiap endpoint, skrip otomasi Postman, format kode error, dan prosedur distribusi collection. |
@@ -29,9 +30,14 @@ kode saat ini. Bagian yang **belum diimplementasikan** pada basis kode:
 - **Autentikasi `X-API-KEY`, idempotency key, dan fingerprint SHA-256** — kunci
   API sudah dapat dibuat lewat Setting Sistem, tetapi belum ada konsumen yang
   memverifikasinya.
-- Menu **Integrasi Sistem** dan **Staging Log** saat ini adalah **simulasi
-  lokal**: payload diisi dari formulir lalu ditulis langsung ke basis data
-  aplikasi ini, bukan diterima dari HRIS/Finance.
+- **Integrasi Odoo sudah nyata** (lihat [Integrasi Odoo](integrasi-odoo.md)):
+  aplikasi menarik saldo akun dari Odoo lewat JSON-RPC, memetakannya ke pos akun,
+  lalu menghitung ulang rasio. Unggahan CSV juga benar-benar dibaca dan
+  diterapkan. Yang masih **simulasi** di menu Integrasi Sistem hanyalah tombol
+  *Uji Coba Kirim API Payload Inbound* dan *Kirim Payload Simulasi* di Staging
+  Log — keduanya hanya menulis baris jejak, tidak mengubah data.
+- Realisasi **KPI dari HRIS** belum ditarik otomatis; jalurnya unggahan CSV,
+  payload manual, atau pengisian layar.
 
 Lima menu juga masih berupa placeholder (*ComingSoon*): Uji Dampak/What-If,
 Simulasi CoA, Konsensus IBP, Sensitivitas, dan Skenario.

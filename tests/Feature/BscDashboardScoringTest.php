@@ -9,6 +9,7 @@ use App\Models\Entity;
 use App\Models\FinancialRatio;
 use App\Models\Period;
 use App\Models\RevenueTarget;
+use App\Models\StagingLog;
 use App\Support\EntityContext;
 use App\Support\ScoreStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -353,12 +354,19 @@ class BscDashboardScoringTest extends TestCase
         $this->assertStringContainsString('2 Rasio Keuangan', $html);
     }
 
+    /** Umur data periode ini, diukur dari baris yang benar-benar menyusun skor. */
+    private function dataBerumur(string $period, int $jam): void
+    {
+        $this->ratio($period, 90);
+        DB::table('financial_ratios')->where('period', $period)->update([
+            'updated_at' => now()->subHours($jam),
+        ]);
+    }
+
     public function test_stale_data_warning_lights_up_after_the_configured_threshold(): void
     {
-        $period = $this->period();
-        DB::table('periods')->where('id', $period->id)->update([
-            'updated_at' => now()->subHours(30),
-        ]);
+        $this->period();
+        $this->dataBerumur('2026-08', 30);
 
         Livewire::test(BscDashboard::class)
             ->assertViewHas('isStale', true)
@@ -368,13 +376,10 @@ class BscDashboardScoringTest extends TestCase
     public function test_recalculating_the_score_does_not_reset_the_stale_warning(): void
     {
         $period = $this->period();
-        $this->ratio('2026-08', 90);
-        DB::table('periods')->where('id', $period->id)->update([
-            'updated_at' => now()->subHours(30),
-        ]);
+        $this->dataBerumur('2026-08', 30);
 
-        // Render pertama menulis apex_score; penulisan itu tidak boleh
-        // memperbarui updated_at, karena kolom itu menandai sinkronisasi data.
+        // Render pertama menulis apex_score. Penulisan itu tidak boleh dianggap
+        // sebagai data yang diperbarui — yang dihitung ulang cuma skornya.
         Livewire::test(BscDashboard::class)->assertViewHas('isStale', true);
         Livewire::test(BscDashboard::class)->assertViewHas('isStale', true);
 
@@ -383,11 +388,78 @@ class BscDashboardScoringTest extends TestCase
 
     public function test_fresh_data_does_not_raise_the_stale_warning(): void
     {
-        $period = $this->period();
-        DB::table('periods')->where('id', $period->id)->update([
-            'updated_at' => now()->subHours(2),
-        ]);
+        $this->period();
+        $this->dataBerumur('2026-08', 2);
 
         Livewire::test(BscDashboard::class)->assertViewHas('isStale', false);
+    }
+
+    public function test_entering_a_realisation_clears_the_stale_warning(): void
+    {
+        $this->period();
+        $this->dataBerumur('2026-08', 30);
+        Livewire::test(BscDashboard::class)->assertViewHas('isStale', true);
+
+        // Inilah tindakan yang dimaksud peringatan itu: realisasi diisi. Dulu
+        // peringatan diukur dari periods.updated_at, sehingga mengisi realisasi
+        // tidak mematikannya dan pengguna tidak punya jalan keluar.
+        RevenueTarget::create(['period' => '2026-08', 'target' => 100, 'actual' => 90]);
+
+        Livewire::test(BscDashboard::class)->assertViewHas('isStale', false);
+    }
+
+    public function test_the_simulation_button_does_not_silence_the_stale_warning(): void
+    {
+        $this->period();
+        $this->dataBerumur('2026-08', 30);
+
+        // "Kirim Payload Simulasi" hanya mencatat bahwa sebuah kiriman datang;
+        // tidak ada satu angka pun yang berubah. Peringatannya harus tetap
+        // menyala, kalau tidak tombol itu jadi cara memadamkan peringatan
+        // tanpa memperbarui data.
+        StagingLog::create([
+            'period' => '2026-08',
+            'dept_code' => 'QC',
+            'idempotency_key' => 'IDEMP-UJI-'.uniqid(),
+            'status' => 'SCORED',
+            'source_version' => 1,
+            'message' => 'Simulasi payload inbound.',
+        ]);
+
+        Livewire::test(BscDashboard::class)->assertViewHas('isStale', true);
+    }
+
+    public function test_a_period_without_any_data_is_not_called_stale(): void
+    {
+        // Periode yang memang masih kosong bukan data basi; tidak ada yang bisa
+        // diperbarui, jadi peringatannya hanya akan jadi gangguan.
+        $periode = $this->period();
+        DB::table('periods')->where('id', $periode->id)->update(['updated_at' => now()->subHours(90)]);
+
+        Livewire::test(BscDashboard::class)
+            ->assertViewHas('isStale', false)
+            ->assertViewHas('lastSyncTime', null);
+    }
+
+    public function test_a_closed_period_is_not_called_stale(): void
+    {
+        // Periode tertutup memang sengaja dibekukan.
+        $periode = $this->period();
+        $this->dataBerumur('2026-08', 90);
+        $periode->update(['status' => 'CLOSED']);
+
+        Livewire::test(BscDashboard::class)->assertViewHas('isStale', false);
+    }
+
+    public function test_the_stale_warning_says_where_to_update_the_data(): void
+    {
+        $this->period();
+        $this->dataBerumur('2026-08', 30);
+
+        $html = Livewire::test(BscDashboard::class)->html();
+
+        $this->assertStringContainsString('belum diperbarui', $html);
+        $this->assertStringContainsString('Perbarui di:', $html);
+        $this->assertStringContainsString(route('revenue'), $html);
     }
 }

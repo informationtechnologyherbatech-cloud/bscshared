@@ -98,7 +98,19 @@ class AuthorizationTest extends TestCase
     {
         $this->actingAs($this->userWithRole('Admin FAT'));
 
-        Livewire::test(SystemIntegration::class)->call('processFinancePayload');
+        // Isian formulir diisi di sini, bukan mengandalkan nilai bawaan: sejak
+        // angka contoh dibuang, formulirnya berangkat dari pos akun yang
+        // tersimpan — dan pada awal uji memang masih kosong.
+        Livewire::test(SystemIntegration::class)
+            ->set('salesPayload', 96000)
+            ->set('hppPayload', 57600)
+            ->set('opexPayload', 23400)
+            ->set('kasPayload', 12500)
+            ->set('piutangPayload', 9800)
+            ->set('persediaanPayload', 14200)
+            ->set('hutangPayload', 8200)
+            ->set('modalPayload', 73300)
+            ->call('processFinancePayload');
 
         $this->assertGreaterThan(0, FinancialRatio::count());
     }

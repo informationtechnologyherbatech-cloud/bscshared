@@ -301,17 +301,60 @@ class BscDashboard extends Component
         return Scorecard::apex($tierScores);
     }
 
+    /**
+     * Kapan angka periode ini TERAKHIR berubah.
+     *
+     * Diambil dari data yang benar-benar menyusun skor — revenue, rasio, sasaran
+     * mutu, program kerja. Sebelumnya yang dipakai adalah periods.updated_at,
+     * padahal kolom itu hanya bergerak saat periode dibuat atau statusnya diubah:
+     * periode yang realisasinya baru saja diisi pun ikut dinyatakan basi, dan
+     * tidak ada tindakan yang dapat mematikan peringatannya.
+     *
+     * staging_logs SENGAJA tidak ikut dihitung. Baris di sana hanyalah catatan
+     * bahwa sebuah kiriman datang; sebagiannya bahkan tidak mengubah data apa
+     * pun (tombol "Kirim Payload Simulasi" dan unggah CSV). Kalau ikut dihitung,
+     * menekan tombol simulasi akan memadamkan peringatan ini tanpa satu angka
+     * pun berubah. Kiriman yang memang membawa data selalu menyentuh salah satu
+     * dari keempat sumber di atas, jadi tetap terhitung.
+     *
+     * null = periode itu memang belum berisi apa pun; itu bukan data basi.
+     */
+    private function dataTerakhirBerubah(string $period): ?Carbon
+    {
+        $waktu = [
+            RevenueTarget::where('period', $period)->max('updated_at'),
+            FinancialRatio::where('period', $period)->max('updated_at'),
+            DepartmentObjective::where('period', $period)->max('updated_at'),
+            ActionPlan::whereHas('objective', fn ($q) => $q->where('period', $period))->max('updated_at'),
+        ];
+
+        $terbaru = null;
+
+        foreach (array_filter($waktu) as $satu) {
+            $saat = Carbon::parse($satu);
+
+            if ($terbaru === null || $saat->greaterThan($terbaru)) {
+                $terbaru = $saat;
+            }
+        }
+
+        return $terbaru;
+    }
+
     public function render()
     {
         $periodObj = Period::where('period', $this->selectedPeriod)->first();
         $isClosed = $periodObj ? $periodObj->isClosed() : false;
 
-        // Freshness check. diffInHours() pada Carbon 3 bertanda (negatif bila
-        // pembandingnya di masa lalu), jadi selisih diambil sebagai nilai mutlak
-        // agar peringatan data basi benar-benar menyala.
-        $lastSyncTime = $periodObj && $periodObj->updated_at ? $periodObj->updated_at : Carbon::now()->subHours(2);
-        $hoursSinceSync = (int) abs($lastSyncTime->diffInHours(Carbon::now()));
-        $isStale = $hoursSinceSync >= (int) config('bsc.stale_after_hours', 26);
+        // Kesegaran data. diffInHours() pada Carbon 3 bertanda (negatif bila
+        // pembandingnya di masa lalu), jadi selisihnya diambil sebagai nilai mutlak.
+        $lastSyncTime = $this->dataTerakhirBerubah($this->selectedPeriod);
+        $ambangBasi = (int) config('bsc.stale_after_hours', 26);
+        $hoursSinceSync = $lastSyncTime ? (int) abs($lastSyncTime->diffInHours(Carbon::now())) : null;
+
+        // Periode yang sudah ditutup memang sengaja dibekukan, dan periode yang
+        // belum berisi apa pun bukan "basi" — keduanya tidak perlu diperingatkan.
+        $isStale = $hoursSinceSync !== null && $hoursSinceSync >= $ambangBasi && ! $isClosed;
         
         $ratiosQuery = FinancialRatio::where('period', $this->selectedPeriod);
         $ratios = $ratiosQuery->orderBy('id')->get();
