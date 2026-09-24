@@ -71,6 +71,9 @@ class OdooIntegration extends Component
     /** Daftar akun yang baru diambil dari Odoo, untuk dipetakan cepat. */
     public array $akunOdoo = [];
 
+    /** Penyaring daftar akun Odoo — bagan akun bisa berisi ratusan baris. */
+    public string $cariAkun = '';
+
     /**
      * Ditanam di dalam halaman Integrasi & Gateway, bukan berdiri sendiri —
      * judul halamannya dilewati supaya tidak ada dua judul bertumpuk.
@@ -210,10 +213,72 @@ class OdooIntegration extends Component
 
         try {
             $this->akunOdoo = OdooClient::for($sambungan)->accounts();
-            session()->flash('message', count($this->akunOdoo).' akun terbaca dari Odoo.');
+            $usul = count($this->usulan());
+
+            session()->flash('message', count($this->akunOdoo).' akun terbaca dari Odoo.'
+                .($usul > 0 ? ' '.$usul.' di antaranya dapat dipetakan otomatis dari jenis akunnya — tekan "Petakan otomatis".' : ''));
         } catch (Throwable $e) {
             $this->catatGagal($sambungan, $e);
         }
+    }
+
+    /**
+     * Usulan pemetaan dari jenis akun Odoo, untuk akun yang belum dipetakan.
+     *
+     * @return array<int, array{code: string, name: string, post: string}>
+     */
+    private function usulan(): array
+    {
+        $sudah = AccountMapping::pluck('source_code')->map(fn ($k) => strtoupper($k))->all();
+        $usul = [];
+
+        foreach ($this->akunOdoo as $akun) {
+            $pos = AccountMapping::usulanDariJenis($akun['type'] ?? null);
+
+            if ($pos === null || in_array(strtoupper($akun['code']), $sudah, true)) {
+                continue;
+            }
+
+            $usul[] = ['code' => $akun['code'], 'name' => $akun['name'], 'post' => $pos];
+        }
+
+        return $usul;
+    }
+
+    /**
+     * Petakan sekaligus semua akun yang jenisnya jelas.
+     *
+     * Bagan akun sungguhan berisi ratusan baris; memetakannya satu per satu
+     * lewat formulir membuat integrasi ini praktis tidak terpakai. Yang
+     * diusulkan tetap dapat diubah atau dihapus satu-satu sesudahnya.
+     */
+    public function petakanOtomatis(): void
+    {
+        if ($this->lacksPermission('manage integration')) {
+            return;
+        }
+
+        $usul = $this->usulan();
+
+        if ($usul === []) {
+            session()->flash('error', 'Tidak ada akun baru yang dapat dipetakan otomatis. '
+                .'Ambil dulu daftar akun dari Odoo, atau petakan sendiri lewat "Pemetaan baru".');
+
+            return;
+        }
+
+        foreach ($usul as $satu) {
+            AccountMapping::updateOrCreate(['source_code' => strtoupper($satu['code'])], [
+                'source_name' => $satu['name'],
+                'post_code' => $satu['post'],
+                'invert' => AccountMapping::defaultInvert($satu['post']),
+                'updated_by' => auth()->id(),
+            ]);
+        }
+
+        $pos = collect($usul)->pluck('post')->unique()->sort()->implode(', ');
+        session()->flash('message', count($usul).' akun dipetakan otomatis ke pos '.$pos
+            .'. Periksa hasilnya, lalu lengkapi pos lain (persediaan, aset & liabilitas, modal, HRIS) di menu Pos Akun.');
     }
 
     public function pullNow(OdooPuller $puller): void
@@ -235,7 +300,8 @@ class OdooIntegration extends Component
         }
 
         if (AccountMapping::count() === 0) {
-            session()->flash('error', 'Belum ada pemetaan akun; tarikan tidak akan menemukan pos apa pun.');
+            session()->flash('error', 'Belum ada pemetaan akun, jadi tarikan tidak akan menemukan pos apa pun. '
+                .'Tekan "Ambil daftar akun" lalu "Petakan otomatis" — kode akun Odoo dipasangkan ke pos akun BSC dari jenis akunnya.');
 
             return;
         }
@@ -354,9 +420,17 @@ class OdooIntegration extends Component
     {
         $pemetaan = AccountMapping::orderBy('post_code')->orderBy('source_code')->get();
 
+        $kata = trim(mb_strtolower($this->cariAkun));
+        $akunTampil = $kata === '' ? $this->akunOdoo : array_values(array_filter(
+            $this->akunOdoo,
+            fn ($a) => str_contains(mb_strtolower($a['code'].' '.$a['name']), $kata)
+        ));
+
         return view('livewire.odoo-integration', [
             'sambungan' => OdooConnection::first(),
             'pemetaan' => $pemetaan,
+            'akunTampil' => $akunTampil,
+            'jumlahUsulan' => count($this->usulan()),
             'posDipetakan' => $pemetaan->pluck('post_code')->unique()->values()->all(),
             'katalogPos' => AccountPosts::all(),
             'canManage' => (bool) auth()->user()?->can('manage integration'),

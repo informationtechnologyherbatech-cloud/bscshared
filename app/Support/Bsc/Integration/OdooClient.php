@@ -120,14 +120,20 @@ class OdooClient
      */
     public function accounts(int $limit = 2000): array
     {
+        // account_type ikut dibaca supaya pemetaan dapat DIUSULKAN, bukan
+        // diketik satu per satu pada bagan akun yang berisi ratusan baris.
         $baris = $this->execute('account.account', 'search_read', [[]], [
-            'fields' => ['code', 'name'],
+            'fields' => ['code', 'name', 'account_type'],
             'limit' => $limit,
             'order' => 'code asc',
         ]);
 
         return collect(is_array($baris) ? $baris : [])
-            ->map(fn ($a) => ['code' => trim((string) ($a['code'] ?? '')), 'name' => (string) ($a['name'] ?? '')])
+            ->map(fn ($a) => [
+                'code' => trim((string) ($a['code'] ?? '')),
+                'name' => (string) ($a['name'] ?? ''),
+                'type' => is_string($a['account_type'] ?? null) ? $a['account_type'] : '',
+            ])
             ->filter(fn ($a) => $a['code'] !== '')
             ->values()->all();
     }
@@ -179,11 +185,7 @@ class OdooClient
             $domain[] = ['company_id', '=', $this->companyId];
         }
 
-        $baris = $this->execute('account.move.line', 'read_group', [
-            $domain,
-            ['balance:sum'],
-            ['account_id'],
-        ], ['lazy' => false]);
+        $baris = $this->kelompokkanSaldo($domain);
 
         $kodePerId = $this->kodePerId();
         $hasil = [];
@@ -206,10 +208,43 @@ class OdooClient
                 continue;
             }
 
-            $hasil[$kode] = ($hasil[$kode] ?? 0.0) + (float) ($b['balance'] ?? 0);
+            // Odoo 18+ menamai hasil penjumlahannya "balance:sum";
+            // versi sebelumnya cukup "balance".
+            $hasil[$kode] = ($hasil[$kode] ?? 0.0) + (float) ($b['balance:sum'] ?? $b['balance'] ?? 0);
         }
 
         return $hasil;
+    }
+
+    /**
+     * Jumlahkan saldo per akun — cara memanggilnya berbeda antarversi Odoo.
+     *
+     * Odoo 18 memperkenalkan `formatted_read_group` dan menyusutkan peran
+     * `read_group`; urutan argumennya pun berbeda (domain, groupby, aggregates
+     * vs domain, fields, groupby). Yang baru dicoba lebih dulu, yang lama
+     * dipakai sebagai cadangan, sehingga satu kode melayani Odoo 14 sampai 19
+     * tanpa perlu menanyakan versinya.
+     *
+     * @param  array<int, mixed>  $domain
+     * @return array<int, array<string, mixed>>
+     */
+    private function kelompokkanSaldo(array $domain): array
+    {
+        try {
+            $baris = $this->execute('account.move.line', 'formatted_read_group', [
+                $domain,
+                ['account_id'],
+                ['balance:sum'],
+            ]);
+        } catch (RuntimeException) {
+            $baris = $this->execute('account.move.line', 'read_group', [
+                $domain,
+                ['balance:sum'],
+                ['account_id'],
+            ], ['lazy' => false]);
+        }
+
+        return is_array($baris) ? $baris : [];
     }
 
     /**

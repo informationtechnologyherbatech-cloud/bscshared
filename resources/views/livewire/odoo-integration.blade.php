@@ -164,6 +164,11 @@
                                     <button type="button" wire:click="fetchAccounts" class="btn btn-sm btn-ghost">
                                         <i class="fas fa-cloud-arrow-down mr-1"></i> Ambil daftar akun
                                     </button>
+                                    @if ($jumlahUsulan > 0)
+                                        <button type="button" wire:click="petakanOtomatis" class="btn btn-sm btn-teal">
+                                            <i class="fas fa-wand-magic-sparkles mr-1"></i> Petakan otomatis ({{ $jumlahUsulan }})
+                                        </button>
+                                    @endif
                                     <button type="button" wire:click="editMapping" class="btn btn-sm btn-success">
                                         <i class="fas fa-plus mr-1"></i> Pemetaan baru
                                     </button>
@@ -246,18 +251,26 @@
                     {{-- Bagan akun yang baru diambil dari Odoo --}}
                     @if ($akunOdoo)
                         <div class="card card-outline card-secondary">
-                            <div class="card-header">
-                                <h3 class="card-title font-weight-bold">
+                            <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
+                                <h3 class="card-title font-weight-bold mb-0">
                                     <i class="fas fa-list mr-1"></i> Bagan akun Odoo ({{ count($akunOdoo) }})
                                 </h3>
+                                <input type="search" id="cariAkunOdoo" wire:model.live.debounce.300ms="cariAkun"
+                                       class="form-control form-control-sm" style="max-width:260px"
+                                       placeholder="Cari kode atau nama akun…">
                             </div>
                             <div class="card-body p-0 table-responsive" style="max-height:340px">
                                 <table class="table table-sm table-hover m-0">
                                     <tbody>
-                                        @foreach ($akunOdoo as $a)
+                                        @forelse ($akunTampil as $a)
                                             <tr>
                                                 <td style="width:130px"><code>{{ $a['code'] }}</code></td>
-                                                <td>{{ $a['name'] }}</td>
+                                                <td>
+                                                    {{ $a['name'] }}
+                                                    @if ($a['type'] ?? '')
+                                                        <small class="d-block text-muted">{{ $a['type'] }}</small>
+                                                    @endif
+                                                </td>
                                                 <td class="text-right" style="width:110px">
                                                     @if ($canManage)
                                                         <button type="button" class="btn btn-xs btn-ghost"
@@ -267,7 +280,13 @@
                                                     @endif
                                                 </td>
                                             </tr>
-                                        @endforeach
+                                        @empty
+                                            <tr>
+                                                <td colspan="3" class="text-center text-muted py-3">
+                                                    Tidak ada akun yang cocok dengan pencarian itu.
+                                                </td>
+                                            </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>

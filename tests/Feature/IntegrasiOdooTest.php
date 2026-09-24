@@ -281,9 +281,15 @@ class IntegrasiOdooTest extends TestCase
      *
      * @param  array<string, array<string, float>>  $perRentang  "sejak|sampai" => kode akun => saldo
      * @param  array<int, array{id: int, name: string}>  $perusahaan
+     * @param  string  $gaya  'baru' = Odoo 18+ (hanya formatted_read_group), 'lama' = hanya read_group
+     * @param  array<string, string>  $jenisAkun  kode akun => account_type Odoo
      */
-    private function odooPalsu(array $perRentang, array $perusahaan = [['id' => 1, 'name' => 'PT Uji']]): void
-    {
+    private function odooPalsu(
+        array $perRentang,
+        array $perusahaan = [['id' => 1, 'name' => 'PT Uji']],
+        string $gaya = 'baru',
+        array $jenisAkun = [],
+    ): void {
         // id akun dibuat tetap supaya jawaban read_group dan bagan akun sepakat.
         $idAkun = [];
         foreach ($perRentang as $saldo) {
@@ -292,7 +298,7 @@ class IntegrasiOdooTest extends TestCase
             }
         }
 
-        Http::fake(['erp.uji.test/jsonrpc' => function ($request) use ($perRentang, $perusahaan, $idAkun) {
+        Http::fake(['erp.uji.test/jsonrpc' => function ($request) use ($perRentang, $perusahaan, $idAkun, $gaya, $jenisAkun) {
             $params = $request->data()['params'];
 
             if (in_array($params['method'], ['authenticate', 'login'], true)) {
@@ -300,15 +306,25 @@ class IntegrasiOdooTest extends TestCase
             }
 
             $model = $params['args'][3];
+            $metode = $params['args'][4];
 
             if ($model === 'res.company') {
                 return Http::response(['jsonrpc' => '2.0', 'result' => collect($perusahaan)
                     ->map(fn ($c) => ['id' => $c['id'], 'name' => $c['name']])->all()]);
             }
 
+            // Odoo 18+ membuang read_group; Odoo lama belum punya penggantinya.
+            $diterima = $gaya === 'baru' ? 'formatted_read_group' : 'read_group';
+
+            if ($model === 'account.move.line' && $metode !== $diterima) {
+                return Http::response(['jsonrpc' => '2.0', 'error' => ['message' => 'Odoo Server Error',
+                    'data' => ['message' => "Invalid method '".$metode."' on model 'account.move.line'"]]]);
+            }
+
             if ($model === 'account.account') {
                 return Http::response(['jsonrpc' => '2.0', 'result' => collect($idAkun)
-                    ->map(fn ($id, $kode) => ['id' => $id, 'code' => $kode, 'name' => 'Nama Akun'])
+                    ->map(fn ($id, $kode) => ['id' => $id, 'code' => $kode, 'name' => 'Nama Akun',
+                        'account_type' => $jenisAkun[$kode] ?? 'asset_current'])
                     ->values()->all()]);
             }
 
@@ -317,8 +333,11 @@ class IntegrasiOdooTest extends TestCase
             $sampai = $domain[2][2];
             $saldo = $perRentang[$sejak.'|'.$sampai] ?? [];
 
+            // Odoo 18+ menamai hasil penjumlahannya "balance:sum".
+            $kolom = $gaya === 'baru' ? 'balance:sum' : 'balance';
+
             return Http::response(['jsonrpc' => '2.0', 'result' => collect($saldo)
-                ->map(fn ($nilai, $kode) => ['account_id' => [$idAkun[$kode], 'Nama Akun'], 'balance' => $nilai])
+                ->map(fn ($nilai, $kode) => ['account_id' => [$idAkun[$kode], 'Nama Akun'], $kolom => $nilai])
                 ->values()->all()]);
         }]);
     }
@@ -349,6 +368,90 @@ class IntegrasiOdooTest extends TestCase
         $this->assertSame(70_000_000.0, (float) AccountBalance::where('code', 'PA08')->value('opening'));
         // Realisasi revenue = mutasi bulan itu saja, bukan YTD.
         $this->assertSame(150_000_000.0, (float) RevenueTarget::where('period', '2026-08')->value('actual'));
+    }
+
+    public function test_it_works_on_odoo_18_and_newer_where_read_group_is_gone(): void
+    {
+        $this->petakan('4-10001', 'PA01', balik: true);
+
+        // Odoo 18 memperkenalkan formatted_read_group dan membuang read_group;
+        // urutan argumen serta nama kolom hasilnya pun berbeda.
+        $this->odooPalsu(['2026-01-01|2026-08-31' => ['4-10001' => -812_000_000]], gaya: 'baru');
+
+        $hasil = app(OdooPuller::class)->pull($this->sambungan(), '2026-08');
+
+        $this->assertTrue($hasil->ok(), $hasil->message);
+        $this->assertSame(812_000_000.0, (float) AccountBalance::where('code', 'PA01')->value('amount'));
+    }
+
+    public function test_it_still_works_on_older_odoo_that_only_has_read_group(): void
+    {
+        $this->petakan('4-10001', 'PA01', balik: true);
+        $this->odooPalsu(['2026-01-01|2026-08-31' => ['4-10001' => -812_000_000]], gaya: 'lama');
+
+        $hasil = app(OdooPuller::class)->pull($this->sambungan(), '2026-08');
+
+        $this->assertTrue($hasil->ok(), $hasil->message);
+        $this->assertSame(812_000_000.0, (float) AccountBalance::where('code', 'PA01')->value('amount'));
+    }
+
+    public function test_the_chart_of_accounts_can_be_mapped_in_one_go(): void
+    {
+        $this->masukSebagaiAdmin();
+        $this->sambungan();
+        $this->odooPalsu(['2026-01-01|2026-08-31' => [
+            '4-10001' => -1, '5-10001' => 1, '6-10001' => 1, '1-10002' => 1,
+            '1-10003' => 1, '2-10001' => 1, '3-10001' => 1, '1-10009' => 1,
+        ]], jenisAkun: [
+            '4-10001' => 'income',
+            '5-10001' => 'expense_direct_cost',
+            '6-10001' => 'expense',
+            '1-10002' => 'asset_cash',
+            '1-10003' => 'asset_receivable',
+            '2-10001' => 'liability_payable',
+            '3-10001' => 'equity',
+            '1-10009' => 'asset_current',   // persediaan: tidak dapat dipastikan
+        ]);
+
+        // Bagan akun sungguhan berisi ratusan baris; memetakannya satu per satu
+        // lewat formulir membuat integrasi ini praktis tidak terpakai.
+        $halaman = Livewire::test(OdooIntegration::class)->call('fetchAccounts');
+        $this->assertSame(7, $halaman->viewData('jumlahUsulan'));
+
+        $halaman->call('petakanOtomatis');
+
+        $peta = AccountMapping::pluck('post_code', 'source_code')->all();
+        $this->assertSame('PA01', $peta['4-10001']);
+        $this->assertSame('PA02', $peta['5-10001']);
+        $this->assertSame('PA03', $peta['6-10001']);
+        $this->assertSame('PA08', $peta['1-10002']);
+        $this->assertSame('PA06', $peta['1-10003']);
+        $this->assertSame('PA07', $peta['2-10001']);
+        $this->assertSame('PA13', $peta['3-10001']);
+        // Jenis yang artinya mendua tidak diusulkan, tidak ditebak-tebak.
+        $this->assertArrayNotHasKey('1-10009', $peta);
+
+        // Akun bersaldo kredit ditandai dibalik, yang lain tidak.
+        $this->assertTrue(AccountMapping::where('source_code', '4-10001')->value('invert'));
+        $this->assertFalse(AccountMapping::where('source_code', '5-10001')->value('invert'));
+
+        // Dijalankan lagi tidak menggandakan dan tidak menimpa yang sudah ada.
+        $halaman->call('fetchAccounts');
+        $this->assertSame(0, $halaman->viewData('jumlahUsulan'));
+        $this->assertSame(7, AccountMapping::count());
+    }
+
+    public function test_the_odoo_account_list_can_be_searched(): void
+    {
+        $this->masukSebagaiAdmin();
+        $this->sambungan();
+        $this->odooPalsu(['2026-01-01|2026-08-31' => ['4-10001' => -1, '1-10002' => 1]]);
+
+        Livewire::test(OdooIntegration::class)
+            ->call('fetchAccounts')
+            ->assertViewHas('akunTampil', fn ($a) => count($a) === 2)
+            ->set('cariAkun', '1-100')
+            ->assertViewHas('akunTampil', fn ($a) => count($a) === 1 && $a[0]['code'] === '1-10002');
     }
 
     public function test_the_account_code_comes_from_the_chart_not_from_the_display_name(): void

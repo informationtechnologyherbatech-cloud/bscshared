@@ -98,10 +98,31 @@ berjalan, payload KPI, dan unggahan berkas.
    Kunci disimpan terenkripsi dan setelah itu hanya ditampilkan tersamar.
    Tekan **Uji sambungan** untuk memastikan kredensialnya benar.
 2. **Ambil daftar akun** — bagan akun Odoo ditarik agar pemetaan tinggal
-   memilih, bukan mengetik ulang kodenya.
-3. **Pemetaan Akun** — kode akun Odoo → pos akun PA01–PA16. Beberapa kode akun
-   boleh menunjuk pos yang sama; nilainya dijumlahkan.
-4. **Tarik sekarang** — untuk menguji, atau saat tutup buku tidak mau menunggu
+   memilih, bukan mengetik ulang kodenya. Daftarnya dapat dicari.
+3. **Petakan otomatis** — bagan akun sungguhan berisi ratusan baris, jadi
+   pemetaannya diusulkan dari **jenis akun** Odoo (`account_type`):
+
+   | Jenis akun Odoo | Pos akun BSC |
+   |---|---|
+   | `income`, `income_other` | PA01 Penjualan (tanda dibalik) |
+   | `expense_direct_cost` | PA02 HPP |
+   | `expense`, `expense_depreciation` | PA03 Beban usaha |
+   | `asset_receivable` | PA06 Piutang usaha |
+   | `liability_payable` | PA07 Utang usaha (dibalik) |
+   | `asset_cash` | PA08 Kas & setara kas |
+   | `liability_current` | PA10 Liabilitas lancar (dibalik) |
+   | `equity`, `equity_unaffected` | PA13 Ekuitas (dibalik) |
+
+   Usulannya tetap dapat diubah atau dihapus satu per satu. Yang **tidak**
+   diusulkan karena artinya mendua: PA05 Persediaan (di Odoo berjenis
+   `asset_current`, tidak terbedakan dari uang muka), serta PA09 Aset lancar,
+   PA11 Total aset, dan PA12 Total liabilitas — ketiganya JUMLAH yang memuat
+   akun yang sama dengan pos lain, sedangkan satu kode akun hanya boleh menunjuk
+   satu pos. Semuanya diisi di menu **Pos Akun**.
+4. **Pemetaan Akun** — kode akun Odoo → pos akun PA01–PA16, bila ingin mengatur
+   sendiri. Beberapa kode akun boleh menunjuk pos yang sama; nilainya
+   dijumlahkan.
+5. **Tarik sekarang** — untuk menguji, atau saat tutup buku tidak mau menunggu
    jadwal. Menarik ulang periode yang sama **menimpa** angkanya, bukan menambah.
 
 Tanpa pemetaan, tarikan tidak menemukan pos apa pun dan ditolak dengan pesan —
@@ -125,6 +146,14 @@ diisi manual. **Target** revenue tidak pernah disentuh: itu hasil perencanaan,
 bukan hasil pencatatan.
 
 Hanya jurnal berstatus `posted` yang dihitung; draf belum menjadi angka resmi.
+
+### Versi Odoo
+
+Odoo 18 memperkenalkan `formatted_read_group` dan membuang `read_group`, dengan
+urutan argumen serta nama kolom hasil yang berbeda. Aplikasi ini mencoba yang
+baru lebih dulu lalu jatuh ke yang lama, sehingga satu kode melayani Odoo 14
+sampai 19 tanpa perlu menanyakan versinya. Cara masuknya pun demikian:
+`common.authenticate` (yang didokumentasikan) dengan cadangan `common.login`.
 
 ### Tanda saldo
 
