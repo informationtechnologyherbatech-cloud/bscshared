@@ -4,16 +4,19 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
 use App\Models\AccountBalance;
+use App\Models\AccountMapping;
+use App\Models\ApiKey;
 use App\Models\DepartmentObjective;
 use App\Models\FinancialRatio;
+use App\Models\OdooConnection;
 use App\Models\Period;
 use App\Models\StagingLog;
 use App\Models\WorkUnit;
+use App\Support\Bsc\Integration\CsvIntake;
 use App\Support\Bsc\MonitoringSync;
 use App\Support\Bsc\RatioEngine;
 use App\Support\Bsc\RatioLibrary;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -38,8 +41,6 @@ class SystemIntegration extends Component
         'modalPayload' => 'PA13',      // 3101 Modal / ekuitas
     ];
 
-    public $apiKey = 'bsc_live_secret_key_2026_hop4';
-    public $inboundEndpoint = '';
     public $csvFile;
 
     // Department Objective Inbound Payload
@@ -49,23 +50,26 @@ class SystemIntegration extends Component
     public $actualPayload = 0;
     public $evidenceUrlPayload = '';
 
-    // Finance ERP Inbound Payload (Wadah Penerimaan Finance)
+    // Finance ERP Inbound Payload (Wadah Penerimaan Finance) — satuan juta rupiah.
+    // Nilai awalnya diisi dari pos akun periode berjalan pada mount(), bukan
+    // dipatok di sini: angka contoh yang dipatok membuat layar tampak berisi
+    // padahal entitasnya belum punya data sama sekali.
     public $financePeriod = '';
-    public $salesPayload = 96000.00;      // 4101 - Penjualan Produk
-    public $hppPayload = 57600.00;        // 5101 - HPP
-    public $opexPayload = 23400.00;       // 6101 - Beban Operasional
-    public $kasPayload = 12500.00;        // 1101 - Kas & Bank
-    public $piutangPayload = 9800.00;     // 1201 - Piutang
-    public $persediaanPayload = 14200.00; // 1301 - Persediaan
-    public $hutangPayload = 8200.00;      // 2101 - Hutang Usaha
-    public $modalPayload = 73300.00;      // 3101 - Modal / Ekuitas
+    public $salesPayload = null;      // 4101 - Penjualan Produk
+    public $hppPayload = null;        // 5101 - HPP
+    public $opexPayload = null;       // 6101 - Beban Operasional
+    public $kasPayload = null;        // 1101 - Kas & Bank
+    public $piutangPayload = null;    // 1201 - Piutang
+    public $persediaanPayload = null; // 1301 - Persediaan
+    public $hutangPayload = null;     // 2101 - Hutang Usaha
+    public $modalPayload = null;      // 3101 - Modal / Ekuitas
 
     public function mount()
     {
         // Periode, departemen, dan KPI bawaan dari data entitas aktif — sebelumnya
         // dipatok 2026-08, PROD, dan KPI-PROD-001 milik Herbatech.
         $this->financePeriod = Period::currentPeriod();
-        $this->inboundEndpoint = url('/api/v1/bsc/sync/finance-coa');
+        $this->isiDariPosAkun();
         $this->deptPayload = (string) (DepartmentObjective::where('period', $this->financePeriod)->orderBy('dept_code')->value('dept_code')
             ?? WorkUnit::active()->value('code') ?? '');
         $this->updatedDeptPayload();
@@ -90,14 +94,22 @@ class SystemIntegration extends Component
         $this->actualPayload = $obj ? (float) $obj->actual : 0;
     }
 
-    public function generateApiKey()
+    /** Isian formulir mengikuti pos akun yang tersimpan untuk periode itu. */
+    private function isiDariPosAkun(): void
     {
-        if ($this->lacksPermission('manage apikey')) {
-            return;
+        // Pos yang belum punya angka dibiarkan KOSONG, bukan diisi 0: menekan
+        // simpan tidak boleh diam-diam mengubah "belum ada data" menjadi "nol".
+        foreach ($this->saldoBerjalan($this->financePeriod) as $kolom => $nilai) {
+            $this->{$kolom} = $nilai;
         }
+    }
 
-        $this->apiKey = 'bsc_live_' . Str::random(24);
-        session()->flash('message', 'Kunci API Gateway baru berhasil diderivasi!');
+    /** Ganti periode = ganti pula angka yang sedang dilihat & disunting. */
+    public function updatedFinancePeriod(): void
+    {
+        if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $this->financePeriod)) {
+            $this->isiDariPosAkun();
+        }
     }
 
     public function processManualPayload()
@@ -177,7 +189,10 @@ class SystemIntegration extends Component
 
         $aturan = ['financePeriod' => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/']];
         foreach (array_keys(self::COA_KE_POS) as $kolom) {
-            $aturan[$kolom] = ['required', 'numeric'];
+            // Boleh dikosongkan: pos yang memang belum punya angka tidak perlu
+            // dipaksa diisi 0. Nol itu DATA — rasio akan menghitungnya sebagai
+            // nilai sungguhan, sedangkan kosong berarti belum ada datanya.
+            $aturan[$kolom] = ['nullable', 'numeric'];
         }
         $this->validate($aturan, ['financePeriod.regex' => 'Periode harus YYYY-MM.'], ['financePeriod' => 'periode']);
 
@@ -187,16 +202,29 @@ class SystemIntegration extends Component
             return;
         }
 
-        DB::transaction(function () {
+        $ditulis = [];
+
+        DB::transaction(function () use (&$ditulis) {
             foreach (self::COA_KE_POS as $kolom => $pos) {
+                if (! is_numeric($this->{$kolom})) {
+                    continue;   // dibiarkan kosong = jangan disentuh
+                }
+
                 AccountBalance::updateOrCreate(
                     ['period' => $this->financePeriod, 'code' => $pos],
                     ['amount' => (float) $this->{$kolom} * 1_000_000]
                 );
+                $ditulis[] = $pos;
             }
 
             app(RatioEngine::class)->materialize($this->financePeriod);
         });
+
+        if ($ditulis === []) {
+            session()->flash('error', 'Tidak ada satu pun angka yang diisi, jadi tidak ada pos akun yang diubah.');
+
+            return;
+        }
 
         $netProfit = (float) $this->salesPayload - (float) $this->hppPayload - (float) $this->opexPayload;
         $idempotencyKey = 'IDEMP-FIN-COA-' . date('Ymd-His');
@@ -207,36 +235,120 @@ class SystemIntegration extends Component
             'idempotency_key' => $idempotencyKey,
             'status' => 'SCORED',
             'source_version' => 1,
-            'message' => 'Penerimaan Data Finance ERP ke Pos Akun (Penjualan: ' . rupiah($this->salesPayload) . ' JT, HPP: ' . rupiah($this->hppPayload) . ' JT, Laba: ' . rupiah($netProfit) . ' JT); rasio keuangan dihitung ulang.',
+            'message' => 'Pengisian manual pos akun (' . implode(', ', $ditulis) . ') — Penjualan: ' . rupiah($this->salesPayload)
+                . ' JT, HPP: ' . rupiah($this->hppPayload) . ' JT, Laba: ' . rupiah($netProfit) . ' JT; rasio keuangan dihitung ulang.',
         ]);
 
-        session()->flash('message', 'Data CoA Finance ' . $this->financePeriod . ' masuk ke Pos Akun dan rasio keuangan dihitung ulang. '
+        session()->flash('message', count($ditulis) . ' pos akun periode ' . $this->financePeriod
+            . ' disimpan dan rasio keuangan dihitung ulang. '
             . 'Pos akun lain (beban tenaga kerja, aset & liabilitas lancar, total aset/liabilitas, modal disetor, data HRIS) dilengkapi di menu Pos Akun.');
     }
 
-    public function uploadCsv()
+    /**
+     * Berkas yang diunggah BENAR-BENAR dibaca dan diterapkan.
+     *
+     * Dua bentuk berkas dilayani, dikenali dari judul kolomnya: saldo akun
+     * (masuk ke Pos Akun lalu rasio dihitung ulang) dan realisasi KPI. Aturan
+     * yang berlaku sama persis dengan jalur API — keduanya memakai kelas
+     * pemasukan yang sama, sehingga periode tertutup, pemetaan akun, dan
+     * penanda idempotensi diperlakukan seragam.
+     */
+    public function uploadCsv(CsvIntake $csv)
     {
         if ($this->lacksPermission('manage integration')) {
             return;
         }
 
         $this->validate([
-            'csvFile' => 'required|file|mimes:csv,txt,xlsx|max:2048',
+            'csvFile' => 'required|file|mimes:csv,txt|max:2048',
+        ], [
+            'csvFile.mimes' => 'Berkasnya harus CSV. Dari Excel: Simpan Sebagai → CSV.',
         ]);
 
-        $idempotencyKey = 'IDEMP-CSV-' . date('Ymd-His');
+        try {
+            $hasil = $csv->apply($this->csvFile->getRealPath(), Period::currentPeriod());
+        } catch (\Throwable $e) {
+            report($e);
+            session()->flash('error', 'Berkas '.$this->csvFile->getClientOriginalName().' tidak dapat diproses: '.$e->getMessage());
 
-        StagingLog::create([
-            'period' => Period::currentPeriod(),
-            'dept_code' => 'BATCH',
-            'idempotency_key' => $idempotencyKey,
-            'status' => 'SCORED',
-            'source_version' => 1,
-            'message' => 'Upload berkas CSV ' . $this->csvFile->getClientOriginalName() . ' berhasil diproses secara massal.',
-        ]);
+            return;
+        }
 
+        $nama = $this->csvFile->getClientOriginalName();
         $this->reset('csvFile');
-        session()->flash('message', 'Berkas data project CSV berhasil diunggah & diproses secara massal!');
+
+        if (! $hasil->ok()) {
+            session()->flash('error', $nama.' — '.$hasil->message);
+
+            return;
+        }
+
+        session()->flash('message', $nama.' diproses: '.$hasil->message
+            .($hasil->problems !== [] ? ' Baris yang dilewati: '.implode('; ', array_slice($hasil->problems, 0, 5)).'.' : ''));
+    }
+
+    /**
+     * Keadaan NYATA tiap mata rantai integrasi.
+     *
+     * Sebelumnya ketiga kotak di banner selalu bertuliskan "Connected" — kata
+     * yang ditulis di berkas tampilan, bukan disimpulkan dari apa pun. Layar
+     * pemantauan yang selalu hijau tidak memantau apa-apa.
+     *
+     * @return array<string, array{status: string, label: string, detail: string}>
+     */
+    private function rantaiIntegrasi(string $periode): array
+    {
+        $odoo = OdooConnection::first();
+
+        $hop1 = match (true) {
+            ! $odoo => ['mati', 'belum diatur', 'Sambungan Odoo belum dibuat.'],
+            ! $odoo->is_active => ['diam', 'nonaktif', 'Tarikan terjadwal dimatikan.'],
+            $odoo->last_status === 'galat' => ['galat', 'galat', (string) $odoo->last_message],
+            $odoo->last_status === 'ok' => ['hidup', 'tersambung',
+                'Terakhir '.$odoo->last_run_at?->diffForHumans().' · '.AccountMapping::count().' akun dipetakan.'],
+            default => ['diam', 'belum pernah ditarik', AccountMapping::count().' akun dipetakan; tekan Tarik sekarang.'],
+        };
+
+        // "Finance Monitoring" di aplikasi ini = pos akun yang terisi lalu
+        // dihitung menjadi 19 rasio. Itulah yang benar-benar dapat diperiksa.
+        $terisi = AccountBalance::where('period', $periode)->whereNotNull('amount')->count();
+        $rasio = FinancialRatio::where('period', $periode)->count();
+        $hop2 = match (true) {
+            $terisi === 0 => ['mati', 'belum ada data', 'Pos akun periode '.$periode.' masih kosong.'],
+            $rasio === 0 => ['galat', 'belum terhitung', $terisi.' pos akun terisi, tetapi rasio belum dihitung.'],
+            default => ['hidup', 'terhitung', $terisi.' dari 16 pos akun terisi · '.$rasio.' rasio dihitung.'],
+        };
+
+        // Hop 4 = aplikasi ini sebagai sumber bacaan holding. Yang menentukan
+        // hidup-matinya adalah ada tidaknya kunci API aktif, bukan kata-kata.
+        $kunci = ApiKey::where('is_active', true)->get();
+        $terpakai = $kunci->max('last_used_at');
+        $hop4 = match (true) {
+            $kunci->isEmpty() => ['mati', 'belum ada kunci', 'Terbitkan kunci API di Setting Sistem → tab API.'],
+            $terpakai === null => ['diam', 'siap', $kunci->count().' kunci aktif; holding belum pernah membaca.'],
+            default => ['hidup', 'dibaca holding', 'Terakhir dibaca '.$terpakai->diffForHumans().'.'],
+        };
+
+        return [
+            'odoo' => ['status' => $hop1[0], 'label' => $hop1[1], 'detail' => $hop1[2]],
+            'finance' => ['status' => $hop2[0], 'label' => $hop2[1], 'detail' => $hop2[2]],
+            'bsc' => ['status' => $hop4[0], 'label' => $hop4[1], 'detail' => $hop4[2]],
+        ];
+    }
+
+    /**
+     * Saldo pos akun periode ini dalam JUTA — satuan yang dipakai formulir.
+     * Null = pos itu memang belum diisi, jangan ditampilkan sebagai angka.
+     *
+     * @return array<string, float|null>
+     */
+    private function saldoBerjalan(string $periode): array
+    {
+        $saldo = AccountBalance::where('period', $periode)->pluck('amount', 'code');
+
+        return collect(self::COA_KE_POS)->mapWithKeys(fn ($pos, $kolom) => [
+            $kolom => isset($saldo[$pos]) ? (float) $saldo[$pos] / 1_000_000 : null,
+        ])->all();
     }
 
     public function render()
@@ -245,14 +357,22 @@ class SystemIntegration extends Component
         $financeLogs = StagingLog::where('dept_code', 'FIN')->latest()->take(5)->get();
         $financialRatios = FinancialRatio::where('period', $this->financePeriod)->orderBy('ratio_code')->get();
 
-        $netProfitCalculated = (float)$this->salesPayload - (float)$this->hppPayload - (float)$this->opexPayload;
         $periode = Period::currentPeriod();
+
+        // Kotak ringkasan membaca POS AKUN yang benar-benar tersimpan, bukan isi
+        // formulir. Sebelumnya keduanya satu nilai, sehingga entitas yang pos
+        // akunnya masih kosong tetap menampilkan angka contoh dari kode program.
+        $saldo = $this->saldoBerjalan($this->financePeriod);
+        $labaBersih = $saldo['salesPayload'] === null ? null
+            : $saldo['salesPayload'] - (float) $saldo['hppPayload'] - (float) $saldo['opexPayload'];
 
         return view('livewire.system-integration', [
             'recentLogs' => $recentLogs,
             'financeLogs' => $financeLogs,
             'financialRatios' => $financialRatios,
-            'netProfitCalculated' => $netProfitCalculated,
+            'saldoBerjalan' => $saldo,
+            'labaBersih' => $labaBersih,
+            'rantai' => $this->rantaiIntegrasi($this->financePeriod),
             'units' => WorkUnit::active()->get(),
             'kpiOptions' => DepartmentObjective::where('period', $periode)->where('dept_code', $this->deptPayload)->orderBy('kpi_code')->get(),
             'currentPeriod' => $periode,

@@ -143,9 +143,12 @@ class SmokeRoutesTest extends TestCase
             ->assertDontSee('Terima &amp; Sinkronkan Data Finance ERP', false)
             ->assertDontSee('Uji Coba Kirim API Payload Inbound', false);
 
+        // Jejak audit boleh dipantau siapa pun yang berhak melihatnya, karena
+        // halaman itu memang tidak punya tindakan yang menulis sama sekali.
         $this->actingAs($viewer)
             ->get(route('staging-logs'))
             ->assertOk()
+            ->assertSee('Riwayat kiriman')
             ->assertDontSee('Kirim Payload Simulasi', false);
     }
 

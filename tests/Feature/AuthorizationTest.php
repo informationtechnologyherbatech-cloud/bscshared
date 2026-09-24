@@ -76,13 +76,22 @@ class AuthorizationTest extends TestCase
 
     /* --------------------------------------------------------- integrasi */
 
-    public function test_a_viewer_cannot_simulate_an_inbound_payload(): void
+    public function test_the_audit_log_page_never_writes_anything(): void
     {
         $this->actingAs($this->userWithRole('Viewer'));
 
-        Livewire::test(StagingLogs::class)->call('simulateInbound');
+        // Halaman ini sengaja tidak punya satu pun tindakan yang menulis: jejak
+        // audit yang isinya dapat dikarang dari layarnya sendiri tidak lagi
+        // menjadi bukti. Dahulu ada tombol "Kirim Payload Simulasi" yang menulis
+        // baris berbunyi "diterima dan berhasil dihitung" padahal tidak ada satu
+        // angka pun yang berubah.
+        Livewire::test(StagingLogs::class)
+            ->set('cari', 'apa saja')
+            ->set('status', 'ERROR')
+            ->call('bersihkanSaringan');
 
         $this->assertSame(0, StagingLog::count());
+        $this->assertFalse(method_exists(StagingLogs::class, 'simulateInbound'));
     }
 
     public function test_a_viewer_cannot_overwrite_financial_ratios_through_the_gateway(): void
@@ -98,7 +107,19 @@ class AuthorizationTest extends TestCase
     {
         $this->actingAs($this->userWithRole('Admin FAT'));
 
-        Livewire::test(SystemIntegration::class)->call('processFinancePayload');
+        // Isian formulir diisi di sini, bukan mengandalkan nilai bawaan: sejak
+        // angka contoh dibuang, formulirnya berangkat dari pos akun yang
+        // tersimpan — dan pada awal uji memang masih kosong.
+        Livewire::test(SystemIntegration::class)
+            ->set('salesPayload', 96000)
+            ->set('hppPayload', 57600)
+            ->set('opexPayload', 23400)
+            ->set('kasPayload', 12500)
+            ->set('piutangPayload', 9800)
+            ->set('persediaanPayload', 14200)
+            ->set('hutangPayload', 8200)
+            ->set('modalPayload', 73300)
+            ->call('processFinancePayload');
 
         $this->assertGreaterThan(0, FinancialRatio::count());
     }

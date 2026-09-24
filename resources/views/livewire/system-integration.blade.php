@@ -33,49 +33,82 @@
                     </h3>
                 </div>
                 <div class="card-body bg-light">
-                    <div class="row text-center align-items-center">
+                    @php
+                        $lencana = [
+                            'hidup' => 'badge-success',
+                            'diam' => 'badge-secondary',
+                            'galat' => 'badge-danger',
+                            'mati' => 'badge-warning',
+                        ];
+                        $ikon = [
+                            'hidup' => 'fa-circle-check',
+                            'diam' => 'fa-circle-pause',
+                            'galat' => 'fa-circle-exclamation',
+                            'mati' => 'fa-circle-minus',
+                        ];
+                    @endphp
+                    <div class="row text-center align-items-stretch">
                         <div class="col-md-3 mb-2 mb-md-0">
-                            <div class="p-3 bg-white border rounded shadow-sm">
+                            <div class="p-3 bg-white border rounded shadow-sm h-100">
                                 <span class="badge badge-secondary mb-1">Hop 1</span>
                                 <h6 class="font-weight-bold mb-1"><i class="fas fa-database text-info mr-1"></i> Odoo ERP</h6>
-                                <small class="text-muted">Pencatatan Transaksi & CoA</small>
-                                <div class="mt-2"><span class="badge badge-success"><i class="fas fa-link"></i> Connected</span></div>
+                                <small class="text-muted">Pencatatan transaksi & bagan akun</small>
+                                <div class="mt-2">
+                                    <span class="badge {{ $lencana[$rantai['odoo']['status']] }}">
+                                        <i class="fas {{ $ikon[$rantai['odoo']['status']] }}"></i> {{ $rantai['odoo']['label'] }}
+                                    </span>
+                                </div>
+                                <small class="d-block text-muted mt-1">{{ $rantai['odoo']['detail'] }}</small>
                             </div>
                         </div>
-                        <div class="col-md-1 text-center d-none d-md-block text-muted">
+                        <div class="col-md-1 text-center d-none d-md-flex align-items-center justify-content-center text-muted">
                             <i class="fas fa-chevron-right fa-2x"></i>
                         </div>
                         <div class="col-md-3 mb-2 mb-md-0">
-                            <div class="p-3 bg-white border rounded shadow-sm">
+                            <div class="p-3 bg-white border rounded shadow-sm h-100">
                                 <span class="badge badge-secondary mb-1">Hop 2</span>
                                 <h6 class="font-weight-bold mb-1"><i class="fas fa-calculator text-warning mr-1"></i> Finance Monitoring</h6>
-                                <small class="text-muted">Hitung & Setujui Rasio</small>
-                                <div class="mt-2"><span class="badge badge-success"><i class="fas fa-link"></i> Connected</span></div>
+                                <small class="text-muted">Pos akun → 19 rasio keuangan</small>
+                                <div class="mt-2">
+                                    <span class="badge {{ $lencana[$rantai['finance']['status']] }}">
+                                        <i class="fas {{ $ikon[$rantai['finance']['status']] }}"></i> {{ $rantai['finance']['label'] }}
+                                    </span>
+                                </div>
+                                <small class="d-block text-muted mt-1">{{ $rantai['finance']['detail'] }}</small>
                             </div>
                         </div>
-                        <div class="col-md-1 text-center d-none d-md-block text-muted">
+                        <div class="col-md-1 text-center d-none d-md-flex align-items-center justify-content-center text-muted">
                             <i class="fas fa-chevron-right fa-2x"></i>
                         </div>
                         <div class="col-md-3">
-                            <div class="p-3 bg-white border border-primary rounded shadow-sm bg-gradient-teal text-white">
+                            <div class="p-3 border border-primary rounded shadow-sm bg-gradient-teal text-white h-100">
                                 <span class="badge badge-light text-teal mb-1 font-weight-bold">Hop 4 (Tujuan)</span>
                                 <h6 class="font-weight-bold mb-1"><i class="fas fa-chart-line mr-1"></i> Super Apps BSC</h6>
-                                <small class="text-white-50">Konsolidasi & Lineage Score</small>
-                                <div class="mt-2"><span class="badge badge-light text-teal"><i class="fas fa-check-circle"></i> Active Endpoint</span></div>
+                                <small class="text-white-50">Skor entitas, dibaca holding</small>
+                                <div class="mt-2">
+                                    <span class="badge badge-light text-teal">
+                                        <i class="fas {{ $ikon[$rantai['bsc']['status']] }}"></i> {{ $rantai['bsc']['label'] }}
+                                    </span>
+                                </div>
+                                <small class="d-block text-white-50 mt-1">{{ $rantai['bsc']['detail'] }}</small>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            {{-- Hop 1 sungguhan: sambungan Odoo & pemetaan akunnya. Ditanam di sini
+                 supaya semua urusan integrasi berada di satu halaman. --}}
+            @livewire('odoo-integration', ['embedded' => true])
+
             <!-- WADAH PENERIMAAN DATA FINANCE ERP (BARU) -->
             <div class="card card-outline card-success mb-4">
                 <div class="card-header bg-success text-white">
                     <h3 class="card-title font-weight-bold">
-                        <i class="fas fa-file-invoice-dollar mr-2"></i> Wadah Penerimaan Data Finance ERP (Odoo CoA Receiver & Financial Staging)
+                        <i class="fas fa-file-invoice-dollar mr-2"></i> Pos Akun Periode Berjalan (dari Odoo, berkas, atau diisi di sini)
                     </h3>
                     <div class="card-tools">
-                        <span class="badge badge-light text-success font-weight-bold">Status Endpoint: ONLINE</span>
+                        <span class="badge badge-light text-success font-weight-bold">Periode {{ $financePeriod }}</span>
                     </div>
                 </div>
                 <div class="card-body">
@@ -85,8 +118,8 @@
                             <div class="info-box bg-light border">
                                 <span class="info-box-icon bg-info"><i class="fas fa-shopping-cart"></i></span>
                                 <div class="info-box-content">
-                                    <span class="info-box-text font-weight-bold text-uppercase">4101 · Penjualan</span>
-                                    <span class="info-box-number text-info">{{ rupiah($salesPayload) }} JT</span>
+                                    <span class="info-box-text font-weight-bold text-uppercase">PA01 · Penjualan</span>
+                                    <span class="info-box-number text-info">{!! $saldoBerjalan['salesPayload'] === null ? '<span class="text-muted">belum diisi</span>' : e(rupiah($saldoBerjalan['salesPayload'])).' JT' !!}</span>
                                     <small class="text-muted">Pendapatan Operasional</small>
                                 </div>
                             </div>
@@ -95,8 +128,8 @@
                             <div class="info-box bg-light border">
                                 <span class="info-box-icon bg-danger"><i class="fas fa-boxes"></i></span>
                                 <div class="info-box-content">
-                                    <span class="info-box-text font-weight-bold text-uppercase">5101 · HPP</span>
-                                    <span class="info-box-number text-danger">{{ rupiah($hppPayload) }} JT</span>
+                                    <span class="info-box-text font-weight-bold text-uppercase">PA02 · HPP</span>
+                                    <span class="info-box-number text-danger">{!! $saldoBerjalan['hppPayload'] === null ? '<span class="text-muted">belum diisi</span>' : e(rupiah($saldoBerjalan['hppPayload'])).' JT' !!}</span>
                                     <small class="text-muted">Beban Pokok Penjualan</small>
                                 </div>
                             </div>
@@ -105,8 +138,8 @@
                             <div class="info-box bg-light border">
                                 <span class="info-box-icon bg-warning"><i class="fas fa-file-invoice"></i></span>
                                 <div class="info-box-content">
-                                    <span class="info-box-text font-weight-bold text-uppercase">6101 · Beban Opex</span>
-                                    <span class="info-box-number text-warning">{{ rupiah($opexPayload) }} JT</span>
+                                    <span class="info-box-text font-weight-bold text-uppercase">PA03 · Beban usaha</span>
+                                    <span class="info-box-number text-warning">{!! $saldoBerjalan['opexPayload'] === null ? '<span class="text-muted">belum diisi</span>' : e(rupiah($saldoBerjalan['opexPayload'])).' JT' !!}</span>
                                     <small class="text-muted">Beban Operasional & Distribusi</small>
                                 </div>
                             </div>
@@ -116,7 +149,7 @@
                                 <span class="info-box-icon bg-white text-success"><i class="fas fa-coins"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text font-weight-bold text-uppercase">Laba Bersih Operasional</span>
-                                    <span class="info-box-number text-white">{{ rupiah($netProfitCalculated) }} JT</span>
+                                    <span class="info-box-number text-white">{!! $labaBersih === null ? '<span class="text-white-50">belum diisi</span>' : e(rupiah($labaBersih)).' JT' !!}</span>
                                     <small class="text-white-50">Laba = Penjualan - HPP - Opex</small>
                                 </div>
                             </div>
@@ -136,47 +169,51 @@
                                     @error('financePeriod') <span class="invalid-feedback">{{ $message }}</span> @enderror
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">4101 · Penjualan (JT)</label>
+                                    <label class="small font-weight-bold">PA01 · Penjualan (JT)</label>
                                     <x-input-rupiah wire:model="salesPayload" class="form-control form-control-sm font-weight-bold text-primary text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">5101 · HPP (JT)</label>
+                                    <label class="small font-weight-bold">PA02 · HPP (JT)</label>
                                     <x-input-rupiah wire:model="hppPayload" class="form-control form-control-sm font-weight-bold text-danger text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">6101 · Beban Operasional (JT)</label>
+                                    <label class="small font-weight-bold">PA03 · Beban usaha & lain-lain (JT)</label>
                                     <x-input-rupiah wire:model="opexPayload" class="form-control form-control-sm font-weight-bold text-warning text-right" />
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">1101 · Kas & Bank (JT)</label>
+                                    <label class="small font-weight-bold">PA08 · Kas & setara kas (JT)</label>
                                     <x-input-rupiah wire:model="kasPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">1201 · Piutang Usaha (JT)</label>
+                                    <label class="small font-weight-bold">PA06 · Piutang usaha (JT)</label>
                                     <x-input-rupiah wire:model="piutangPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">1301 · Persediaan Barang (JT)</label>
+                                    <label class="small font-weight-bold">PA05 · Persediaan (JT)</label>
                                     <x-input-rupiah wire:model="persediaanPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">2101 · Hutang Usaha (JT)</label>
+                                    <label class="small font-weight-bold">PA07 · Utang usaha (JT)</label>
                                     <x-input-rupiah wire:model="hutangPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group col-md-3">
-                                    <label class="small font-weight-bold">3101 · Modal / Ekuitas (JT)</label>
+                                    <label class="small font-weight-bold">PA13 · Ekuitas (JT)</label>
                                     <x-input-rupiah wire:model="modalPayload" class="form-control form-control-sm font-weight-bold text-right" />
                                 </div>
                                 <div class="col-md-9 small text-muted d-flex align-items-center">
                                     <span>
                                         <i class="fas fa-info-circle mr-1"></i>
-                                        Saldo masuk ke <a href="{{ route('account-balances', ['period' => $financePeriod]) }}">Pos Akun</a>
-                                        (Penjualan→PA01, HPP→PA02, Beban→PA03, Persediaan→PA05, Piutang→PA06, Hutang→PA07, Kas→PA08, Ekuitas→PA13),
-                                        lalu 19 rasio dihitung ulang dengan target dari Katalog Rasio. Aliran = nilai YTD; neraca = saldo akhir.
+                                        Delapan pos ini masuk ke <a href="{{ route('account-balances', ['period' => $financePeriod]) }}">Pos Akun</a>,
+                                        lalu 19 rasio dihitung ulang dengan target dari Katalog Rasio.
+                                        <strong>Aliran</strong> (PA01–PA03) diisi nilai YTD Januari s.d. periode ini;
+                                        <strong>neraca</strong> (PA05–PA08, PA13) diisi saldo akhir periode.
+                                        Kolom yang <strong>dikosongkan tidak diubah</strong> — nol itu angka, bukan "belum ada data".
+                                        Delapan pos sisanya (PA04 beban tenaga kerja, PA09–PA12 aset &amp; liabilitas, PA14 modal disetor,
+                                        PA15–PA16 data HRIS) beserta <strong>saldo awal tahun</strong> diisi di menu Pos Akun.
                                     </span>
                                 </div>
                             </div>
@@ -237,35 +274,36 @@
                             </h3>
                         </div>
                         <div class="card-body">
-                            <div class="form-group">
-                                <label class="small font-weight-bold text-uppercase">Endpoint API Inbound (POST):</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control font-weight-bold bg-light" value="{{ $inboundEndpoint }}" readonly>
-                                    <div class="input-group-append">
-                                        <button class="btn btn-outline-info" onclick="navigator.clipboard.writeText('{{ $inboundEndpoint }}')">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            <p class="small text-muted">
+                                Aplikasi ini <strong>menyediakan</strong> dua alamat untuk dibaca holding. Tidak ada alamat untuk
+                                mengirim data masuk: angka dari Odoo <strong>ditarik</strong> oleh aplikasi ini sendiri (Hop 1 di atas),
+                                dan pengisian manual lewat berkas atau formulir di halaman ini.
+                            </p>
 
                             <div class="form-group">
-                                <label class="small font-weight-bold text-uppercase">Secret API Key (Header `X-BSC-API-KEY`):</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control font-weight-bold bg-light" value="{{ $apiKey }}" readonly>
-                                    <div class="input-group-append">
-                                        @can('manage apikey')
-                                        <button wire:click="generateApiKey" class="btn btn-warning">
-                                            <i class="fas fa-sync-alt"></i> Regenerate
-                                        </button>
-                                        @endcan
-                                    </div>
+                                <label class="small font-weight-bold text-uppercase">Alamat yang dibaca holding</label>
+                                <ul class="list-unstyled small mb-0">
+                                    <li><code>GET {{ url('/api/v1/consolidation') }}</code> — ringkasan kinerja entitas ini</li>
+                                    <li><code>GET {{ url('/api/v1/ping') }}</code> — pemeriksaan sambungan, tanpa angka kinerja</li>
+                                </ul>
+                            </div>
+
+                            <div class="form-group mb-2">
+                                <label class="small font-weight-bold text-uppercase">Kunci API</label>
+                                <div class="small">
+                                    {{ $rantai['bsc']['label'] }} — {{ $rantai['bsc']['detail'] }}
                                 </div>
                             </div>
 
                             <div class="alert alert-light border small text-muted mb-0">
                                 <i class="fas fa-shield-alt text-info mr-1"></i>
-                                Semua payload masuk diwajibkan menyertakan header <code>X-BSC-API-KEY</code> dan parameter <code>idempotency_key</code> untuk mencegah duplikasi data transaksi.
+                                Kunci dikirim pada header <code>X-API-KEY</code> dan hanya tersimpan sebagai sidik jari — tidak
+                                dapat ditampilkan lagi setelah dibuat. Terbitkan atau cabut kunci di
+                                @can('manage apikey')
+                                    <a href="{{ route('settings') }}">Setting Sistem → tab API</a>.
+                                @else
+                                    Setting Sistem → tab API.
+                                @endcan
                             </div>
                         </div>
                     </div>
@@ -278,10 +316,21 @@
                             </h3>
                         </div>
                         <div class="card-body">
-                            <p class="small text-muted mb-3">
-                                Jika sistem project belum terhubung langsung via API, unggah berkas CSV sesuai format baku panduan adaptasi:
-                                <code>PERIODE</code>, <code>DEPT_CODE</code>, <code>KPI_CODE</code>, <code>TARGET</code>, <code>ACTUAL</code>, <code>IDEMPOTENCY_KEY</code>.
+                            <p class="small text-muted mb-2">
+                                Berkasnya dibaca dan langsung diterapkan. Dua bentuk dilayani, dikenali sendiri dari judul kolomnya:
                             </p>
+                            <ul class="small text-muted pl-3 mb-3">
+                                <li>
+                                    <strong>Saldo akun</strong> — masuk ke Pos Akun, rasio keuangan dihitung ulang:<br>
+                                    <code>kode,nilai,saldo_awal</code> · kode akun diterjemahkan lewat
+                                    <strong>Pemetaan Akun</strong> di bagian Hop 1 halaman ini.
+                                    Pos aliran diisi nilai YTD, pos neraca diisi saldo akhir periode.
+                                </li>
+                                <li class="mt-1">
+                                    <strong>Realisasi KPI</strong> — sesuai format baku panduan adaptasi:<br>
+                                    <code>periode,dept_code,kpi_code,target,actual,idempotency_key</code>.
+                                </li>
+                            </ul>
                             <form wire:submit.prevent="uploadCsv">
                                 <div class="form-group">
                                     <label>Pilih Berkas CSV / Text</label>

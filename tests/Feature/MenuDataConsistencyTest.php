@@ -123,18 +123,32 @@ class MenuDataConsistencyTest extends TestCase
 
     /* ------------------------------------------------------ staging log */
 
-    public function test_staging_simulation_uses_the_entitys_units_and_latest_period(): void
+    public function test_the_audit_log_can_be_narrowed_down_by_its_filters(): void
     {
+        $buat = fn (string $unit, string $status, string $pesan) => StagingLog::create([
+            'period' => '2026-08', 'dept_code' => $unit, 'idempotency_key' => 'IDEMP-'.$unit.'-'.$status,
+            'status' => $status, 'source_version' => 1, 'message' => $pesan,
+        ]);
+
+        $buat('TTC', 'SCORED', 'Odoo: 3 pos akun uji diperbarui.');
+        $buat('FIN', 'ERROR', 'Unggahan CSV ditolak: kode akun uji belum dipetakan.');
+
+        $semua = StagingLog::count();
+
+        // Saringan unit kerja memakai daftar unit entitas ini.
         Livewire::test(StagingLogs::class)
-            ->assertSet('simulatedDept', 'MFG') // unit pertama Erdigma
             ->assertViewHas('units', fn ($u) => $u->pluck('code')->contains('TTC'))
-            ->set('simulatedDept', 'TTC')
-            ->call('simulateInbound');
-
-        $log = StagingLog::where('dept_code', 'TTC')->firstOrFail();
-        $this->assertSame('2026-08', $log->period);
-
-        Livewire::test(StagingLogs::class)->set('simulatedDept', 'QC')->call('simulateInbound')->assertHasErrors('simulatedDept');
+            ->assertViewHas('logs', fn ($l) => $l->total() === $semua)
+            ->set('status', 'ERROR')
+            ->assertViewHas('logs', fn ($l) => $l->total() === 1 && $l->first()->dept_code === 'FIN')
+            ->set('status', '')
+            ->set('unit', 'TTC')
+            ->assertViewHas('logs', fn ($l) => $l->total() === 1 && $l->first()->dept_code === 'TTC')
+            ->set('unit', '')
+            ->set('cari', 'pos akun uji')
+            ->assertViewHas('logs', fn ($l) => $l->total() === 1 && $l->first()->dept_code === 'TTC')
+            ->call('bersihkanSaringan')
+            ->assertViewHas('logs', fn ($l) => $l->total() === $semua);
     }
 
     /* ------------------------------------------------------- integrasi */
