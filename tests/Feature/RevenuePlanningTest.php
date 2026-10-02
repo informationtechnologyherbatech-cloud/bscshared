@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\RevenuePlanning;
 use App\Livewire\RevenueTargets;
 use App\Models\Entity;
+use App\Models\Period;
 use App\Models\RevenueForecastPlan;
 use App\Models\RevenuePlan;
 use App\Models\RevenueTarget;
@@ -15,7 +16,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Halaman Perencanaan Target (L1 bagian A–G) dengan data contoh workbook:
+ * Halaman Perencanaan Target (L1 bagian A–H) dengan data contoh workbook:
  * realisasi 2026 Jan–Agu tersimpan di menu Target Revenue, target 2027.
  */
 class RevenuePlanningTest extends TestCase
@@ -182,6 +183,94 @@ class RevenuePlanningTest extends TestCase
         $this->actingAsRole('Admin FAT', Entity::where('code', 'HERBATECH')->firstOrFail());
 
         Livewire::test(RevenuePlanning::class, ['year' => '2027'])->assertSet('channels', []);
+    }
+
+    /* ------------------------------------- H: fasing bulanan manual */
+
+    public function test_manual_phasing_writes_exactly_what_was_typed(): void
+    {
+        $this->actingAsRole('Admin FAT');
+        $this->seedBaseYear();
+        RevenuePlan::create(['year' => '2027', 'approved_target' => 900e9]);
+
+        // Bagian H dipakai justru ketika pola musiman tidak mewakili: Januari
+        // sengaja kecil dan Desember besar, bukan mengikuti indeks tahun dasar.
+        Livewire::test(RevenuePlanning::class, ['year' => '2027'])
+            ->set('manualPhasing.01', '40000000000')
+            ->set('manualPhasing.12', '160000000000')
+            ->call('applyManualPhasing')
+            ->assertHasNoErrors();
+
+        $target = RevenueTarget::where('period', 'like', '2027-%')->pluck('target', 'period');
+
+        $this->assertEqualsWithDelta(40e9, (float) $target['2027-01'], 1);
+        $this->assertEqualsWithDelta(160e9, (float) $target['2027-12'], 1);
+        // Bulan yang dikosongkan tidak ditulis sama sekali — bukan diisi nol.
+        $this->assertCount(2, $target);
+    }
+
+    public function test_manual_phasing_survives_a_reload(): void
+    {
+        $this->actingAsRole('Admin FAT');
+        RevenuePlan::create(['year' => '2027', 'approved_target' => 900e9]);
+
+        Livewire::test(RevenuePlanning::class, ['year' => '2027'])
+            ->set('manualPhasing.03', '77000000000')
+            ->call('applyManualPhasing');
+
+        // Drafnya tersimpan di lembar perencanaan, jadi masih ada saat dibuka lagi.
+        Livewire::test(RevenuePlanning::class, ['year' => '2027'])
+            ->assertSet('manualPhasing.03', '77000000000')
+            ->assertSet('manualPhasing.04', '');
+    }
+
+    public function test_manual_phasing_never_touches_a_closed_month(): void
+    {
+        $this->actingAsRole('Admin FAT');
+        RevenuePlan::create(['year' => '2027', 'approved_target' => 900e9]);
+        Period::create(['period' => '2027-01', 'status' => 'CLOSED', 'apex_score' => 0]);
+        RevenueTarget::create(['period' => '2027-01', 'target' => 70e9, 'actual' => 68e9]);
+
+        Livewire::test(RevenuePlanning::class, ['year' => '2027'])
+            ->set('manualPhasing.01', '999000000000')
+            ->set('manualPhasing.02', '80000000000')
+            ->call('applyManualPhasing');
+
+        // Periode tertutup memang sengaja dibekukan.
+        $this->assertEqualsWithDelta(70e9, (float) RevenueTarget::where('period', '2027-01')->value('target'), 1);
+        $this->assertEqualsWithDelta(80e9, (float) RevenueTarget::where('period', '2027-02')->value('target'), 1);
+    }
+
+    public function test_the_helpers_fill_twelve_months_without_a_seasonal_index(): void
+    {
+        $this->actingAsRole('Admin FAT');
+        $this->seedBaseYear();
+        RevenuePlan::create(['year' => '2027', 'approved_target' => 900e9]);
+
+        $halaman = Livewire::test(RevenuePlanning::class, ['year' => '2027'])->call('fillEven');
+
+        // "Bagi rata" sengaja TIDAK memakai indeks musiman — 900 M ÷ 12.
+        $this->assertSame('75000000000', $halaman->get('manualPhasing.01'));
+        $this->assertSame('75000000000', $halaman->get('manualPhasing.12'));
+
+        // "Salin dari G" memberi titik awal bermusim, lalu boleh disunting.
+        $halaman->call('copyFromSeasonal');
+        $this->assertEqualsWithDelta(70e9, (float) $halaman->get('manualPhasing.01'), 1);
+
+        $halaman->call('clearManualPhasing');
+        $this->assertSame('', $halaman->get('manualPhasing.01'));
+    }
+
+    public function test_a_viewer_cannot_apply_manual_phasing(): void
+    {
+        $this->actingAsRole('Viewer');
+        RevenuePlan::create(['year' => '2027', 'approved_target' => 900e9]);
+
+        Livewire::test(RevenuePlanning::class, ['year' => '2027'])
+            ->set('manualPhasing.01', '40000000000')
+            ->call('applyManualPhasing');
+
+        $this->assertSame(0, RevenueTarget::where('period', 'like', '2027-%')->count());
     }
 
     public function test_viewers_can_look_but_not_approve(): void

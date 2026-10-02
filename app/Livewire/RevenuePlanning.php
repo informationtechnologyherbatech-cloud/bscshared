@@ -15,10 +15,11 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * Sheet "L1 Target Revenue" bagian A–G: direksi menyusun target revenue
+ * Sheet "L1 Target Revenue" bagian A–H: direksi menyusun target revenue
  * setahun dari lima sudut pandang (run-rate, CAGR, regresi, bottom-up
  * brand × channel, inisiatif Ansoff + koreksi SWOT), mengesahkan satu angka,
- * lalu memfasingnya ke 12 bulan dengan indeks musiman tahun dasar.
+ * lalu memfasingnya ke 12 bulan — dengan indeks musiman tahun dasar (G), atau
+ * ditulis sendiri bulan per bulan bila pola musimannya tidak mewakili (H).
  */
 class RevenuePlanning extends Component
 {
@@ -55,6 +56,13 @@ class RevenuePlanning extends Component
     public string $notes = '';
 
     public string $manualApproval = '';
+
+    /**
+     * Bagian H — fasing bulanan yang ditulis sendiri, tanpa indeks musiman.
+     *
+     * @var array<int, string> bulan 1–12 => target rupiah
+     */
+    public array $manualPhasing = [];
 
     public function mount(): void
     {
@@ -113,6 +121,13 @@ class RevenuePlanning extends Component
         $this->swotAdjustment = $this->angka((float) ($rencana?->swot_adjustment ?? 0) * 100);
         $this->notes = (string) ($rencana?->notes ?? '');
         $this->manualApproval = '';
+
+        $tersimpan = $rencana?->manual_phasing ?? [];
+        $this->manualPhasing = [];
+        foreach (self::bulan() as $kunci) {
+            $nilai = $tersimpan[$kunci] ?? null;
+            $this->manualPhasing[$kunci] = $nilai === null ? '' : $this->angka((float) $nilai);
+        }
 
         foreach ($this->brands as $i => $b) {
             $this->brands[$i]['cells'] = $this->padCells($b['cells']);
@@ -181,6 +196,18 @@ class RevenuePlanning extends Component
     }
 
     /* ------------------------------------------------------------- hitung */
+
+    /**
+     * Kunci bulan yang dipakai SELURUH halaman ini: '01'..'12', sama dengan
+     * akhiran periode. Dengan begitu fasing manual, fasing musiman, dan
+     * realisasi tahun dasar dapat disandingkan tanpa konversi.
+     *
+     * @return array<int, string>
+     */
+    private static function bulan(): array
+    {
+        return array_map(fn ($b) => str_pad((string) $b, 2, '0', STR_PAD_LEFT), range(1, 12));
+    }
 
     private static function num(mixed $v): ?float
     {
@@ -305,6 +332,7 @@ class RevenuePlanning extends Component
             'ansoff.*.probability' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'swot.*' => ['nullable', 'string', 'max:2000'],
             'swotAdjustment' => ['nullable', 'numeric', 'min:-100', 'max:100'],
+            'manualPhasing.*' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ], [], [
             'history.*' => 'realisasi', 'baseYtd' => 'YTD', 'baseMonths' => 'bulan berjalan',
@@ -330,6 +358,12 @@ class RevenuePlanning extends Component
             ], $this->ansoff)),
             'swot' => array_map(fn ($t) => trim((string) $t), $this->swot),
             'swot_adjustment' => (self::num($this->swotAdjustment) ?? 0) / 100,
+            // Bulan yang dikosongkan tidak disimpan, supaya "belum diisi" tetap
+            // dapat dibedakan dari "sengaja nol".
+            'manual_phasing' => array_filter(
+                collect($this->manualPhasing)->map(fn ($v) => self::num($v))->all(),
+                fn ($v) => $v !== null
+            ) ?: null,
             'notes' => trim($this->notes) ?: null,
         ]);
 
@@ -418,6 +452,129 @@ class RevenuePlanning extends Component
             .'. Lihat di menu Target Revenue.');
     }
 
+    /* ------------------------------------------- bagian H: fasing manual */
+
+    /** Jumlah fasing manual yang sudah diisi, dan selisihnya dari target disahkan. */
+    private function manualTotal(): float
+    {
+        return (float) collect($this->manualPhasing)->sum(fn ($v) => self::num($v) ?? 0.0);
+    }
+
+    /** Titik awal yang paling sering dipakai: target disahkan dibagi 12. */
+    public function fillEven(): void
+    {
+        if ($this->lacksPermission('manage revenue')) {
+            return;
+        }
+
+        $disahkan = RevenuePlan::where('year', $this->year)->value('approved_target');
+
+        if (! $disahkan) {
+            session()->flash('error', 'Sahkan target revenue '.$this->year.' lebih dulu di bagian F.');
+
+            return;
+        }
+
+        foreach (self::bulan() as $kunci) {
+            $this->manualPhasing[$kunci] = $this->angka(round((float) $disahkan / 12, 2));
+        }
+
+        session()->flash('message', 'Dua belas bulan diisi rata. Ubah bulan mana pun sesuai rencana, lalu Terapkan.');
+    }
+
+    /** Mulai dari pola musiman bagian G, lalu disunting seperlunya. */
+    public function copyFromSeasonal(): void
+    {
+        if ($this->lacksPermission('manage revenue')) {
+            return;
+        }
+
+        $fasing = $this->compute()['phasing'] ?? null;
+
+        if (! $fasing) {
+            session()->flash('error', 'Bagian G belum punya fasing musiman — sahkan target dan pastikan ada realisasi '
+                .$this->baseYear().'.');
+
+            return;
+        }
+
+        foreach ($fasing as $bulan => $target) {
+            $this->manualPhasing[$bulan] = $this->angka(round((float) $target, 2));
+        }
+
+        session()->flash('message', 'Fasing musiman bagian G disalin ke sini. Suntinglah bulan yang perlu diubah, lalu Terapkan.');
+    }
+
+    public function clearManualPhasing(): void
+    {
+        if ($this->lacksPermission('manage revenue')) {
+            return;
+        }
+
+        foreach (self::bulan() as $kunci) {
+            $this->manualPhasing[$kunci] = '';
+        }
+    }
+
+    /**
+     * Bagian H: tulis target bulanan APA ADANYA seperti yang diisi.
+     *
+     * Berbeda dengan bagian G, di sini tidak ada pembagian ulang: angka yang
+     * diketik itulah yang disimpan. Jumlahnya pun tidak dipaksa sama dengan
+     * target yang disahkan — selisihnya ditampilkan supaya terlihat, karena
+     * kadang memang disengaja (mis. target bulanan disusun lebih dulu).
+     * Bulan pada periode yang sudah DITUTUP tetap tidak disentuh.
+     */
+    public function applyManualPhasing(): void
+    {
+        if ($this->lacksPermission('manage revenue')) {
+            return;
+        }
+
+        $this->validate(
+            ['manualPhasing.*' => ['nullable', 'numeric', 'min:0']],
+            [],
+            ['manualPhasing.*' => 'target bulanan']
+        );
+
+        $terisi = array_filter(
+            collect($this->manualPhasing)->map(fn ($v) => self::num($v))->all(),
+            fn ($v) => $v !== null
+        );
+
+        if ($terisi === []) {
+            session()->flash('error', 'Belum ada satu bulan pun yang diisi.');
+
+            return;
+        }
+
+        $ditutup = Period::closedIn($this->year);
+        $dilewati = [];
+        $ditulis = 0;
+
+        DB::transaction(function () use ($terisi, $ditutup, &$dilewati, &$ditulis) {
+            foreach ($terisi as $bulan => $target) {
+                $periode = $this->year.'-'.str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
+
+                if (in_array($periode, $ditutup, true)) {
+                    $dilewati[] = $periode;
+
+                    continue;
+                }
+
+                RevenueTarget::updateOrCreate(['period' => $periode], ['target' => round((float) $target, 2)]);
+                $ditulis++;
+            }
+        });
+
+        // Draf fasingnya ikut tersimpan, supaya tidak hilang saat halaman dimuat ulang.
+        RevenueForecastPlan::updateOrCreate(['year' => $this->year], ['manual_phasing' => $terisi]);
+
+        session()->flash('message', $ditulis.' bulan target '.$this->year.' diisi dari fasing manual'
+            .($dilewati ? '. Bulan pada periode yang sudah DITUTUP tidak diubah: '.implode(', ', $dilewati) : '')
+            .'. Lihat di menu Target & Realisasi.');
+    }
+
     public function render()
     {
         return view('livewire.revenue-planning', [
@@ -425,6 +582,7 @@ class RevenuePlanning extends Component
             'baseYear' => $this->baseYear(),
             'quadrants' => RevenueForecast::ANSOFF,
             'canManage' => (bool) auth()->user()?->can('manage revenue'),
+            'manualTotal' => $this->manualTotal(),
             'entity' => app(EntityContext::class)->entity(),
             'years' => range((int) now()->format('Y') - 1, (int) now()->format('Y') + 3),
         ])->layout('layouts.app', ['title' => 'Perencanaan Target Revenue']);

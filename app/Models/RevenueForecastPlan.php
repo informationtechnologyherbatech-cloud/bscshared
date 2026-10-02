@@ -17,7 +17,7 @@ class RevenueForecastPlan extends Model
 
     protected $fillable = [
         'entity_id', 'year', 'history', 'base_ytd', 'base_months', 'channels', 'brands',
-        'ansoff', 'swot', 'swot_adjustment', 'notes',
+        'ansoff', 'swot', 'swot_adjustment', 'manual_phasing', 'notes',
     ];
 
     protected function casts(): array
@@ -31,6 +31,8 @@ class RevenueForecastPlan extends Model
             'ansoff' => 'array',
             'swot' => 'array',
             'swot_adjustment' => 'float',
+            // Fasing bulanan manual bagian H: bulan (1–12) => target rupiah.
+            'manual_phasing' => 'array',
         ];
     }
 }

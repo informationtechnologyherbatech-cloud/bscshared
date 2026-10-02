@@ -370,6 +370,90 @@
                     @if (! $r['approved']) Sahkan target di bagian F lebih dulu. @endif
                 </div>
             </div>
+
+            {{-- H --}}
+            @php($selisih = $manualTotal - (float) ($r['approved'] ?? 0))
+            <div class="card card-outline card-info">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
+                    <h3 class="card-title font-weight-bold mb-2 mb-md-0">
+                        H. Fasing bulanan manual {{ $year }} — tanpa indeks musiman
+                    </h3>
+                    @if ($canManage)
+                        <div>
+                            <button type="button" wire:click="fillEven" class="btn btn-sm btn-ghost">
+                                <i class="fas fa-equals mr-1"></i> Bagi rata
+                            </button>
+                            <button type="button" wire:click="copyFromSeasonal" class="btn btn-sm btn-ghost">
+                                <i class="fas fa-copy mr-1"></i> Salin dari G
+                            </button>
+                            <button type="button" wire:click="clearManualPhasing" class="btn btn-sm btn-ghost">
+                                <i class="fas fa-eraser mr-1"></i> Kosongkan
+                            </button>
+                            <button type="button" wire:click="applyManualPhasing"
+                                    wire:confirm="Isi target bulanan {{ $year }} dari angka yang Anda tulis? Target bulanan yang ada akan ditimpa; realisasi tidak berubah."
+                                    class="btn btn-sm btn-info">
+                                <i class="fas fa-calendar-check mr-1"></i> Terapkan ke Target Revenue
+                            </button>
+                        </div>
+                    @endif
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        Dipakai bila pola musiman tahun dasar tidak mewakili rencana tahun depan — kampanye besar, channel
+                        baru, atau angka bulanan yang memang sudah disepakati sendiri. Angka yang ditulis di sini dipakai
+                        <strong>apa adanya</strong>: tidak dibagi ulang dan tidak disesuaikan dengan indeks mana pun.
+                    </p>
+
+                    <div class="form-row">
+                        @foreach ($bulan as $k => $nama)
+                            <div class="col-6 col-md-3 col-lg-2 mb-2">
+                                <label class="small font-weight-bold mb-1" for="fasing-{{ $k }}">{{ $nama }}</label>
+                                @if ($canManage)
+                                    <x-input-rupiah wire:model.live.debounce.600ms="manualPhasing.{{ $k }}"
+                                           id="fasing-{{ $k }}"
+                                           class="form-control form-control-sm text-right {{ $errors->has('manualPhasing.'.$k) ? 'is-invalid' : '' }}"
+                                           placeholder="—" />
+                                @else
+                                    <div class="form-control form-control-sm text-right bg-light">
+                                        {{ $manualPhasing[$k] === '' ? '—' : number_format((float) $manualPhasing[$k], 0, ',', '.') }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="d-flex flex-wrap align-items-center mt-2">
+                        <div class="mr-4 mb-2">
+                            <small class="text-muted d-block">Jumlah 12 bulan</small>
+                            <strong>{{ rupiah($manualTotal) }}</strong>
+                        </div>
+                        <div class="mr-4 mb-2">
+                            <small class="text-muted d-block">Target disahkan (bagian F)</small>
+                            <strong>{{ $r['approved'] ? rupiah($r['approved']) : '—' }}</strong>
+                        </div>
+                        @if ($r['approved'])
+                            <div class="mb-2">
+                                <small class="text-muted d-block">Selisih</small>
+                                @if (abs($selisih) < 1)
+                                    <span class="badge badge-success px-2 py-1">
+                                        <i class="fas fa-check mr-1"></i> pas dengan target disahkan
+                                    </span>
+                                @else
+                                    <span class="badge badge-warning px-2 py-1">
+                                        <i class="fas fa-triangle-exclamation mr-1"></i>
+                                        {{ $selisih > 0 ? 'lebih' : 'kurang' }} {{ rupiah(abs($selisih)) }}
+                                    </span>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+                <div class="card-footer small text-muted">
+                    Jumlahnya <strong>tidak dipaksa</strong> sama dengan target yang disahkan — selisihnya hanya
+                    ditampilkan, karena kadang target bulanan memang disusun lebih dulu. Bulan yang dikosongkan tidak
+                    ditulis sama sekali, dan bulan pada periode yang sudah <strong>DITUTUP</strong> tidak pernah diubah.
+                </div>
+            </div>
         </div>
     </section>
 </div>
