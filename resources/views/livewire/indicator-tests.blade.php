@@ -249,7 +249,7 @@
                         <div class="col-xl-8">
                             <div class="card card-outline card-secondary">
                                 <div class="card-header">
-                                    <h3 class="card-title font-weight-bold">Dampak ke 19 rasio</h3>
+                                    <h3 class="card-title font-weight-bold">Dampak ke rasio keuangan</h3>
                                 </div>
                                 <div class="card-body p-0 table-responsive">
                                     <table class="table table-sm table-hover m-0" style="font-size:.8rem">

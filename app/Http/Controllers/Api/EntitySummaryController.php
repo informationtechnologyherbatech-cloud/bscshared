@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
  * Satu-satunya pintu data yang dibuka aplikasi entitas untuk holding.
  *
  * Yang dikeluarkan hanya ringkasan entitas PEMASANGAN INI: skor F1/F2/apex,
- * revenue kumulatif, jumlah KPI & sasaran, 19 rasio, dan ringkasan per unit kerja.
+ * revenue kumulatif, jumlah KPI & sasaran, rasio keuangan, dan ringkasan per unit kerja.
  * Tidak ada pos akun, isi sasaran mutu, program kerja, maupun data entitas lain —
  * kode entitas pada permintaan diabaikan, jadi holding tidak bisa "menitip"
  * pertanyaan tentang entitas tetangga.

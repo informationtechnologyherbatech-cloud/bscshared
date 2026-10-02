@@ -135,7 +135,7 @@
                             <p>Sasaran berasal dari KPI Cascade yang lolos validasi: Head (lag) → Supervisor (lead) → Staff (output), Σ bobot tiap jabatan 100%.
                                 Target disesuaikan = target × (1 + elastisitas × (faktor revisi revenue − 1)); KPI guardrail (elastisitas 0) tidak berubah.</p>
                             <p>Uji A: Driver lolos bila 8 jawaban Ya (7 Ya = revisi minor); Guardrail cukup Q5, Q7, Q8.
-                                Uji B: pos akun digeser sebesar % perbaikan × koefisien transmisi, lalu 19 rasio dinilai ulang; KPI lolos bila rasio yang diklaim bergerak ke arah baik.</p>
+                                Uji B: pos akun digeser sebesar % perbaikan × koefisien transmisi, lalu seluruh rasio aktif dinilai ulang; KPI lolos bila rasio yang diklaim bergerak ke arah baik.</p>
 
                             <h2>Tingkat 4 — Program Kerja</h2>
                             <p>Skor Tingkat 4 = rata-rata progres (%) program kerja yang tertaut ke sasaran mutu periode itu.

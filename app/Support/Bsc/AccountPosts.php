@@ -2,6 +2,9 @@
 
 namespace App\Support\Bsc;
 
+use App\Models\AccountPostDefinition;
+use App\Support\EntityContext;
+
 /**
  * Katalog 16 pos akun — sheet "Asumsi" bagian F pada
  * Cascading_Revenue_Rasio_KPI_Erdigma_2026.xlsx.
@@ -26,10 +29,80 @@ class AccountPosts
 
     public const HRIS_ALIRAN = 'hris_aliran';
 
+    /** Katalog entitas aktif dalam permintaan ini; dikosongkan lewat forget(). */
+    private static array $cache = [];
+
     /**
+     * Pos akun yang dipakai perhitungan: katalog entitas aktif, hanya yang
+     * masih aktif. Bila entitas belum punya katalog sendiri (konsol, seeder,
+     * pengujian), dipakai 16 pos bawaan workbook.
+     *
      * @return array<string, array{name: string, kind: string, source: string, hint: string}>
      */
     public static function all(): array
+    {
+        return array_filter(self::catalog(), fn (array $pos) => $pos['active'] ?? true);
+    }
+
+    /**
+     * Seluruh pos akun entitas termasuk yang dinonaktifkan — dipakai layar
+     * pengelolaan dan saat mencari nama pos lama.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function catalog(): array
+    {
+        $entitas = app(EntityContext::class)->id();
+
+        if ($entitas === null) {
+            return self::builtins();
+        }
+
+        if (array_key_exists($entitas, self::$cache)) {
+            return self::$cache[$entitas];
+        }
+
+        try {
+            $baris = AccountPostDefinition::orderBy('sort')->orderBy('code')->get();
+        } catch (\Throwable) {
+            // Tabelnya belum ada (migrasi sedang berjalan) — pakai bawaan.
+            return self::builtins();
+        }
+
+        if ($baris->isEmpty()) {
+            return self::$cache[$entitas] = self::builtins();
+        }
+
+        $katalog = [];
+
+        foreach ($baris as $pos) {
+            $katalog[$pos->code] = [
+                'name' => $pos->name,
+                'kind' => $pos->kind,
+                'source' => $pos->source,
+                'hint' => (string) $pos->hint,
+                'active' => $pos->is_active,
+                'builtin' => $pos->is_builtin,
+                'sort' => $pos->sort,
+            ];
+        }
+
+        return self::$cache[$entitas] = $katalog;
+    }
+
+    /** Lupakan katalog yang sudah dibaca — dipanggil sesudah katalog diubah. */
+    public static function forget(): void
+    {
+        self::$cache = [];
+    }
+
+    /**
+     * 16 pos akun bawaan workbook. Inilah susunan awal setiap entitas, dan
+     * acuan bila sebuah entitas belum punya katalognya sendiri.
+     *
+     * @return array<string, array{name: string, kind: string, source: string, hint: string}>
+     */
+    public static function builtins(): array
     {
         return [
             'PA01' => ['name' => 'Penjualan', 'kind' => self::ALIRAN, 'source' => 'GL', 'hint' => 'Penjualan bersih setelah diskon & retur.'],
@@ -53,7 +126,53 @@ class AccountPosts
 
     public static function kind(string $code): string
     {
-        return self::all()[$code]['kind'];
+        // Katalog penuh: pos yang dinonaktifkan pun masih punya jenis, supaya
+        // angka lamanya tetap terbaca benar.
+        return self::catalog()[$code]['kind'] ?? self::builtins()[$code]['kind'] ?? self::ALIRAN;
+    }
+
+    /** Nama pos akun untuk ditampilkan; kode yang tidak dikenal tampil apa adanya. */
+    public static function nameOf(string $code): string
+    {
+        return self::catalog()[$code]['name'] ?? self::builtins()[$code]['name'] ?? $code;
+    }
+
+    /**
+     * Jenis pos beserta keterangan cara angkanya dipakai — dipakai pilihan
+     * jenis saat menambah pos akun.
+     *
+     * @return array<string, string>
+     */
+    public static function kinds(): array
+    {
+        return [
+            self::ALIRAN => 'Aliran — diisi nilai YTD, lalu disetahunkan ×12 ÷ bulan berjalan',
+            self::NERACA => 'Neraca — diisi saldo awal tahun & saldo akhir, lalu dirata-rata',
+            self::HRIS_RATA => 'Rata-rata periode — dipakai apa adanya (mis. jumlah karyawan)',
+            self::HRIS_ALIRAN => 'Aliran HRIS — diisi total YTD, lalu disetahunkan (mis. jam kerja)',
+        ];
+    }
+
+    /**
+     * Sistem asal angka pos akun. Singkatannya dipakai di tabel, keterangannya
+     * dipakai saat memilih — "GL" sendirian tidak berarti apa-apa bagi pengisi.
+     *
+     * @return array<string, string>
+     */
+    public static function sources(): array
+    {
+        return [
+            'GL' => 'GL — Buku besar akuntansi (General Ledger), lewat Odoo atau unggahan CSV',
+            'HRIS' => 'HRIS — Sistem kepegawaian (jumlah karyawan, jam kerja)',
+            'GL / HRIS' => 'GL / HRIS — Dapat berasal dari keduanya',
+            'Manual' => 'Manual — Diketik sendiri di layar Pos Akun, tanpa sistem sumber',
+        ];
+    }
+
+    /** Keterangan panjang sebuah sumber; sumber di luar daftar tampil apa adanya. */
+    public static function sourceLabel(string $source): string
+    {
+        return self::sources()[$source] ?? $source;
     }
 
     public static function kindLabel(string $kind): string
@@ -121,7 +240,7 @@ class AccountPosts
      */
     public static function derivation(string $code, ?float $amount, ?float $opening, int $bulanBerjalan): array
     {
-        $jenis = self::all()[$code]['kind'] ?? self::ALIRAN;
+        $jenis = self::kind($code);
         $n = max(1, min(12, $bulanBerjalan));
         $angka = fn (?float $x) => $x === null ? '—' : number_format($x, 0, ',', '.');
 

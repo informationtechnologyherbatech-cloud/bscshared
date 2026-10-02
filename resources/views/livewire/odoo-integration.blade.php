@@ -177,7 +177,7 @@
                         </div>
                         <div class="card-body pb-0">
                             <p class="small text-muted">
-                                Bagan akun tiap entitas berbeda, sedangkan 19 rasio selalu disusun dari 16 pos yang sama.
+                                Bagan akun tiap entitas berbeda, sedangkan rasio selalu disusun dari pos akun yang sama.
                                 Di sinilah keduanya dipertemukan. Beberapa kode akun boleh menunjuk pos yang sama — nilainya dijumlahkan.
                             </p>
                             @php($posInti = ['PA01', 'PA02', 'PA03'])

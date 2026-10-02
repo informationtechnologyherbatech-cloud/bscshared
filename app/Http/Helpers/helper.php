@@ -478,6 +478,14 @@ if (! function_exists('post_kind_label')) {
     }
 }
 
+if (! function_exists('post_source_label')) {
+    /** Keterangan panjang sumber data pos akun (GL · HRIS · Manual). */
+    function post_source_label(string $source): string
+    {
+        return AccountPosts::sourceLabel($source);
+    }
+}
+
 if (! function_exists('post_is_neraca')) {
     /** Pos akun neraca — butuh saldo awal tahun & saldo akhir. */
     function post_is_neraca(string $kind): bool
@@ -616,7 +624,7 @@ if (! function_exists('ratio_column_help')) {
             ],
             'nama' => [
                 'judul' => 'Nama Indikator Rasio',
-                'ringkas' => 'Salah satu dari 19 rasio baku metodologi BSC; daftarnya ada di menu Katalog Rasio.',
+                'ringkas' => 'Rasio yang dipakai entitas ini; daftar, rumus, dan bobotnya diatur di menu Katalog Rasio.',
                 'rinci' => 'Rasio yang ditampilkan hanya yang berstatus aktif di Katalog Rasio entitas ini. '
                     .'Menonaktifkan sebuah rasio membuatnya tidak ikut dihitung maupun diskor.',
             ],

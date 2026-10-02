@@ -107,9 +107,29 @@ class RatioEngine
         $totalBobotTerskor = 0.0;
         $terskor = 0;
 
-        foreach ($katalog ?? RatioDefinition::active()->get() as $definisi) {
+        // Rumus seluruh rasio entitas — termasuk yang nonaktif, supaya rasio
+        // yang menunjuk rasio lain (A4 = 365 ÷ A1) tetap dapat dihitung.
+        $semua = $katalog === null ? RatioDefinition::orderBy('sort')->get() : collect($katalog);
+        $katalog ??= $semua->filter->is_active;
+
+        $rumus = RatioLibrary::expressions();
+        foreach ($semua as $d) {
+            $keterangan = $d->meta();
+
+            if ($keterangan['expression']) {
+                $rumus[$d->code] = $keterangan['expression'];
+            }
+
+            // Rasio buatan sendiri boleh memakai kelompok di luar lima kelompok
+            // baku; tanpa ini skornya hilang dari rekap per kelompok.
+            if ($keterangan['group'] && ! isset($kelompok[$keterangan['group']])) {
+                $kelompok[$keterangan['group']] = ['weight' => 0.0, 'weighted' => 0.0, 'scored_weight' => 0.0, 'achievement' => null];
+            }
+        }
+
+        foreach ($katalog as $definisi) {
             $meta = $definisi->meta();
-            $aktual = RatioLibrary::compute($definisi->code, $dipakai);
+            $aktual = RatioLibrary::compute($definisi->code, $dipakai, $meta['expression'], $rumus);
             $target = $targets[$definisi->code] ?? null;
             $capaian = RatioLibrary::achievement($aktual, $target, $meta['polarity']);
             $rubrik = RatioLibrary::rubric($capaian);

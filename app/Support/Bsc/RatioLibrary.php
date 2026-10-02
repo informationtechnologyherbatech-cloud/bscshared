@@ -2,6 +2,8 @@
 
 namespace App\Support\Bsc;
 
+use App\Models\RatioDefinition;
+
 /**
  * Pustaka 19 rumus rasio keuangan — sheet "Asumsi" bagian D dan sheet "L2
  * Rasio Keuangan" pada Cascading_Revenue_Rasio_KPI_Erdigma_2026.xlsx.
@@ -27,25 +29,25 @@ class RatioLibrary
     public static function all(): array
     {
         return [
-            'P1' => ['name' => 'Gross Profit Margin', 'group' => 'Profitabilitas', 'formula' => 'Laba kotor ÷ Penjualan × 100', 'unit' => '%', 'polarity' => self::NAIK, 'weight' => 10],
-            'P2' => ['name' => 'Net Profit Margin', 'group' => 'Profitabilitas', 'formula' => 'Laba bersih ÷ Penjualan × 100', 'unit' => '%', 'polarity' => self::NAIK, 'weight' => 8],
-            'P3' => ['name' => 'Return on Asset', 'group' => 'Profitabilitas', 'formula' => 'Laba bersih disetahunkan ÷ Total aset × 100', 'unit' => '%', 'polarity' => self::NAIK, 'weight' => 6],
-            'P4' => ['name' => 'Return on Equity', 'group' => 'Profitabilitas', 'formula' => 'Laba bersih disetahunkan ÷ Ekuitas × 100', 'unit' => '%', 'polarity' => self::NAIK, 'weight' => 6],
-            'A1' => ['name' => 'Inventory Turnover', 'group' => 'Aktivitas', 'formula' => 'HPP disetahunkan ÷ Persediaan rata-rata', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 6],
-            'A2' => ['name' => 'Asset Turnover', 'group' => 'Aktivitas', 'formula' => 'Penjualan disetahunkan ÷ Total aset', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 5],
-            'A3' => ['name' => 'AR Turnover', 'group' => 'Aktivitas', 'formula' => 'Penjualan disetahunkan ÷ Piutang usaha rata-rata', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 5],
-            'A4' => ['name' => 'Days Inventory Outstanding', 'group' => 'Aktivitas', 'formula' => '365 ÷ Inventory Turnover', 'unit' => 'hari', 'polarity' => self::TURUN, 'weight' => 3],
-            'A5' => ['name' => 'Days Sales Outstanding', 'group' => 'Aktivitas', 'formula' => '365 ÷ AR Turnover', 'unit' => 'hari', 'polarity' => self::TURUN, 'weight' => 3],
-            'A6' => ['name' => 'Days Payable Outstanding', 'group' => 'Aktivitas', 'formula' => '365 ÷ (HPP disetahunkan ÷ Utang usaha rata-rata)', 'unit' => 'hari', 'polarity' => self::RENTANG, 'weight' => 3],
-            'D1' => ['name' => 'Produktivitas per tenaga kerja', 'group' => 'Produktivitas', 'formula' => 'Penjualan ÷ Jumlah karyawan', 'unit' => 'Rp', 'polarity' => self::NAIK, 'weight' => 7],
-            'D2' => ['name' => 'Produktivitas per jam kerja', 'group' => 'Produktivitas', 'formula' => 'Penjualan ÷ Total jam kerja', 'unit' => 'Rp', 'polarity' => self::NAIK, 'weight' => 5],
-            'D3' => ['name' => 'Produktivitas per biaya TK', 'group' => 'Produktivitas', 'formula' => 'Penjualan ÷ Beban tenaga kerja', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 5],
-            'D4' => ['name' => 'Produktivitas Capital (CPR)', 'group' => 'Produktivitas', 'formula' => '(Laba kotor − Beban tenaga kerja) ÷ Modal', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 3],
-            'L1' => ['name' => 'Current Ratio', 'group' => 'Likuiditas', 'formula' => 'Aset lancar ÷ Liabilitas lancar', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 6],
-            'L2' => ['name' => 'Quick Ratio', 'group' => 'Likuiditas', 'formula' => '(Aset lancar − Persediaan) ÷ Liabilitas lancar', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 4],
-            'L3' => ['name' => 'Cash Ratio', 'group' => 'Likuiditas', 'formula' => 'Kas & setara kas ÷ Liabilitas lancar', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 5],
-            'S1' => ['name' => 'Debt to Equity', 'group' => 'Solvabilitas', 'formula' => 'Total liabilitas ÷ Ekuitas', 'unit' => 'x', 'polarity' => self::TURUN, 'weight' => 6],
-            'S2' => ['name' => 'Debt to Asset', 'group' => 'Solvabilitas', 'formula' => 'Total liabilitas ÷ Total aset', 'unit' => 'x', 'polarity' => self::TURUN, 'weight' => 4],
+            'P1' => ['name' => 'Gross Profit Margin', 'group' => 'Profitabilitas', 'formula' => 'Laba kotor ÷ Penjualan × 100', 'expression' => 'LK / PA01 * 100', 'unit' => '%', 'polarity' => self::NAIK, 'weight' => 10],
+            'P2' => ['name' => 'Net Profit Margin', 'group' => 'Profitabilitas', 'formula' => 'Laba bersih ÷ Penjualan × 100', 'expression' => 'LB / PA01 * 100', 'unit' => '%', 'polarity' => self::NAIK, 'weight' => 8],
+            'P3' => ['name' => 'Return on Asset', 'group' => 'Profitabilitas', 'formula' => 'Laba bersih disetahunkan ÷ Total aset × 100', 'expression' => 'LB / PA11 * 100', 'unit' => '%', 'polarity' => self::NAIK, 'weight' => 6],
+            'P4' => ['name' => 'Return on Equity', 'group' => 'Profitabilitas', 'formula' => 'Laba bersih disetahunkan ÷ Ekuitas × 100', 'expression' => 'LB / PA13 * 100', 'unit' => '%', 'polarity' => self::NAIK, 'weight' => 6],
+            'A1' => ['name' => 'Inventory Turnover', 'group' => 'Aktivitas', 'formula' => 'HPP disetahunkan ÷ Persediaan rata-rata', 'expression' => 'PA02 / PA05', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 6],
+            'A2' => ['name' => 'Asset Turnover', 'group' => 'Aktivitas', 'formula' => 'Penjualan disetahunkan ÷ Total aset', 'expression' => 'PA01 / PA11', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 5],
+            'A3' => ['name' => 'AR Turnover', 'group' => 'Aktivitas', 'formula' => 'Penjualan disetahunkan ÷ Piutang usaha rata-rata', 'expression' => 'PA01 / PA06', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 5],
+            'A4' => ['name' => 'Days Inventory Outstanding', 'group' => 'Aktivitas', 'formula' => '365 ÷ Inventory Turnover', 'expression' => '365 / A1', 'unit' => 'hari', 'polarity' => self::TURUN, 'weight' => 3],
+            'A5' => ['name' => 'Days Sales Outstanding', 'group' => 'Aktivitas', 'formula' => '365 ÷ AR Turnover', 'expression' => '365 / A3', 'unit' => 'hari', 'polarity' => self::TURUN, 'weight' => 3],
+            'A6' => ['name' => 'Days Payable Outstanding', 'group' => 'Aktivitas', 'formula' => '365 ÷ (HPP disetahunkan ÷ Utang usaha rata-rata)', 'expression' => '365 / (PA02 / PA07)', 'unit' => 'hari', 'polarity' => self::RENTANG, 'weight' => 3],
+            'D1' => ['name' => 'Produktivitas per tenaga kerja', 'group' => 'Produktivitas', 'formula' => 'Penjualan ÷ Jumlah karyawan', 'expression' => 'PA01 / PA15', 'unit' => 'Rp', 'polarity' => self::NAIK, 'weight' => 7],
+            'D2' => ['name' => 'Produktivitas per jam kerja', 'group' => 'Produktivitas', 'formula' => 'Penjualan ÷ Total jam kerja', 'expression' => 'PA01 / PA16', 'unit' => 'Rp', 'polarity' => self::NAIK, 'weight' => 5],
+            'D3' => ['name' => 'Produktivitas per biaya TK', 'group' => 'Produktivitas', 'formula' => 'Penjualan ÷ Beban tenaga kerja', 'expression' => 'PA01 / PA04', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 5],
+            'D4' => ['name' => 'Produktivitas Capital (CPR)', 'group' => 'Produktivitas', 'formula' => '(Laba kotor − Beban tenaga kerja) ÷ Modal', 'expression' => '(LK - PA04) / PA14', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 3],
+            'L1' => ['name' => 'Current Ratio', 'group' => 'Likuiditas', 'formula' => 'Aset lancar ÷ Liabilitas lancar', 'expression' => 'PA09 / PA10', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 6],
+            'L2' => ['name' => 'Quick Ratio', 'group' => 'Likuiditas', 'formula' => '(Aset lancar − Persediaan) ÷ Liabilitas lancar', 'expression' => '(PA09 - PA05) / PA10', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 4],
+            'L3' => ['name' => 'Cash Ratio', 'group' => 'Likuiditas', 'formula' => 'Kas & setara kas ÷ Liabilitas lancar', 'expression' => 'PA08 / PA10', 'unit' => 'x', 'polarity' => self::NAIK, 'weight' => 5],
+            'S1' => ['name' => 'Debt to Equity', 'group' => 'Solvabilitas', 'formula' => 'Total liabilitas ÷ Ekuitas', 'expression' => 'PA12 / PA13', 'unit' => 'x', 'polarity' => self::TURUN, 'weight' => 6],
+            'S2' => ['name' => 'Debt to Asset', 'group' => 'Solvabilitas', 'formula' => 'Total liabilitas ÷ Total aset', 'expression' => 'PA12 / PA11', 'unit' => 'x', 'polarity' => self::TURUN, 'weight' => 4],
         ];
     }
 
@@ -96,7 +98,112 @@ class RatioLibrary
             return ['PA01'];
         }
 
-        return array_keys(self::posts()[$code] ?? []);
+        // Peta tetap workbook DIGABUNG dengan pos yang benar-benar disebut
+        // rumusnya. Untuk 19 rasio bawaan yang rumusnya belum diubah keduanya
+        // sama, sehingga perilaku lama tidak berubah; rasio buatan sendiri dan
+        // rumus yang disesuaikan jadi ikut terbaca peta pos akun & cascade KPI.
+        return array_values(array_unique(array_merge(
+            array_keys(self::posts()[$code] ?? []),
+            self::postsFromFormula($code)
+        )));
+    }
+
+    /**
+     * Pos akun yang disebut rumus sebuah rasio. Turunan LK & LB dijabarkan
+     * menjadi pos pembentuknya, dan rujukan ke rasio lain ditelusuri.
+     *
+     * @param  array<int, string>  $sedangDitelusuri
+     * @return array<int, string>
+     */
+    private static function postsFromFormula(string $code, array $sedangDitelusuri = []): array
+    {
+        $rumus = self::effectiveExpressions()[$code] ?? null;
+
+        if ($rumus === null || in_array($code, $sedangDitelusuri, true) || count($sedangDitelusuri) > 20) {
+            return [];
+        }
+
+        $sedangDitelusuri[] = $code;
+
+        try {
+            $kode = Formula::identifiers($rumus);
+        } catch (\InvalidArgumentException) {
+            return [];
+        }
+
+        $hasil = [];
+
+        foreach ($kode as $k) {
+            $hasil = match (true) {
+                $k === 'LK' => array_merge($hasil, ['PA01', 'PA02']),
+                $k === 'LB' => array_merge($hasil, ['PA01', 'PA02', 'PA03']),
+                isset(self::effectiveExpressions()[$k]) => array_merge($hasil, self::postsFromFormula($k, $sedangDitelusuri)),
+                default => array_merge($hasil, [$k]),
+            };
+        }
+
+        return $hasil;
+    }
+
+    /** Rumus yang berlaku untuk entitas aktif; dilupakan lewat forget(). */
+    private static ?array $rumusBerlaku = null;
+
+    /**
+     * Rumus yang berlaku: katalog entitas aktif menang atas pustaka bawaan.
+     *
+     * @return array<string, string>
+     */
+    public static function effectiveExpressions(): array
+    {
+        if (self::$rumusBerlaku !== null) {
+            return self::$rumusBerlaku;
+        }
+
+        $rumus = self::expressions();
+
+        try {
+            foreach (RatioDefinition::all() as $definisi) {
+                if ($e = $definisi->expressionOrDefault()) {
+                    $rumus[$definisi->code] = $e;
+                }
+            }
+        } catch (\Throwable) {
+            // Tabelnya belum ada (migrasi sedang berjalan) — pakai pustaka saja.
+            return $rumus;
+        }
+
+        return self::$rumusBerlaku = $rumus;
+    }
+
+    /** Nama rasio yang berlaku untuk entitas aktif; dilupakan lewat forget(). */
+    private static ?array $namaBerlaku = null;
+
+    /**
+     * Nama rasio yang berlaku, termasuk rasio buatan entitas sendiri.
+     *
+     * @return array<string, string>
+     */
+    public static function effectiveNames(): array
+    {
+        if (self::$namaBerlaku !== null) {
+            return self::$namaBerlaku;
+        }
+
+        try {
+            return self::$namaBerlaku = RatioDefinition::all()
+                ->filter(fn ($d) => (string) $d->name !== '')
+                ->pluck('name', 'code')
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /** Lupakan katalog yang sudah dibaca — dipanggil sesudah katalog diubah. */
+    public static function forget(): void
+    {
+        self::$rumusBerlaku = null;
+        self::$namaBerlaku = null;
     }
 
     /** Nama untuk kode dampak (rasio atau REV). */
@@ -106,7 +213,8 @@ class RatioLibrary
             return 'Target Revenue (Tingkat 1)';
         }
 
-        return self::all()[$code]['name'] ?? null;
+        // Nama yang dipakai entitas menang; rasio buatan sendiri hanya ada di sana.
+        return self::effectiveNames()[$code] ?? self::all()[$code]['name'] ?? null;
     }
 
     /** Lima kelompok & bobotnya (sheet Asumsi bagian B, sudah disepakati di BSC). */
@@ -127,7 +235,43 @@ class RatioLibrary
      *
      * @param  array<string, float|null>  $p  hasil AccountPosts::usedValues()
      */
-    public static function compute(string $code, array $p): ?float
+    public static function compute(string $code, array $p, ?string $expression = null, ?array $expressions = null): ?float
+    {
+        $rumus = $expression ?? (self::all()[$code]['expression'] ?? null);
+
+        if ($rumus === null) {
+            return null;
+        }
+
+        try {
+            return Formula::evaluate($rumus, $p, Formula::resolver($expressions ?? self::expressions(), $p, [$code]));
+        } catch (\InvalidArgumentException) {
+            // Rumus yang tidak dapat diurai diperlakukan sama dengan data kosong:
+            // rasionya tidak ikut diskor, bukan dinilai nol.
+            return null;
+        }
+    }
+
+    /**
+     * Rumus seluruh rasio bawaan, dipakai menyelesaikan rujukan antarrasio
+     * (mis. A4 = 365 ÷ A1).
+     *
+     * @return array<string, string>
+     */
+    public static function expressions(): array
+    {
+        return array_map(fn (array $r) => $r['expression'], self::all());
+    }
+
+    /**
+     * Perhitungan baku dari workbook — acuan beku yang TIDAK dipakai aplikasi,
+     * hanya oleh pengujian yang membuktikan mesin rumus menghasilkan angka yang
+     * sama persis untuk ke-19 rasio bawaan. Bila kelak rumus bawaan diubah,
+     * pengujian itulah yang berbunyi lebih dulu.
+     *
+     * @param  array<string, float|null>  $p
+     */
+    public static function referenceCompute(string $code, array $p): ?float
     {
         $bagi = fn (?float $a, ?float $b): ?float => ($a === null || $b === null || $b == 0.0) ? null : $a / $b;
         $persen = fn (?float $x): ?float => $x === null ? null : $x * 100;

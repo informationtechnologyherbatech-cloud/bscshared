@@ -68,7 +68,7 @@
                             <div class="p-3 bg-white border rounded shadow-sm h-100">
                                 <span class="badge badge-secondary mb-1">Hop 2</span>
                                 <h6 class="font-weight-bold mb-1"><i class="fas fa-calculator text-warning mr-1"></i> Finance Monitoring</h6>
-                                <small class="text-muted">Pos akun → 19 rasio keuangan</small>
+                                <small class="text-muted">Pos akun → rasio keuangan</small>
                                 <div class="mt-2">
                                     <span class="badge {{ $lencana[$rantai['finance']['status']] }}">
                                         <i class="fas {{ $ikon[$rantai['finance']['status']] }}"></i> {{ $rantai['finance']['label'] }}
@@ -208,7 +208,7 @@
                                     <span>
                                         <i class="fas fa-info-circle mr-1"></i>
                                         Delapan pos ini masuk ke <a href="{{ route('account-balances', ['period' => $financePeriod]) }}">Pos Akun</a>,
-                                        lalu 19 rasio dihitung ulang dengan target dari Katalog Rasio.
+                                        lalu rasio dihitung ulang dengan rumus &amp; target dari Katalog Rasio.
                                         <strong>Aliran</strong> (PA01–PA03) diisi nilai YTD Januari s.d. periode ini;
                                         <strong>neraca</strong> (PA05–PA08, PA13) diisi saldo akhir periode.
                                         Kolom yang <strong>dikosongkan tidak diubah</strong> — nol itu angka, bukan "belum ada data".

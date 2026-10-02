@@ -16,7 +16,7 @@
                 <div class="col-sm-7">
                     <h1><i class="fas fa-file-invoice-dollar mr-2 text-teal"></i>Pos Akun <small class="text-muted">(Tingkat 2)</small></h1>
                     <small class="text-muted">
-                        {{ $entity?->legal_name ?? 'Entitas aktif' }} — 16 pos akun ini diolah menjadi 19 rasio keuangan,
+                        {{ $entity?->legal_name ?? 'Entitas aktif' }} — {{ count($posts) }} pos akun ini diolah menjadi rasio keuangan,
                         lalu skornya menjadi <strong>F2</strong> pada skor puncak.
                     </small>
                 </div>
@@ -52,6 +52,97 @@
                     tampil di piramida setelah periode tersebut dibuat.
                 </div>
             @endif
+
+            @can('manage ratios')
+                {{-- Katalog pos akun: menyesuaikan daftar pos dengan keadaan entitas --}}
+                <div class="card card-outline card-secondary mb-3">
+                    <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
+                        <h3 class="card-title font-weight-bold mb-0">
+                            <i class="fas fa-sliders-h mr-1"></i> Katalog pos akun
+                            <small class="text-muted ml-1">{{ count($catalog) }} pos · {{ count($posts) }} aktif</small>
+                        </h3>
+                        <button type="button" wire:click="toggleKelola" class="btn btn-sm btn-ghost">
+                            <i class="fas fa-chevron-{{ $kelola ? 'up' : 'down' }} mr-1"></i>
+                            {{ $kelola ? 'Tutup' : 'Sesuaikan pos akun' }}
+                        </button>
+                    </div>
+
+                    @if ($kelola)
+                        <div class="card-body">
+                            <p class="text-muted small">
+                                Pos akun inilah yang diisi di bawah dan dipakai rumus rasio. Pos <strong>bawaan</strong> berasal
+                                dari metodologi dan dipakai rumus bawaan — namanya boleh disesuaikan, jenis dan kodenya tidak.
+                                Pos tambahan bebas dibuat, lalu dipakai di rumus lewat menu
+                                <a href="{{ route('ratio-catalog') }}">Katalog Rasio</a>.
+                            </p>
+
+                            <button type="button" wire:click="newPost" class="btn btn-sm btn-teal mb-3">
+                                <i class="fas fa-plus mr-1"></i> Tambah pos akun
+                            </button>
+
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th style="width:70px">Kode</th>
+                                            <th>Pos akun</th>
+                                            <th style="width:110px">Jenis</th>
+                                            <th style="width:110px">
+                                                Sumber
+                                                <i class="fas fa-circle-question text-muted"
+                                                   title="Dari sistem mana angkanya datang. GL = buku besar akuntansi (General Ledger), masuk lewat Odoo atau unggahan CSV. HRIS = sistem kepegawaian."></i>
+                                            </th>
+                                            <th style="width:90px">Status</th>
+                                            <th class="text-right" style="width:200px">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($catalog as $kode => $pos)
+                                            <tr class="{{ $pos['active'] ? '' : 'text-muted bg-light' }}">
+                                                <td class="align-middle"><code>{{ $kode }}</code></td>
+                                                <td class="align-middle">
+                                                    <div class="font-weight-bold">{{ $pos['name'] }}</div>
+                                                    <small class="text-muted">{{ $pos['hint'] }}</small>
+                                                </td>
+                                                <td class="align-middle"><span class="badge badge-light border">{{ post_kind_label($pos['kind']) }}</span></td>
+                                                <td class="align-middle small">
+                                                    <span title="{{ post_source_label($pos['source']) }}">{{ $pos['source'] }}</span>
+                                                </td>
+                                                <td class="align-middle">
+                                                    @if ($pos['active'])
+                                                        <span class="badge badge-success">Aktif</span>
+                                                    @else
+                                                        <span class="badge badge-secondary">Nonaktif</span>
+                                                    @endif
+                                                    @if ($pos['builtin'] ?? false)
+                                                        <span class="badge badge-light border" title="Pos dari metodologi bawaan">Bawaan</span>
+                                                    @endif
+                                                </td>
+                                                <td class="align-middle text-right">
+                                                    <button type="button" wire:click="editPost('{{ $kode }}')" class="btn btn-xs btn-ghost">
+                                                        <i class="fas fa-pen mr-1"></i> Ubah
+                                                    </button>
+                                                    <button type="button" wire:click="togglePost('{{ $kode }}')" class="btn btn-xs btn-ghost">
+                                                        {{ $pos['active'] ? 'Nonaktifkan' : 'Aktifkan' }}
+                                                    </button>
+                                                    @if (! ($pos['builtin'] ?? false))
+                                                        <button type="button" wire:click="deletePost('{{ $kode }}')"
+                                                                data-konfirmasi="Pos {{ $kode }} dihapus beserta seluruh angkanya di semua periode."
+                                                                data-konfirmasi-judul="Hapus pos akun" data-konfirmasi-ok="Hapus"
+                                                                data-konfirmasi-nada="bahaya" class="btn btn-xs btn-ghost text-danger">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            @endcan
 
             <div class="row">
                 {{-- Isian pos akun --}}
@@ -185,7 +276,7 @@
                 </div>
             </div>
 
-            {{-- 19 rasio --}}
+            {{-- rasio hasil hitungan --}}
             <div class="card card-outline card-secondary">
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
                     <h3 class="card-title font-weight-bold mb-2 mb-md-0"><i class="fas fa-list-ol mr-1"></i> Rasio keuangan hasil hitungan</h3>
@@ -242,4 +333,80 @@
             </div>
         </div>
     </section>
+
+    {{-- Penyunting pos akun: modal, supaya tidak perlu menggulung layar --}}
+    @if ($editing !== null)
+        @php($bawaan = $editing !== '' && ($catalog[$editing]['builtin'] ?? false))
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-hd">
+                        <span class="modal-hd-icon"><i class="fas {{ $editing === '' ? 'fa-plus' : 'fa-pen-to-square' }}"></i></span>
+                        <div>
+                            <h5 class="modal-title">{{ $editing === '' ? 'Pos akun baru' : 'Ubah pos '.$editing }}</h5>
+                            <small>Pos akun inilah yang diisi tiap periode dan dipakai rumus rasio</small>
+                        </div>
+                        <button type="button" class="modal-close" wire:click="cancelPost" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-row">
+                            <div class="form-group col-md-3">
+                                <label for="posKode" class="small font-weight-bold">Kode</label>
+                                <input type="text" id="posKode" wire:model="formCode" @disabled($editing !== '')
+                                       class="form-control form-control-sm text-uppercase @error('formCode') is-invalid @enderror">
+                                @error('formCode')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-group col-md-9">
+                                <label for="posNama" class="small font-weight-bold">Nama pos akun</label>
+                                <input type="text" id="posNama" wire:model="formName"
+                                       class="form-control form-control-sm @error('formName') is-invalid @enderror"
+                                       placeholder="mis. Beban pemasaran digital">
+                                @error('formName')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="posJenis" class="small font-weight-bold">Jenis — menentukan cara angkanya dipakai</label>
+                            <select id="posJenis" wire:model="formKind" @disabled($bawaan)
+                                    class="form-control form-control-sm @error('formKind') is-invalid @enderror">
+                                @foreach ($kinds as $nilai => $keterangan)
+                                    <option value="{{ $nilai }}">{{ $keterangan }}</option>
+                                @endforeach
+                            </select>
+                            @error('formKind')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                            @if ($bawaan)
+                                <small class="text-muted">Pos bawaan: jenisnya dikunci karena dipakai rumus bawaan.</small>
+                            @endif
+                        </div>
+
+                        <div class="form-group">
+                            <label for="posSumber" class="small font-weight-bold">Sumber data — dari sistem mana angkanya datang</label>
+                            <select id="posSumber" wire:model="formSource"
+                                    class="form-control form-control-sm @error('formSource') is-invalid @enderror">
+                                @foreach ($sources as $nilai => $keterangan)
+                                    <option value="{{ $nilai }}">{{ $keterangan }}</option>
+                                @endforeach
+                                @unless (array_key_exists($formSource, $sources))
+                                    <option value="{{ $formSource }}">{{ $formSource }}</option>
+                                @endunless
+                            </select>
+                            @error('formSource')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label for="posKeterangan" class="small font-weight-bold">Keterangan <span class="text-muted font-weight-normal">(opsional)</span></label>
+                            <input type="text" id="posKeterangan" wire:model="formHint"
+                                   class="form-control form-control-sm @error('formHint') is-invalid @enderror"
+                                   placeholder="Penjelasan singkat agar pengisi tidak salah tafsir.">
+                            @error('formHint')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                        </div>
+                    </div>
+                    <div class="modal-ft">
+                        <button type="button" wire:click="cancelPost" class="btn btn-ghost">Batal</button>
+                        <button type="button" wire:click="savePost" class="btn btn-teal"><i class="fas fa-save mr-1"></i> Simpan pos</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

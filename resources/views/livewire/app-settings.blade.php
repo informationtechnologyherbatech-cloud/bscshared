@@ -406,7 +406,7 @@
                                 @else
                                     <p>
                                         Holding membaca <strong>ringkasan</strong> entitas ini lewat alamat berikut — hanya skor, revenue
-                                        kumulatif, 19 rasio, dan ringkasan unit kerja. Pos akun, isi sasaran mutu, dan program kerja tidak ikut.
+                                        kumulatif, rasio keuangan, dan ringkasan unit kerja. Pos akun, isi sasaran mutu, dan program kerja tidak ikut.
                                     </p>
                                     <pre class="bg-light p-2 mb-2"><code>{{ url('/api/v1/consolidation') }}?period={{ active_period() }}</code></pre>
                                     <p class="mb-0 small text-muted">

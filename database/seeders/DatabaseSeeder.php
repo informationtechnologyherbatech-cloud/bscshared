@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call(EntityStructureSeeder::class);
         $this->call(RatioCatalogSeeder::class);
+        $this->call(AccountPostCatalogSeeder::class);
         $this->call(AccountPostRoleSeeder::class);
         // Data capaian contoh hanya bila diminta (BSC_SEED_DEMO=true); bawaannya
         // pengguna mengisi sendiri seluruh angka lewat menu.

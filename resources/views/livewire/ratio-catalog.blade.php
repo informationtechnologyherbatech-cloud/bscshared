@@ -113,11 +113,13 @@
                     <h3 class="card-title font-weight-bold mb-2 mb-md-0"><i class="fas fa-list-ol mr-1"></i> Rasio, bobot &amp; target {{ $year }}</h3>
                     <div class="card-tools">
                         @if ($bisaUbah)
+                            <button wire:click="newRatio" class="btn btn-teal btn-sm mb-1"><i class="fas fa-plus mr-1"></i> Tambah rasio</button>
                             <button wire:click="resetWeights" class="btn btn-outline-secondary btn-sm mb-1"><i class="fas fa-undo mr-1"></i> Bobot usulan</button>
                             <button wire:click="save" class="btn btn-primary btn-sm mb-1"><i class="fas fa-save mr-1"></i> Simpan</button>
                         @endif
                     </div>
                 </div>
+
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-sm table-hover m-0">
                         <thead class="bg-light">
@@ -128,13 +130,14 @@
                                 <th>Polaritas</th>
                                 <th class="text-right" style="min-width:100px">Bobot</th>
                                 <th class="text-right" style="min-width:150px">Target {{ $year }}</th>
+                                @if ($bisaUbah)<th class="text-right" style="width:80px">Rumus</th>@endif
                             </tr>
                         </thead>
                         <tbody>
                             @php($grupSebelumnya = null)
                             @foreach ($library as $kode => $r)
                                 @if ($r['group'] !== $grupSebelumnya)
-                                    <tr class="bg-light"><td colspan="6" class="small font-weight-bold text-uppercase text-muted">{{ $r['group'] }}</td></tr>
+                                    <tr class="bg-light"><td colspan="{{ $bisaUbah ? 7 : 6 }}" class="small font-weight-bold text-uppercase text-muted">{{ $r['group'] }}</td></tr>
                                     @php($grupSebelumnya = $r['group'])
                                 @endif
                                 <tr class="{{ $rows[$kode]['active'] ? '' : 'text-muted' }}">
@@ -171,6 +174,17 @@
                                             <div class="text-right">{{ $rows[$kode]['target'] !== '' ? ratio_format((float) $rows[$kode]['target'], $r['unit']) : '—' }}</div>
                                         @endif
                                     </td>
+                                    @if ($bisaUbah)
+                                        <td class="align-middle text-right">
+                                            <button type="button" wire:click="editRatio('{{ $kode }}')" class="btn btn-xs btn-ghost"
+                                                    title="Ubah nama, kelompok, satuan, polaritas, dan rumusnya">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            @unless ($r['builtin'] ?? true)
+                                                <span class="badge badge-light border" title="Rasio buatan entitas ini">sendiri</span>
+                                            @endunless
+                                        </td>
+                                    @endif
                                 </tr>
                             @endforeach
                         </tbody>
@@ -183,4 +197,167 @@
             </div>
         </div>
     </section>
+
+    {{-- Penyunting rasio: modal, supaya tidak perlu menggulung layar ke atas --}}
+    @if ($bisaUbah && $editing !== null)
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-hd">
+                        <span class="modal-hd-icon"><i class="fas {{ $editing === '' ? 'fa-plus' : 'fa-pen-to-square' }}"></i></span>
+                        <div>
+                            <h5 class="modal-title">{{ $editing === '' ? 'Rasio baru' : 'Ubah rasio '.$editing }}</h5>
+                            <small>Rumus yang ditulis di sini adalah rumus yang dipakai menghitung</small>
+                        </div>
+                        <button type="button" class="modal-close" wire:click="cancelRatio" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="form-row">
+                            <div class="form-group col-md-2">
+                                <label for="rasioKode" class="small font-weight-bold">Kode</label>
+                                <input type="text" id="rasioKode" wire:model="formCode" @disabled($editing !== '')
+                                       class="form-control form-control-sm text-uppercase @error('formCode') is-invalid @enderror">
+                                @error('formCode')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="rasioNama" class="small font-weight-bold">Nama rasio</label>
+                                <input type="text" id="rasioNama" wire:model="formName"
+                                       class="form-control form-control-sm @error('formName') is-invalid @enderror"
+                                       placeholder="mis. Beban pemasaran terhadap penjualan">
+                                @error('formName')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label for="rasioSatuan" class="small font-weight-bold">Satuan</label>
+                                <select id="rasioSatuan" wire:model="formUnit" class="form-control form-control-sm">
+                                    <option value="%">% — persen</option>
+                                    <option value="x">x — kali</option>
+                                    <option value="hari">hari</option>
+                                    <option value="Rp">Rp — rupiah</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label for="rasioBobot" class="small font-weight-bold">Bobot</label>
+                                <input type="number" step="any" min="0" max="100" id="rasioBobot" wire:model="formWeight"
+                                       class="form-control form-control-sm text-right @error('formWeight') is-invalid @enderror">
+                                @error('formWeight')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="rasioKelompok" class="small font-weight-bold">Kelompok</label>
+                                <select id="rasioKelompok" wire:model.live="formGroup"
+                                        class="form-control form-control-sm @error('formGroup') is-invalid @enderror">
+                                    @foreach ($groupNames as $nama)
+                                        <option value="{{ $nama }}">{{ $nama }}</option>
+                                    @endforeach
+                                    <option value="__baru__">+ Kelompok baru…</option>
+                                </select>
+                                @error('formGroup')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                            </div>
+                            @if ($formGroup === '__baru__')
+                                <div class="form-group col-md-4">
+                                    <label for="rasioKelompokBaru" class="small font-weight-bold">Nama kelompok baru</label>
+                                    <input type="text" id="rasioKelompokBaru" wire:model="formGroupNew"
+                                           class="form-control form-control-sm @error('formGroupNew') is-invalid @enderror"
+                                           placeholder="mis. Efisiensi">
+                                    @error('formGroupNew')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                                </div>
+                            @endif
+                            <div class="form-group col-md-4">
+                                <label for="rasioPolaritas" class="small font-weight-bold">Polaritas — arah yang dianggap baik</label>
+                                <select id="rasioPolaritas" wire:model="formPolarity" class="form-control form-control-sm">
+                                    <option value="Naik">Naik — makin besar makin baik</option>
+                                    <option value="Turun">Turun — makin kecil makin baik</option>
+                                    <option value="Rentang">Rentang — baik bila mendekati target</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr class="my-2">
+
+                        <div class="form-group">
+                            <label for="rasioRumus" class="small font-weight-bold">
+                                Rumus
+                                <i class="fas fa-circle-question text-muted ml-1"
+                                   title="Rumus inilah yang benar-benar dihitung, bukan sekadar keterangan. Pakai kode pos akun, angka, dan tanda + − × ÷ ( )."></i>
+                            </label>
+                            <input type="text" id="rasioRumus" wire:model.live.debounce.600ms="formExpression"
+                                   class="form-control font-monospace @error('formExpression') is-invalid @enderror"
+                                   placeholder="(PA01 - PA02) / PA01 * 100" autocomplete="off">
+                            @error('formExpression')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+
+                            {{-- Rumus yang sama, dibaca dengan nama pos akun --}}
+                            @if ($readable !== '')
+                                <div class="small mt-2">
+                                    <span class="text-muted">Terbaca:</span>
+                                    <strong>{{ $readable }}</strong>
+                                    <span class="text-muted">— kalimat inilah yang akan tampil di bawah nama rasio.</span>
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Daftar kode: klik untuk menyisipkannya ke rumus --}}
+                        <div class="form-group">
+                            <label class="small font-weight-bold d-block mb-1">
+                                Klik untuk menyisipkan ke rumus
+                                <span class="text-muted font-weight-normal">— tidak perlu menghafal kodenya</span>
+                            </label>
+                            {{-- Operator di luar kotak gulung: paling sering dipakai, jadi selalu terlihat --}}
+                            <div class="rumus-operator mb-2">
+                                @foreach (['+' => 'tambah', '-' => 'kurang', '*' => 'kali', '/' => 'bagi', '(' => 'buka kurung', ')' => 'tutup kurung', '100' => 'untuk persen', '365' => 'hari setahun'] as $tanda => $arti)
+                                    <button type="button" class="btn btn-xs btn-ghost rumus-kode-btn" wire:click="insertCode(@js($tanda))" title="{{ $arti }}">
+                                        <code>{{ $tanda }}</code>
+                                    </button>
+                                @endforeach
+                            </div>
+                            <div class="rumus-kode">
+                                @php($grupSekarang = null)
+                                @foreach ($codeHelp as $kode => $k)
+                                    @if ($k['group'] !== $grupSekarang)
+                                        <div class="text-muted text-uppercase small mt-2 mb-1">{{ $k['group'] }}</div>
+                                        @php($grupSekarang = $k['group'])
+                                    @endif
+                                    <button type="button" class="btn btn-xs btn-ghost rumus-kode-btn" wire:click="insertCode(@js($kode))"
+                                            title="{{ $k['hint'] }}">
+                                        <code>{{ $kode }}</code> {{ \Illuminate\Support\Str::limit($k['name'], 28) }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        {{-- Pratinjau: rumus langsung dicoba dengan angka yang ada --}}
+                        <div class="callout callout-info py-2 mb-0">
+                            @if ($preview['error'])
+                                <span class="text-danger"><i class="fas fa-times-circle mr-1"></i> {{ $preview['error'] }}</span>
+                            @elseif ($preview['period'])
+                                <div class="small text-muted">Dicoba dengan angka pos akun periode {{ period_label($preview['period']) }}:</div>
+                                <div class="font-monospace small">{{ $preview['arithmetic'] }}</div>
+                                <div class="h5 mb-0 font-weight-bold">
+                                    {{ $preview['value'] === null ? 'belum dapat dihitung — ada pos yang kosong atau penyebutnya nol' : ratio_format($preview['value'], $formUnit) }}
+                                </div>
+                            @else
+                                <span class="text-muted small">Pratinjau muncul setelah rumusnya diisi dan ada pos akun yang sudah terisi.</span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="modal-ft">
+                        @if ($editing !== '' && ! ($library[$editing]['builtin'] ?? true))
+                            <button type="button" wire:click="deleteRatio('{{ $editing }}')"
+                                    data-konfirmasi="Rasio {{ $editing }} dihapus beserta target dan hasil hitungannya."
+                                    data-konfirmasi-judul="Hapus rasio" data-konfirmasi-ok="Hapus"
+                                    data-konfirmasi-nada="bahaya" class="btn btn-ghost text-danger mr-auto">
+                                <i class="fas fa-trash mr-1"></i> Hapus rasio
+                            </button>
+                        @endif
+                        <button type="button" wire:click="cancelRatio" class="btn btn-ghost">Batal</button>
+                        <button type="button" wire:click="saveRatio" class="btn btn-teal"><i class="fas fa-save mr-1"></i> Simpan rasio</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    @endif
 </div>
