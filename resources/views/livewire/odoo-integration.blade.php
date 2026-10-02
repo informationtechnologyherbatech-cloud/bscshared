@@ -229,7 +229,8 @@
                                                         <i class="fas fa-pen"></i>
                                                     </button>
                                                     <button type="button" wire:click="deleteMapping({{ $p->id }})" class="btn btn-xs btn-ghost text-danger"
-                                                            wire:confirm="Hapus pemetaan {{ $p->source_code }}?">
+                                                            data-konfirmasi="Akun {{ $p->source_code }} tidak lagi masuk ke pos {{ $p->post_code }} pada tarikan berikutnya."
+                                                            data-konfirmasi-judul="Hapus pemetaan akun" data-konfirmasi-ok="Hapus" data-konfirmasi-nada="bahaya">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 @endif

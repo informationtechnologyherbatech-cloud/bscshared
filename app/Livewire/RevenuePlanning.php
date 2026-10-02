@@ -306,7 +306,13 @@ class RevenuePlanning extends Component
             'methods' => $metode,
             'approved' => $disahkan?->approved_target,
             'index' => $indeks,
-            'phasing' => $disahkan?->approved_target && $indeks ? RevenueForecast::phase($disahkan->approved_target, $indeks) : null,
+            // Bobot yang BENAR-BENAR dipakai membagi target: indeks musiman bila
+            // tahun dasar punya realisasi, selainnya rata 12 bulan. Satu nilai ini
+            // dipakai pratinjau maupun tombol Terapkan — sebelumnya pratinjaunya
+            // kosong (karena menuntut indeks) sementara tombolnya tetap menulis
+            // pembagian rata, sehingga tampak seolah penyimpanannya gagal.
+            'weights' => $bobot = $indeks ?? array_fill_keys(array_keys($bulanan), 1 / 12),
+            'phasing' => $disahkan?->approved_target ? RevenueForecast::phase($disahkan->approved_target, $bobot) : null,
         ];
     }
 
@@ -418,7 +424,9 @@ class RevenuePlanning extends Component
             return;
         }
 
-        $fasing = $hasil['phasing'] ?? RevenueForecast::phase($hasil['approved'], array_fill_keys(array_keys($hasil['monthly']), 1 / 12));
+        // Persis yang dipratinjau di layar — tidak ada pembagian cadangan kedua
+        // di sini, supaya keduanya tidak mungkin berbeda lagi.
+        $fasing = $hasil['phasing'];
 
         // Bulan pada periode CLOSED tidak ditimpa. Sisa target (disahkan − target
         // bulan yang ditutup) dibagi ke bulan terbuka mengikuti pola yang sama,
@@ -447,7 +455,10 @@ class RevenuePlanning extends Component
             }
         });
 
-        session()->flash('message', 'Target bulanan '.$this->year.' diisi '.($hasil['phasing'] ? 'mengikuti indeks musiman '.$this->baseYear() : 'rata 12 bulan (belum ada realisasi '.$this->baseYear().')')
+        // Dasar pembagiannya dibaca dari INDEKS, bukan dari ada-tidaknya fasing:
+        // fasing kini selalu terisi, jadi memakainya akan selalu berbunyi
+        // "mengikuti indeks musiman" walau sebenarnya dibagi rata.
+        session()->flash('message', 'Target bulanan '.$this->year.' diisi '.($hasil['index'] ? 'mengikuti indeks musiman '.$this->baseYear() : 'rata 12 bulan (belum ada realisasi '.$this->baseYear().')')
             .($dilewati ? '. Bulan pada periode yang sudah DITUTUP tidak diubah: '.implode(', ', $dilewati) : '')
             .'. Lihat di menu Target Revenue.');
     }

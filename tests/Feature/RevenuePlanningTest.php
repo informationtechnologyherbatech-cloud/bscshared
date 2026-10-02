@@ -185,6 +185,31 @@ class RevenuePlanningTest extends TestCase
         Livewire::test(RevenuePlanning::class, ['year' => '2027'])->assertSet('channels', []);
     }
 
+    public function test_section_g_previews_the_same_split_it_will_apply(): void
+    {
+        $this->actingAsRole('Admin FAT');
+        // SENGAJA tanpa realisasi tahun dasar — pola musimannya tidak dapat disusun.
+        RevenuePlan::create(['year' => '2027', 'approved_target' => 1400e9]);
+
+        $halaman = Livewire::test(RevenuePlanning::class, ['year' => '2027']);
+        $r = $halaman->viewData('r');
+
+        // Pratinjaunya tidak boleh kosong sementara tombolnya tetap menulis angka:
+        // itulah yang membuat penguji menyangka penyimpanannya gagal.
+        $this->assertNull($r['index'], 'Tanpa realisasi tahun dasar memang tidak ada indeks musiman.');
+        $this->assertNotNull($r['phasing'], 'Pratinjau harus menampilkan pembagian yang akan dipakai.');
+        $this->assertEqualsWithDelta(1400e9 / 12, $r['phasing']['01'], 1);
+        $this->assertEqualsWithDelta(1400e9, array_sum($r['phasing']), 1);
+
+        // Dan yang tersimpan sama persis dengan yang dipratinjau.
+        $halaman->call('applyPhasing');
+
+        $target = RevenueTarget::where('period', 'like', '2027-%')->pluck('target', 'period');
+        $this->assertCount(12, $target);
+        $this->assertEqualsWithDelta(1400e9 / 12, (float) $target['2027-01'], 1);
+        $this->assertEqualsWithDelta(1400e9, (float) $target->sum(), 1);
+    }
+
     /* ------------------------------------- H: fasing bulanan manual */
 
     public function test_manual_phasing_writes_exactly_what_was_typed(): void

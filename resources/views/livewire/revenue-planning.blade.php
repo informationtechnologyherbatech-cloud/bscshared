@@ -135,7 +135,8 @@
                                                 <input type="text" wire:model.live.debounce.500ms="channels.{{ $i }}" class="form-control" placeholder="nama channel" @disabled($kunci) aria-label="Channel {{ $i + 1 }}">
                                                 @if ($canManage)
                                                     <div class="input-group-append">
-                                                        <button wire:click="removeChannel({{ $i }})" wire:confirm="Hapus channel ini beserta angkanya?" class="btn btn-outline-danger" title="Hapus channel"><i class="fas fa-times"></i></button>
+                                                        <button wire:click="removeChannel({{ $i }})" data-konfirmasi="Channel ini dihapus beserta seluruh angka bottom-up di kolomnya."
+                                                                data-konfirmasi-judul="Hapus channel" data-konfirmasi-ok="Hapus" data-konfirmasi-nada="bahaya" class="btn btn-outline-danger" title="Hapus channel"><i class="fas fa-times"></i></button>
                                                     </div>
                                                 @endif
                                             </div>
@@ -294,7 +295,8 @@
                                     @if ($canManage)
                                         <td class="text-right">
                                             @if ($m['value'] !== null)
-                                                <button wire:click="approve('{{ $k }}')" wire:confirm="Sahkan {{ $rp($m['value']) }} sebagai target revenue {{ $year }}?" class="btn btn-xs btn-outline-primary">Sahkan</button>
+                                                <button wire:click="approve('{{ $k }}')" data-konfirmasi="{{ $rp($m['value']) }} menjadi target revenue {{ $year }} yang disahkan direksi.&#10;Angka ini dipakai seluruh fasing bulanan dan skor F1."
+                                                        data-konfirmasi-judul="Sahkan target {{ $year }}" data-konfirmasi-ok="Sahkan" class="btn btn-xs btn-outline-primary">Sahkan</button>
                                             @endif
                                         </td>
                                     @endif
@@ -328,7 +330,8 @@
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
                     <h3 class="card-title font-weight-bold mb-2 mb-md-0">G. Fasing bulanan {{ $year }} — indeks musiman dari realisasi {{ $baseYear }}</h3>
                     @if ($canManage)
-                        <button wire:click="applyPhasing" wire:confirm="Isi target bulanan {{ $year }} di menu Target Revenue? Target bulanan yang ada akan ditimpa; realisasi tidak berubah."
+                        <button wire:click="applyPhasing" data-konfirmasi="Target bulanan {{ $year }} di menu Target &amp; Realisasi akan DITIMPA mengikuti pembagian di atas.&#10;Realisasi tidak berubah, dan bulan pada periode yang sudah ditutup tidak disentuh."
+                                data-konfirmasi-judul="Terapkan fasing musiman" data-konfirmasi-ok="Terapkan"
                                 class="btn btn-sm btn-success" @disabled(! $r['approved'])>
                             <i class="fas fa-calendar-check mr-1"></i> Terapkan ke Target Revenue
                         </button>
@@ -347,12 +350,20 @@
                                 @endforeach
                                 <td>{{ number_format(array_sum(array_filter($r['monthly'])) / 1e9, 1, ',', '.') }}</td>
                             </tr>
+                            {{-- Bobot yang dipakai membagi target: indeks musiman bila tahun dasar
+                                 punya realisasi, selainnya rata 12 bulan. Ditampilkan apa adanya
+                                 supaya pratinjaunya tidak pernah bertentangan dengan hasilnya. --}}
                             <tr>
-                                <td class="text-left">Indeks musiman</td>
+                                <td class="text-left">
+                                    {{ $r['index'] ? 'Indeks musiman' : 'Bobot rata 12 bulan' }}
+                                    @unless ($r['index'])
+                                        <small class="d-block text-muted">belum ada realisasi {{ $baseYear }}</small>
+                                    @endunless
+                                </td>
                                 @foreach ($bulan as $k => $nama)
-                                    <td>{{ $r['index'] ? $pct($r['index'][$k], 1) : '—' }}</td>
+                                    <td>{{ $pct($r['weights'][$k], 1) }}</td>
                                 @endforeach
-                                <td>{{ $r['index'] ? $pct(array_sum($r['index']), 0) : '—' }}</td>
+                                <td>{{ $pct(array_sum($r['weights']), 0) }}</td>
                             </tr>
                             <tr class="font-weight-bold text-teal">
                                 <td class="text-left">Target {{ $year }}</td>
@@ -390,7 +401,8 @@
                                 <i class="fas fa-eraser mr-1"></i> Kosongkan
                             </button>
                             <button type="button" wire:click="applyManualPhasing"
-                                    wire:confirm="Isi target bulanan {{ $year }} dari angka yang Anda tulis? Target bulanan yang ada akan ditimpa; realisasi tidak berubah."
+                                    data-konfirmasi="Target bulanan {{ $year }} akan DITIMPA oleh angka yang Anda tulis di bagian ini.&#10;Realisasi tidak berubah, dan bulan pada periode yang sudah ditutup tidak disentuh."
+                                    data-konfirmasi-judul="Terapkan fasing manual" data-konfirmasi-ok="Terapkan"
                                     class="btn btn-sm btn-info">
                                 <i class="fas fa-calendar-check mr-1"></i> Terapkan ke Target Revenue
                             </button>

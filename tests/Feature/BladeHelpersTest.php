@@ -37,6 +37,28 @@ class BladeHelpersTest extends TestCase
         $this->assertSame([], $pelanggar, 'View harus memakai fungsi bantu, bukan nama kelas: '.implode(', ', $pelanggar));
     }
 
+    public function test_no_view_falls_back_to_the_browser_confirm_box(): void
+    {
+        $pelanggar = [];
+
+        foreach (Finder::create()->files()->in(resource_path('views'))->exclude('vendor')->name('*.blade.php') as $berkas) {
+            // Dialog bawaan peramban menampilkan nama domain dan tidak dapat
+            // ditata; aplikasi ini memakai data-konfirmasi (lihat
+            // partials/confirm-dialog.blade.php). Berkas partial itu sendiri
+            // menyebut wire:confirm hanya di dalam keterangannya.
+            if (str_contains($berkas->getRelativePathname(), 'confirm-dialog')) {
+                continue;
+            }
+
+            if (preg_match('/wire:confirm|window\.confirm\(/', $berkas->getContents())) {
+                $pelanggar[] = $berkas->getRelativePathname();
+            }
+        }
+
+        $this->assertSame([], $pelanggar,
+            'Pakai data-konfirmasi, bukan dialog bawaan peramban: '.implode(', ', $pelanggar));
+    }
+
     public function test_every_blade_template_still_compiles(): void
     {
         $diperiksa = 0;

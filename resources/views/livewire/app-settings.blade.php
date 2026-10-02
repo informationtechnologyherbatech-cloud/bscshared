@@ -250,7 +250,8 @@
 
                         <div class="text-right">
                             @can('manage settings')
-                            <button wire:click="resetEntity" wire:confirm="Kembalikan identitas entitas ke nilai instalasi ({{ $installation['defaults']['company_name'] }})?" class="btn btn-secondary mr-2"><i class="fas fa-undo mr-1"></i> Reset Default</button>
+                            <button wire:click="resetEntity" data-konfirmasi="Nama, logo, dan identitas entitas kembali ke nilai instalasi: {{ $installation['defaults']['company_name'] }}."
+                                    data-konfirmasi-judul="Kembalikan ke nilai instalasi" data-konfirmasi-ok="Ya, kembalikan" data-konfirmasi-nada="bahaya" class="btn btn-secondary mr-2"><i class="fas fa-undo mr-1"></i> Reset Default</button>
                             <button wire:click="saveEntity" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
                             @endcan
                         </div>
@@ -316,7 +317,8 @@
                                 <div class="text-right">
                                     @if($recaptchaSecretTersimpan)
                                         <button wire:click="clearRecaptchaSecret"
-                                                wire:confirm="Hapus secret key dan matikan reCAPTCHA?"
+                                                data-konfirmasi="Secret key dihapus dan reCAPTCHA berhenti melindungi halaman masuk."
+                                                data-konfirmasi-judul="Matikan reCAPTCHA" data-konfirmasi-ok="Hapus &amp; matikan" data-konfirmasi-nada="bahaya"
                                                 class="btn btn-outline-danger mr-2">
                                             <i class="fas fa-trash mr-1"></i> Hapus Secret Key
                                         </button>

@@ -551,6 +551,7 @@
 @livewireScripts
 @include('partials.livewire-feedback')
 @include('partials.smart-select')
+@include('partials.confirm-dialog')
 <script>
 // FR-15 fallback: pastikan klik profil selalu buka #logoutModal meski data-toggle terhalang Livewire/AdminLTE (fix # -> /# )
 document.addEventListener('DOMContentLoaded', function(){

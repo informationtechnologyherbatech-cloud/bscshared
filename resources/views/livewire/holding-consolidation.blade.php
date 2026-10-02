@@ -312,7 +312,8 @@
                                     @if ($canManage)
                                         <td class="text-right text-nowrap">
                                             <button wire:click="openEdit({{ $e->id }})" class="btn btn-xs btn-outline-primary" title="Ubah"><i class="fas fa-edit"></i></button>
-                                            <button wire:click="delete({{ $e->id }})" wire:confirm="Hapus baris eliminasi ini?" class="btn btn-xs btn-outline-danger" title="Hapus"><i class="fas fa-trash"></i></button>
+                                            <button wire:click="delete({{ $e->id }})" data-konfirmasi="Baris eliminasi ini akan dihapus dari konsolidasi grup."
+                                                    data-konfirmasi-judul="Hapus eliminasi" data-konfirmasi-ok="Hapus" data-konfirmasi-nada="bahaya" class="btn btn-xs btn-outline-danger" title="Hapus"><i class="fas fa-trash"></i></button>
                                         </td>
                                     @endif
                                 </tr>

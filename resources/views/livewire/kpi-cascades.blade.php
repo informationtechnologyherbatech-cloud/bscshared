@@ -135,7 +135,8 @@
                                     (data lama atau salinan templat periode).
                                     @if ($canWrite)
                                         <button wire:click="adoptObjectives"
-                                                wire:confirm="Buat draf KPI Head dari sasaran yang belum tertaut? Draf perlu dilengkapi (jabatan, bobot, rasio & pos akun) lalu diuji Keuangan."
+                                                data-konfirmasi="Draf KPI Head dibuat dari sasaran mutu yang belum tertaut.&#10;Draf masih perlu dilengkapi — jabatan, bobot, rasio &amp; pos akun — lalu diuji Keuangan."
+                                                data-konfirmasi-judul="Buat draf KPI Head" data-konfirmasi-ok="Buat draf"
                                                 class="btn btn-xs btn-warning d-block mt-2">
                                             <i class="fas fa-link mr-1"></i> Ambil dari Objective Departemen
                                         </button>
