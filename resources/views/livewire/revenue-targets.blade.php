@@ -3,7 +3,7 @@
         <div class="container-fluid">
             <div class="row mb-2 align-items-center">
                 <div class="col-sm-7">
-                    <h1><i class="fas fa-bullseye mr-2 text-teal"></i>Target Revenue <small class="text-muted">(Tingkat 1)</small></h1>
+                    <h1><i class="fas fa-bullseye mr-2 text-teal"></i>Target &amp; Realisasi <small class="text-muted">(Tingkat 1)</small></h1>
                     <small class="text-muted">
                         {{ $entity?->legal_name ?? 'Entitas aktif' }} — pencapaian kumulatif di sini menjadi
                         <strong>F1</strong> pada skor puncak: 45% × Revenue + 55% × Rasio Keuangan.

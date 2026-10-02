@@ -456,7 +456,7 @@
                                     <small class="text-muted d-block" style="font-family: monospace;">YTD {{ $rp($revenue['actual_ytd']) }} / {{ $rp($revenue['target_ytd']) }}</small>
                                     <small class="d-block font-weight-bold" style="font-family: monospace; color: {{ $warnaSkor($revenue['f1']) }};">F1 {{ $skor($revenue['f1']) }}</small>
                                     @if(! $revenue['annual'])
-                                        <small class="text-muted d-block mt-1">Isi di menu Target Revenue / Perencanaan Target.</small>
+                                        <small class="text-muted d-block mt-1">Isi di menu Target &amp; Realisasi atau Perencanaan Target.</small>
                                     @endif
                                 </div>
                             </div>
@@ -532,7 +532,7 @@
                                 </div>
                                 <small class="text-muted d-block mt-2">
                                     Simulasi revisi revenue: target tiap KPI menyesuaikan diri = target × (1 + e × (k − 1)).
-                                    KPI dikunci (guardrail, e = 0) tidak berubah. Tidak menyimpan apa pun — revisi resmi diisi di menu Target Revenue.
+                                    KPI dikunci (guardrail, e = 0) tidak berubah. Tidak menyimpan apa pun — revisi resmi diisi di menu Target &amp; Realisasi.
                                 </small>
                             </div>
                         </div>

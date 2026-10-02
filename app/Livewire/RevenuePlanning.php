@@ -214,7 +214,7 @@ class RevenuePlanning extends Component
         return is_numeric($v) ? (float) $v : null;
     }
 
-    /** Realisasi bulanan tahun dasar dari menu Target Revenue. */
+    /** Realisasi bulanan tahun dasar dari menu Target & Realisasi. */
     private function baseMonthly(): array
     {
         $tersimpan = RevenueTarget::where('period', 'like', $this->baseYear().'-%')
@@ -460,7 +460,7 @@ class RevenuePlanning extends Component
         // "mengikuti indeks musiman" walau sebenarnya dibagi rata.
         session()->flash('message', 'Target bulanan '.$this->year.' diisi '.($hasil['index'] ? 'mengikuti indeks musiman '.$this->baseYear() : 'rata 12 bulan (belum ada realisasi '.$this->baseYear().')')
             .($dilewati ? '. Bulan pada periode yang sudah DITUTUP tidak diubah: '.implode(', ', $dilewati) : '')
-            .'. Lihat di menu Target Revenue.');
+            .'. Lihat di menu Target & Realisasi.');
     }
 
     /* ------------------------------------------- bagian H: fasing manual */

@@ -59,6 +59,42 @@ class BladeHelpersTest extends TestCase
             'Pakai data-konfirmasi, bukan dialog bawaan peramban: '.implode(', ', $pelanggar));
     }
 
+    public function test_text_never_points_at_a_menu_that_does_not_exist(): void
+    {
+        // Label menu yang benar-benar ada di sidebar.
+        preg_match_all('/<p>([^<]+)<\/p>/', file_get_contents(resource_path('views/layouts/app.blade.php')), $cocok);
+        $menu = array_values(array_unique(array_map(
+            fn ($teks) => trim(preg_replace('/\s+/', ' ', html_entity_decode($teks))),
+            $cocok[1]
+        )));
+        $this->assertContains('Target & Realisasi', $menu);
+
+        $pelanggar = [];
+        $berkas = Finder::create()->files()
+            ->in([resource_path('views'), app_path('Livewire')])
+            ->exclude('vendor')
+            ->name(['*.blade.php', '*.php']);
+
+        foreach ($berkas as $b) {
+            preg_match_all('/menu ([A-Z][A-Za-z0-9\/ &]{1,40})/u', html_entity_decode($b->getContents()), $sebutan);
+
+            foreach ($sebutan[1] as $nama) {
+                $nama = trim(preg_replace('/\s+/', ' ', $nama));
+
+                // Kalimat biasanya berlanjut sesudah nama menunya ("menu Pos Akun
+                // lebih dulu"), jadi cukup salah satu yang menjadi awalan.
+                $dikenal = array_filter($menu, fn ($label) => str_starts_with($nama, $label) || str_starts_with($label, $nama));
+
+                if ($dikenal === []) {
+                    $pelanggar[] = $b->getRelativePathname().': "menu '.$nama.'"';
+                }
+            }
+        }
+
+        $this->assertSame([], $pelanggar,
+            'Teks menyebut menu yang tidak ada di sidebar: '.implode(' | ', $pelanggar));
+    }
+
     public function test_every_blade_template_still_compiles(): void
     {
         $diperiksa = 0;

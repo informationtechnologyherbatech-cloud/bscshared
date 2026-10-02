@@ -69,9 +69,9 @@
                             </div>
                             <small class="text-muted d-block mt-2">
                                 @if ($r['auto_ytd'] !== null)
-                                    Terisi otomatis dari realisasi {{ $baseYear }} di menu Target Revenue ({{ $r['auto_months'] }} bulan). Kosongkan kolom untuk memakai angka otomatis.
+                                    Terisi otomatis dari realisasi {{ $baseYear }} di menu Target &amp; Realisasi ({{ $r['auto_months'] }} bulan). Kosongkan kolom untuk memakai angka otomatis.
                                 @else
-                                    Belum ada realisasi {{ $baseYear }} di menu Target Revenue — isi YTD &amp; n secara manual.
+                                    Belum ada realisasi {{ $baseYear }} di menu Target &amp; Realisasi — isi YTD &amp; n secara manual.
                                 @endif
                             </small>
                         </div>
@@ -320,7 +320,7 @@
                     </table>
                 </div>
                 <div class="card-footer small text-muted">
-                    Selisih antarmetode = ruang diskusi risiko. Angka yang disahkan tersimpan sebagai target disahkan di menu Target Revenue
+                    Selisih antarmetode = ruang diskusi risiko. Angka yang disahkan tersimpan sebagai target disahkan di menu Target &amp; Realisasi
                     (revisi tengah tahun diisi di sana).
                 </div>
             </div>
@@ -333,9 +333,13 @@
                         <button wire:click="applyPhasing" data-konfirmasi="Target bulanan {{ $year }} di menu Target &amp; Realisasi akan DITIMPA mengikuti pembagian di atas.&#10;Realisasi tidak berubah, dan bulan pada periode yang sudah ditutup tidak disentuh."
                                 data-konfirmasi-judul="Terapkan fasing musiman" data-konfirmasi-ok="Terapkan"
                                 class="btn btn-sm btn-success" @disabled(! $r['approved'])>
-                            <i class="fas fa-calendar-check mr-1"></i> Terapkan ke Target Revenue
+                            <i class="fas fa-calendar-check mr-1"></i> Terapkan ke Target &amp; Realisasi
                         </button>
                     @endif
+                    <a href="{{ route('revenue', ['year' => $year]) }}" class="btn btn-sm btn-ghost ml-2"
+                       title="Buka halaman Target &amp; Realisasi untuk melihat hasil penerapannya">
+                        <i class="fas fa-external-link-alt mr-1"></i> Buka Target &amp; Realisasi
+                    </a>
                 </div>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-sm m-0 text-center" style="font-size:.85rem">
@@ -404,7 +408,7 @@
                                     data-konfirmasi="Target bulanan {{ $year }} akan DITIMPA oleh angka yang Anda tulis di bagian ini.&#10;Realisasi tidak berubah, dan bulan pada periode yang sudah ditutup tidak disentuh."
                                     data-konfirmasi-judul="Terapkan fasing manual" data-konfirmasi-ok="Terapkan"
                                     class="btn btn-sm btn-info">
-                                <i class="fas fa-calendar-check mr-1"></i> Terapkan ke Target Revenue
+                                <i class="fas fa-calendar-check mr-1"></i> Terapkan ke Target &amp; Realisasi
                             </button>
                         </div>
                     @endif

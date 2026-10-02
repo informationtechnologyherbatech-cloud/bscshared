@@ -307,6 +307,6 @@ class RevenueTargets extends Component
                 ? (float) $this->revisedTarget / (float) $this->approvedTarget
                 : null,
             'years' => range((int) now()->format('Y') - 3, (int) now()->format('Y') + 2),
-        ])->layout('layouts.app', ['title' => 'Target Revenue']);
+        ])->layout('layouts.app', ['title' => 'Target & Realisasi']);
     }
 }
