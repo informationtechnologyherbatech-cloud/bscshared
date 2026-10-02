@@ -95,6 +95,33 @@ class BladeHelpersTest extends TestCase
             'Teks menyebut menu yang tidak ada di sidebar: '.implode(' | ', $pelanggar));
     }
 
+    public function test_no_comment_leaks_onto_the_page(): void
+    {
+        $pelanggar = [];
+
+        foreach (Finder::create()->files()->in(resource_path('views'))->exclude('vendor')->name('*.blade.php') as $berkas) {
+            $isi = $berkas->getContents();
+            $nama = $berkas->getRelativePathname();
+
+            // Blade menutup komentar pada penutup yang pertama ditemukan, jadi
+            // komentar bersarang membuat sisanya tercetak sebagai teks biasa.
+            preg_match_all('/\{\{--(.*?)--\}\}/s', $isi, $komentar);
+
+            foreach ($komentar[1] as $badan) {
+                if (str_contains($badan, '{{--')) {
+                    $pelanggar[] = $nama.' (komentar bersarang)';
+                }
+            }
+
+            if (substr_count($isi, '{{--') !== substr_count($isi, '--}}')) {
+                $pelanggar[] = $nama.' (pembuka dan penutup komentar tidak seimbang)';
+            }
+        }
+
+        $this->assertSame([], $pelanggar,
+            'Komentar Blade akan tercetak di halaman: '.implode(' | ', $pelanggar));
+    }
+
     public function test_every_blade_template_still_compiles(): void
     {
         $diperiksa = 0;

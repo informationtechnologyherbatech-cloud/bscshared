@@ -9,9 +9,13 @@
 
         <button wire:click="hapus(7)"
                 data-konfirmasi="Hapus baris ini? Tindakan ini tidak dapat dibatalkan."
-                data-konfirmasi-judul="Hapus eliminasi"      {{-- opsional --}}
-                data-konfirmasi-ok="Hapus"                   {{-- opsional --}}
-                data-konfirmasi-nada="bahaya">               {{-- opsional: bahaya|utama --}}
+                data-konfirmasi-judul="Hapus eliminasi"      <- opsional
+                data-konfirmasi-ok="Hapus"                   <- opsional
+                data-konfirmasi-nada="bahaya">               <- opsional: bahaya|utama
+
+    Keterangan bertanda <- di atas hanya penjelasan, bukan bagian dari kodenya.
+    Komentar Blade tidak boleh bersarang: penutup komentar yang pertama ditemukan
+    mengakhiri seluruh komentar, sehingga sisanya ikut tercetak di halaman.
 
     Cara kerja: satu penyadap pada fase CAPTURE di document. Livewire memasang
     pendengarnya pada elemen tombol, jadi menghentikan perambatan di tahap capture
