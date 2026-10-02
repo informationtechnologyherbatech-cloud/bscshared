@@ -1412,3 +1412,10 @@ tr[id^="pos-"]:target > td {
 @media (prefers-reduced-motion: reduce) {
     .asal-akordeon__panah { transition: none; }
 }
+
+/* Baris bulan yang periodenya sudah DITUTUP: jelas terlihat tidak dapat disunting. */
+tr.revenue-terkunci > td {
+    background: #f6f7f8;
+    color: #6b7a85;
+}
+tr.revenue-terkunci .badge { font-weight: 600; }

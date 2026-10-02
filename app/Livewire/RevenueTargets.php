@@ -101,8 +101,15 @@ class RevenueTargets extends Component
 
         $perBulan = round($total / 12, 2);
         $sisa = round($total - $perBulan * 11, 2);
+        $terkunci = $this->bulanTerkunci();
 
         foreach (array_keys(self::BULAN) as $i => $bulan) {
+            // Bulan tertutup dilewati: menuliskannya hanya memunculkan angka di
+            // layar yang tidak akan pernah tersimpan.
+            if (in_array($bulan, $terkunci, true)) {
+                continue;
+            }
+
             $this->rows[$bulan]['target'] = $this->angka($i === 11 ? $sisa : $perBulan);
         }
     }
@@ -140,9 +147,33 @@ class RevenueTargets extends Component
             return;
         }
 
+        $terkunci = $this->bulanTerkunci();
+
         foreach (RevenueForecast::phase($total, $indeks) as $bulan => $nilai) {
+            if (in_array($bulan, $terkunci, true)) {
+                continue;
+            }
+
             $this->rows[$bulan]['target'] = $this->angka($nilai);
         }
+    }
+
+    /**
+     * Bulan yang periodenya sudah DITUTUP, sebagai '01'..'12'.
+     *
+     * Dipakai layar untuk mengunci isiannya sejak awal — sebelumnya kotaknya
+     * tetap dapat diketik, lalu perubahannya ditolak diam-diam saat Simpan.
+     * Dipakai juga oleh tombol fasing, supaya tidak menulis angka yang memang
+     * tidak akan pernah tersimpan.
+     *
+     * @return array<int, string>
+     */
+    private function bulanTerkunci(): array
+    {
+        return array_map(
+            fn ($periode) => substr($periode, 5, 2),
+            Period::closedIn($this->year)
+        );
     }
 
     private function annualTargetValue(): ?float
@@ -268,6 +299,7 @@ class RevenueTargets extends Component
 
         return view('livewire.revenue-targets', [
             'ringkasan' => $ringkasan,
+            'terkunci' => $this->bulanTerkunci(),
             'totalTarget' => $kumTarget,
             'totalActual' => $kumActual,
             'entity' => app(EntityContext::class)->entity(),

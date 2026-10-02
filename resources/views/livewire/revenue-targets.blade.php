@@ -116,24 +116,48 @@
                         </thead>
                         <tbody>
                             @foreach($ringkasan as $bulan => $r)
-                                <tr>
-                                    <td class="font-weight-bold align-middle">{{ $r['nama'] }}</td>
-                                    <td>
-                                        @can('manage revenue')
-                                            <x-input-rupiah wire:model.live.debounce.500ms="rows.{{ $bulan }}.target"
-                                                   class="form-control form-control-sm text-right {{ $errors->has('rows.'.$bulan.'.target') ? 'is-invalid' : '' }}" />
-                                        @else
-                                            <div class="text-right">{{ rupiah($rows[$bulan]['target']) }}</div>
-                                        @endcan
+                                @php($bulanTerkunci = in_array($bulan, $terkunci, true))
+                                {{-- Periode yang sudah DITUTUP memang tidak dapat diubah, jadi
+                                     isiannya dikunci sejak awal — bukan dibiarkan dapat diketik
+                                     lalu ditolak diam-diam saat Simpan. --}}
+                                <tr @class(['revenue-terkunci' => $bulanTerkunci])>
+                                    <td class="font-weight-bold align-middle">
+                                        {{ $r['nama'] }}
+                                        @if ($bulanTerkunci)
+                                            <span class="badge badge-secondary ml-1"
+                                                  title="Periode {{ $year }}-{{ $bulan }} sudah DITUTUP; target & realisasinya dibekukan">
+                                                <i class="fas fa-lock"></i> ditutup
+                                            </span>
+                                        @endif
                                     </td>
                                     <td>
-                                        @can('manage revenue')
-                                            <x-input-rupiah wire:model.live.debounce.500ms="rows.{{ $bulan }}.actual"
-                                                   class="form-control form-control-sm text-right {{ $errors->has('rows.'.$bulan.'.actual') ? 'is-invalid' : '' }}"
-                                                   placeholder="belum ada" />
+                                        @if ($bulanTerkunci)
+                                            <div class="text-right text-muted" title="Periode {{ $year }}-{{ $bulan }} sudah DITUTUP">
+                                                {{ rupiah($rows[$bulan]['target']) }}
+                                            </div>
                                         @else
-                                            <div class="text-right">{{ rupiah($rows[$bulan]['actual']) }}</div>
-                                        @endcan
+                                            @can('manage revenue')
+                                                <x-input-rupiah wire:model.live.debounce.500ms="rows.{{ $bulan }}.target"
+                                                       class="form-control form-control-sm text-right {{ $errors->has('rows.'.$bulan.'.target') ? 'is-invalid' : '' }}" />
+                                            @else
+                                                <div class="text-right">{{ rupiah($rows[$bulan]['target']) }}</div>
+                                            @endcan
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($bulanTerkunci)
+                                            <div class="text-right text-muted" title="Periode {{ $year }}-{{ $bulan }} sudah DITUTUP">
+                                                {{ $rows[$bulan]['actual'] === '' ? 'belum ada' : rupiah($rows[$bulan]['actual']) }}
+                                            </div>
+                                        @else
+                                            @can('manage revenue')
+                                                <x-input-rupiah wire:model.live.debounce.500ms="rows.{{ $bulan }}.actual"
+                                                       class="form-control form-control-sm text-right {{ $errors->has('rows.'.$bulan.'.actual') ? 'is-invalid' : '' }}"
+                                                       placeholder="belum ada" />
+                                            @else
+                                                <div class="text-right">{{ rupiah($rows[$bulan]['actual']) }}</div>
+                                            @endcan
+                                        @endif
                                     </td>
                                     <td class="text-right align-middle">{{ $r['bulanan'] !== null ? number_format($r['bulanan'], 1, ',', '.').'%' : '—' }}</td>
                                     <td class="text-right align-middle small text-muted">{{ rupiah($r['kum_target']) }}</td>
