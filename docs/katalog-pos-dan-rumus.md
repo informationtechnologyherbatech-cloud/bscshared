@@ -164,7 +164,132 @@ di layar tidak mungkin menjelaskan perhitungan yang berbeda dari yang dijalankan
 - **Integrasi Odoo & unggahan CSV** mengikuti katalog pos entitas, termasuk pos
   tambahan — pemetaan kode akunnya diatur seperti biasa di Integrasi & Gateway.
 
-## 5. Untuk pengembang
+## 5. Perkara nyata: akunnya ada di Odoo, tetapi tidak ada rasionya
+
+Pertanyaan yang paling sering muncul: *"Di Integrasi & Gateway ada akun Rebate,
+tetapi di Rasio Keuangan tidak ada rasio rebate. Bagaimana memunculkannya?"*
+
+### Mengapa belum muncul
+
+Angka menempuh lima tahap, dan rebate berhenti di tahap ketiga:
+
+```
+Akun Odoo  →  Pemetaan  →  Pos akun  →  Rumus  →  Rasio
+41000062        PA01        (lebur)      —        tidak ada
+```
+
+Rebate dipetakan ke **PA01 Penjualan** dengan *balik tanda*, sehingga ia
+**mengurangi** penjualan dan lebur ke dalamnya — penjualan yang tersimpan sudah
+neto. Karena rebate tidak pernah berdiri sebagai angka tersendiri, tidak ada
+yang bisa dijadikan rasio.
+
+> **Aturan yang menentukan pilihan:** satu kode akun sistem sumber hanya boleh
+> menunjuk **satu** pos akun (unik per entitas). Jadi satu akun rebate tidak bisa
+> sekaligus mengurangi PA01 *dan* mengisi pos rebate.
+
+### Cara A — rebate dipindahkan ke pos akun sendiri
+
+1. **Pos Akun → Sesuaikan pos akun → Tambah pos akun**
+   kode `PA17`, nama `Rebate`, jenis **Aliran**, sumber **GL**.
+2. **Integrasi & Gateway → Sambungan Odoo → pemetaan akun**
+   ubah `41000062 Rebate` dan `41000065 Rebate Compliance` dari `PA01` ke `PA17`.
+   **Balik tanda dimatikan**: akun kontra-pendapatan bersaldo *debit*, jadi
+   angkanya sudah positif. (Penjualan sendiri bersaldo kredit, karena itu PA01
+   tetap dibalik.)
+3. **Tarik ulang**, lalu lihat kolom *Nilai dipakai* di menu Pos Akun. Kalau
+   PA17 muncul negatif, nyalakan balik tanda pada kedua pemetaan itu. Ini cara
+   paling aman memastikan tandanya: dilihat, bukan ditebak.
+4. **Katalog Rasio → Tambah rasio**
+   kode `R1`, nama `Rebate terhadap penjualan`, satuan `%`, polaritas **Turun**,
+   bobot mis. `4`, rumus:
+
+   ```
+   PA17 / PA01 * 100
+   ```
+
+5. Isi **target** tahunannya, lalu **Simpan** — periode berjalan langsung
+   dihitung ulang.
+6. **Tata ulang bobot** agar totalnya kembali 100 (kurangi bobot rasio lain
+   sebesar bobot baru).
+
+**Akibat yang harus disadari:** PA01 kini penjualan **bruto**. Semua rasio yang
+memakai penjualan — GPM, NPM, Asset Turnover, AR Turnover/DSO, produktivitas per
+karyawan/jam/biaya TK — ikut naik sedikit. **Realisasi revenue bulanan di
+Tingkat 1 juga ditarik dari akun-akun yang dipetakan ke PA01**, jadi realisasi
+revenue pun menjadi bruto. Bila target revenue disusun atas dasar neto,
+perbandingannya tidak lagi setara.
+
+### Cara B — penjualan tetap neto, rebate tetap terukur
+
+1. Pemetaan akun rebate **dibiarkan** di `PA01` (dibalik) — tidak ada angka lama
+   yang berubah.
+2. Buat pos `PA17` `Rebate`, sumber **Manual**.
+3. Isi angkanya tiap periode, lewat salah satu dari:
+   - layar **Pos Akun** (diketik), atau
+   - **unggahan CSV** — kode PA dipakai apa adanya, tanpa pemetaan:
+
+     ```csv
+     kode;nilai
+     PA17;40000000
+     ```
+
+4. Buat rasionya seperti Cara A. Karena PA01 di sini neto, rumus
+   `PA17 / PA01 * 100` berarti "rebate terhadap penjualan neto"; bila yang
+   diinginkan terhadap penjualan bruto, pakai `PA17 / (PA01 + PA17) * 100`.
+
+**Harganya:** angka rebate tidak ikut tertarik otomatis dari Odoo — harus diisi
+tiap periode.
+
+### Cara C — cukup diketahui
+
+Biarkan apa adanya. Rebate tetap mengurangi penjualan, dan tidak ada rasio
+rebate. Ini pilihan yang benar bila rebate tidak dipantau sebagai kinerja.
+
+### Memilih di antara ketiganya
+
+| Pertanyaan | Jawabannya |
+|---|---|
+| Rebate perlu jadi KPI/rasio yang dipantau? | Tidak → **C** |
+| Penjualan di BSC harus tetap neto (sama dengan laporan keuangan & target revenue)? | Ya → **B** |
+| Boleh penjualan menjadi bruto, asal semuanya otomatis dari Odoo? | Ya → **A** |
+
+### Perkara lain yang berpola sama
+
+Semua akun di bawah ini kini lebur ke pos lain. Bila salah satunya ingin
+dipantau sendiri, langkahnya sama: **buat pos akunnya lebih dulu, baru rumusnya.**
+
+| Perkara | Sekarang lebur di | Pos baru yang masuk akal | Rumus contoh | Polaritas |
+|---|---|---|---|---|
+| Retur & potongan penjualan | PA01 (dibalik) | `PA18` Retur penjualan | `PA18 / PA01 * 100` | Turun |
+| Sales discount | PA01 (dibalik) | `PA19` Diskon penjualan | `PA19 / PA01 * 100` | Turun |
+| Beban pemasaran | PA03 | `PA20` Beban pemasaran | `PA20 / PA01 * 100` | Turun |
+| Beban logistik/pengiriman | PA03 | `PA21` Beban logistik | `PA21 / PA01 * 100` | Turun |
+| Beban bunga | PA03 | `PA22` Beban bunga | `LK / PA22` (*interest coverage*) | Naik |
+| Pendapatan lain-lain | PA01 | `PA23` Pendapatan lain-lain | `PA23 / PA01 * 100` | Naik |
+| Kas tertahan/jaminan | PA08 | `PA24` Kas dibatasi | `(PA08 - PA24) / PA10` | Naik |
+
+Dua hal yang berlaku untuk semuanya:
+
+- **Mengeluarkan sesuatu dari pos induknya mengubah pos induk itu.** Memindahkan
+  beban pemasaran keluar dari PA03 membuat laba bersih (LB) naik, sehingga NPM,
+  ROA, dan ROE ikut naik. Bila itu tidak dikehendaki, pakai pola **Cara B**:
+  biarkan pemetaannya, isi pos barunya terpisah.
+- **Pos yang hanya untuk diukur tidak boleh ikut dijumlahkan dua kali.** Pos
+  buatan sendiri tidak dipakai rumus bawaan mana pun, jadi aman; yang perlu
+  dijaga hanyalah rumus buatan sendiri — jangan menulis `PA01 + PA17` bila PA17
+  sudah termasuk di dalam PA01.
+
+### Setelah menambah rasio
+
+- **Bobot**: total bobot rasio aktif sebaiknya 100. Kotak *Bobot per kelompok* di
+  Katalog Rasio menunjukkan selisihnya. Bila bukan 100, F2 tetap dihitung dengan
+  normalisasi — jadi tidak rusak, hanya kurang rapi.
+- **Target**: rasio tanpa target tetap tampil angkanya, berstatus
+  *Belum Ada Target*, dan **tidak ikut diskor**.
+- **KPI**: rasio baru langsung dapat diklaim KPI di Cascade KPI, karena pos
+  pembentuknya dibaca dari rumusnya.
+
+## 6. Untuk pengembang
 
 - `App\Support\Bsc\Formula` — satu-satunya tempat rumus diurai dan dihitung
   (tokeniser → pohon → evaluasi), termasuk penulisan ulang rumus menjadi teks.

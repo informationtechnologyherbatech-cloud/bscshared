@@ -66,6 +66,48 @@ class MethodDocumentationTest extends TestCase
             ->assertSee('12 dari 12');
     }
 
+    /**
+     * Setiap panduan di folder docs/ yang terdaftar harus benar-benar ada dan
+     * terbaca di layar — panduan yang hanya hidup di repositori tidak menolong
+     * pengguna yang sedang membuka aplikasinya.
+     */
+    public function test_every_registered_guide_is_readable_from_the_menu(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $this->login();
+
+        $this->assertNotEmpty(MethodDocumentation::DOKUMEN);
+
+        foreach (MethodDocumentation::DOKUMEN as $kunci => $dokumen) {
+            $this->assertFileExists(base_path($dokumen['berkas']), $kunci);
+
+            Livewire::test(MethodDocumentation::class)
+                ->call('switchTab', $kunci)
+                ->assertSet('tab', $kunci)
+                // Judulnya ada di bilah tab, jadi yang diperiksa isi berkasnya.
+                ->assertSee($dokumen['ringkas'])
+                ->assertDontSee('tidak ditemukan');
+        }
+
+        // Tab yang tidak dikenal jatuh ke panduan pertama, bukan halaman kosong.
+        Livewire::test(MethodDocumentation::class)
+            ->call('switchTab', 'entah-apa')
+            ->assertSet('tab', 'panduan');
+    }
+
+    public function test_the_catalog_guide_answers_the_question_it_was_written_for(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $this->login();
+
+        // Perkara yang memicu panduan ini: akun ada di Odoo, rasionya tidak ada.
+        Livewire::test(MethodDocumentation::class)
+            ->call('switchTab', 'katalog')
+            ->assertSee('Rebate')
+            ->assertSee('Perkara nyata: akunnya ada di Odoo, tetapi tidak ada rasionya')
+            ->assertSee('41000062');
+    }
+
     public function test_seeding_without_demo_prepares_structure_only(): void
     {
         config(['bsc.seed_demo' => false]);

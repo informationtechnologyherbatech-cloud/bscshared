@@ -54,9 +54,23 @@ Menyusun angka target setahun dari beberapa sudut pandang (sheet L1 bagian A–F
 5. **D–E.** Isi inisiatif baru (Ansoff) beserta probabilitasnya, serta koreksi SWOT.
 6. **Simpan perencanaan**.
 7. **F.** Bandingkan enam angka, lalu klik **Sahkan** pada salah satunya (atau
-   ketik angka sendiri).
-8. **G.** Klik **Terapkan ke Target Revenue** untuk mengisi 12 target bulanan
-   mengikuti pola musiman.
+   ketik angka sendiri). Angka yang disahkan inilah yang dipakai bagian G dan H.
+8. **G.** Klik **Terapkan ke Target & Realisasi** untuk mengisi 12 target
+   bulanan mengikuti pola musiman tahun dasar. Bila tahun dasar belum punya
+   realisasi, pembagiannya rata 12 bulan — pesan sesudah menerapkan menyebutkan
+   yang mana.
+9. **H.** *(pilihan lain untuk bagian G)* **Fasing bulanan manual** dipakai bila
+   pola musiman tahun dasar tidak mewakili rencana tahun depan — kampanye besar,
+   channel baru, atau angka bulanan yang memang sudah disepakati sendiri. Angka
+   yang ditulis di sini dipakai **apa adanya**: tidak dibagi ulang dan tidak
+   disesuaikan dengan indeks mana pun. Tersedia tombol *Bagi rata*, *Salin dari
+   G* sebagai titik awal, dan *Kosongkan*. Drafnya ikut tersimpan, jadi tidak
+   hilang saat halaman dimuat ulang.
+
+> Bagian G dan H sama-sama **menimpa** target bulanan di menu Target &
+> Realisasi. Realisasi tidak pernah ikut berubah, dan bulan yang periodenya
+> sudah **ditutup** tidak disentuh — nama bulannya disebutkan di pesan
+> konfirmasi.
 
 ### b. Target & Realisasi
 1. **Awal tahun**:
@@ -64,6 +78,11 @@ Menyusun angka target setahun dari beberapa sudut pandang (sheet L1 bagian A–F
    - Klik **Bagi rata 12 bulan** atau **Ikuti pola musiman**.
    - Periksa tabel, lalu **Simpan**.
 2. **Setiap bulan**: isi kolom **Realisasi (Rp)** bulan itu, lalu **Simpan**.
+
+> **Bulan yang periodenya sudah ditutup tidak dapat diisi.** Barisnya tampil
+> redup dengan ikon gembok dan angkanya menjadi teks biasa, bukan kotak isian —
+> supaya tidak ada yang mengetik lalu mengira tersimpan. Untuk mengubahnya,
+> buka kembali periodenya lewat Piramida BSC (butuh izin *override*).
 
 **Hasil:** F1 = Σ realisasi ÷ Σ target Januari s.d. bulan periode (maksimal 100%).
 Piramida menampilkan alasan bila F1 belum bisa dihitung, misalnya "target bulanan
@@ -75,25 +94,37 @@ belum difasing" atau "belum ada realisasi".
 
 ### a. Katalog Rasio *(awal tahun)*
 1. Pilih **tahun target**.
-2. Centang rasio yang dipakai entitas. Ke-19 rasio aktif secara bawaan.
+2. Centang rasio yang dipakai entitas. Ke-19 rasio bawaan aktif secara bawaan.
 3. Periksa **bobot**. Acuan kelompok: Profitabilitas 30 · Aktivitas 25 ·
    Produktivitas 20 · Likuiditas 15 · Solvabilitas 10; total 100.
 4. Isi **target tahunan** tiap rasio. Rasio persen ditulis dalam persen
    (37 berarti 37%).
 5. Pastikan **Cek konsistensi target** hijau semua, lalu **Simpan**.
 
+Katalog ini tidak terkunci: lewat tombol **Tambah rasio** dan ikon pensil pada
+tiap baris, entitas dapat menambah rasio sendiri atau menyesuaikan nama,
+kelompok, satuan, polaritas, dan **rumus** rasio yang ada. Rumus yang tertulis
+itulah yang benar-benar dihitung, dan kotak pratinjau langsung mencobanya dengan
+angka periode terakhir. Selengkapnya: **[Pos Akun & Rumus](katalog-pos-dan-rumus.md)**.
+
 ### b. Pos Akun *(setiap bulan)*
 1. Pilih **periode**.
-2. Isi 16 pos akun dari GL/HRIS:
+2. Isi pos akun dari GL/HRIS:
    - **Aliran** (Penjualan, HPP, Beban usaha, Beban tenaga kerja): nilai **YTD**
      Januari s.d. bulan itu.
    - **Neraca** (Persediaan, Piutang, Utang, Kas, Aset & Liabilitas, Ekuitas,
      Modal): **saldo awal tahun** dan **saldo akhir** bulan itu.
    - **HRIS**: rata-rata jumlah karyawan dan total jam kerja YTD.
-3. Hasil 19 rasio dan F2 tampil langsung sebagai pratinjau. Klik **Simpan &
+3. Hasil rasio dan F2 tampil langsung sebagai pratinjau. Klik **Simpan &
    hitung rasio**.
 
-**Hasil:** menu **Rasio Keuangan** berisi 19 rasio bertanda **Otomatis** (tidak
+Bila susunan akun entitas berbeda, panel **Sesuaikan pos akun** di halaman yang
+sama dipakai untuk menambah pos (mis. `PA17 Rebate`), mengubah nama/keterangan
+pos bawaan, atau menonaktifkan pos yang tidak dipakai. Kolom **Sumber**
+menerangkan asal angkanya: **GL** = buku besar akuntansi (lewat Odoo/CSV),
+**HRIS** = sistem kepegawaian, **Manual** = diketik sendiri.
+
+**Hasil:** menu **Rasio Keuangan** berisi rasio bertanda **Otomatis** (tidak
 diedit manual), dan Tingkat 2 piramida terisi.
 
 > Alternatif: data CoA dari ERP dapat dikirim lewat **Integrasi & Gateway ›
@@ -176,6 +207,17 @@ Katalog Rasio kosong.
 **Rasio tidak bisa diedit.** Rasio bertanda *Otomatis* berasal dari Pos Akun.
 Ubah angkanya lewat Pos Akun atau Katalog Rasio.
 
+**Akunnya ada di Integrasi & Gateway, tetapi tidak ada rasionya.** Misalnya
+*Rebate*: akunnya dipetakan ke PA01 Penjualan, jadi ia mengurangi penjualan dan
+lebur di dalamnya — tidak ada angka tersendiri yang bisa dijadikan rasio.
+Langkah dan pilihannya ada di
+**[Pos Akun & Rumus › Akunnya ada di Odoo, tetapi tidak ada rasionya](katalog-pos-dan-rumus.md)**,
+juga tersedia di layar lewat tombol *Panduan Odoo* di Integrasi & Gateway.
+
+**Kotak konfirmasi.** Tindakan yang menimpa atau menghapus data selalu
+menanyakan dulu lewat kotak konfirmasi aplikasi (bukan kotak bawaan peramban
+yang menampilkan nama domain). Tombol merah berarti tindakannya menghapus.
+
 **Sasaran bertanda "belum di cascade".** Sasaran lama yang belum tertaut ke KPI.
 Buka Cascade KPI, lalu klik *Ambil dari Objective Departemen*.
 
@@ -189,7 +231,7 @@ angka ilustrasi workbook:
 | Tingkat | Isi contoh | Di mana melihatnya |
 |---|---|---|
 | 1 | Target 2026 Rp 840 M difasing 70 M/bulan, realisasi Jan–Agu (F1 96,43%); Perencanaan Target 2027 lengkap dengan target Rp 900 M disahkan | Target & Realisasi · Perencanaan Target (tahun 2027) |
-| 2 | 16 pos akun periode 2026-08 dan target 19 rasio tahun 2026 (F2 94,1) | Pos Akun · Katalog Rasio · Rasio Keuangan |
+| 2 | Pos akun periode 2026-08 dan target rasio tahun 2026 (F2 94,1) | Pos Akun · Katalog Rasio · Rasio Keuangan |
 | 3 | 8 KPI Head berstatus Lolos beserta hasil Uji A/B, dan sasaran bulanan berisi realisasi | Cascade KPI · Uji Indikator · Objective Departemen |
 | 4 | 3 program kerja untuk sasaran yang Waspada | Program Kerja (Action) |
 

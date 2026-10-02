@@ -70,10 +70,12 @@ class BladeHelpersTest extends TestCase
         $this->assertContains('Target & Realisasi', $menu);
 
         $pelanggar = [];
+        // Panduan di docs/ ikut diperiksa: isinya tampil di menu Dokumentasi
+        // Metode, jadi nama menu yang salah di sana sama menyesatkannya.
         $berkas = Finder::create()->files()
-            ->in([resource_path('views'), app_path('Livewire')])
+            ->in([resource_path('views'), app_path('Livewire'), base_path('docs')])
             ->exclude('vendor')
-            ->name(['*.blade.php', '*.php']);
+            ->name(['*.blade.php', '*.php', '*.md']);
 
         foreach ($berkas as $b) {
             preg_match_all('/menu ([A-Z][A-Za-z0-9\/ &]{1,40})/u', html_entity_decode($b->getContents()), $sebutan);

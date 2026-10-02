@@ -7,7 +7,8 @@ use App\Support\Bsc\AccountPosts;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Satu kode akun sistem sumber → satu pos akun BSC.
+ * Satu kode akun sistem sumber → satu pos akun BSC (termasuk pos tambahan
+ * buatan entitas, bukan hanya PA01–PA16).
  *
  * Milik entitas: bagan akun Herbatech tidak berlaku untuk Erdigma, dan
  * pemetaan satu entitas tidak boleh terlihat oleh entitas lain.
@@ -73,6 +74,6 @@ class AccountMapping extends Model
 
     public function postName(): string
     {
-        return AccountPosts::all()[$this->post_code]['name'] ?? $this->post_code;
+        return AccountPosts::nameOf($this->post_code);
     }
 }

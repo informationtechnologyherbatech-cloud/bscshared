@@ -374,12 +374,100 @@
                             <li><strong>Jaringan.</strong> Server aplikasi ini harus dapat menghubungi alamat Odoo lewat HTTPS.</li>
                         </ul>
 
-                        <div class="alert alert-warning py-2 small mb-0">
+                        <div class="alert alert-warning py-2 small">
                             <i class="fas fa-triangle-exclamation mr-1"></i>
                             <strong>Satu database, beberapa perusahaan.</strong> Bila perusahaannya tidak dipilih, saldo
                             <em>semua</em> perusahaan akan terjumlah menjadi satu — angkanya salah tanpa pesan galat apa pun.
                             Karena itu tarikan ditolak sampai perusahaannya dipilih, termasuk pada tarikan terjadwal.
                         </div>
+
+                        <hr>
+
+                        <h6 class="font-weight-bold" id="akun-belum-jadi-rasio">
+                            <i class="fas fa-code-branch mr-1 text-teal"></i>
+                            Akunnya ada di Odoo, tetapi belum muncul sebagai rasio
+                        </h6>
+                        <p class="text-muted">
+                            Contohnya <strong>Rebate</strong>. Akunnya ada di daftar pemetaan, tetapi di Rasio Keuangan
+                            tidak ada rasio rebate. Sebabnya rantai angkanya berhenti sebelum sampai ke rasio:
+                        </p>
+                        <p class="text-center small mb-3">
+                            <span class="badge badge-light border">Akun Odoo</span> →
+                            <span class="badge badge-light border">Pemetaan</span> →
+                            <span class="badge badge-light border">Pos akun</span> →
+                            <span class="badge badge-light border">Rumus</span> →
+                            <span class="badge badge-light border">Rasio</span>
+                        </p>
+                        <p class="text-muted">
+                            Rebate saat ini dipetakan ke <strong>PA01 Penjualan</strong> dengan tanda dibalik, jadi ia
+                            <em>mengurangi</em> penjualan dan lebur di dalamnya. Angkanya tidak pernah berdiri sendiri,
+                            sehingga tidak ada yang bisa dijadikan rasio. Satu kode akun hanya boleh menunjuk
+                            <strong>satu</strong> pos akun — jadi pilih salah satu cara berikut.
+                        </p>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered small">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th style="width:150px">Cara</th>
+                                        <th>Langkahnya</th>
+                                        <th style="width:33%">Akibatnya</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="font-weight-bold">A. Pindahkan rebate ke pos sendiri</td>
+                                        <td>
+                                            <ol class="pl-3 mb-0">
+                                                <li>Menu <strong>Pos Akun</strong> → <em>Sesuaikan pos akun</em> → <em>Tambah pos akun</em>:
+                                                    kode <code>PA17</code>, nama “Rebate”, jenis <strong>Aliran</strong>, sumber GL.</li>
+                                                <li>Kembali ke halaman ini, ubah pemetaan akun rebate dari PA01 ke <code>PA17</code>.
+                                                    <strong>Balik tanda dimatikan</strong> — rebate bersaldo debit, sudah positif.</li>
+                                                <li>Tarik ulang, lalu periksa di Pos Akun: kalau PA17 negatif, nyalakan balik tanda.</li>
+                                                <li>Menu <strong>Katalog Rasio</strong> → <em>Tambah rasio</em>:
+                                                    rumus <code>PA17 / PA01 * 100</code>, satuan %, polaritas <strong>Turun</strong>.</li>
+                                            </ol>
+                                        </td>
+                                        <td>
+                                            PA01 menjadi penjualan <strong>bruto</strong> — rebate tidak lagi menguranginya.
+                                            Semua rasio yang memakai penjualan (GPM, NPM, Asset Turnover, DSO, produktivitas)
+                                            ikut naik sedikit, dan <strong>realisasi revenue bulanan</strong> di Tingkat 1
+                                            juga menjadi bruto.
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="font-weight-bold">B. Penjualan tetap neto, rebate tetap diukur</td>
+                                        <td>
+                                            <ol class="pl-3 mb-0">
+                                                <li>Pemetaan akun rebate <strong>dibiarkan</strong> di PA01 (dibalik).</li>
+                                                <li>Buat pos <code>PA17</code> “Rebate”, sumber <strong>Manual</strong>.</li>
+                                                <li>Isi angkanya di menu Pos Akun, atau unggah CSV berisi
+                                                    <code>kode;nilai</code> → <code>PA17;40000000</code>
+                                                    (kode PA dipakai apa adanya, tanpa pemetaan).</li>
+                                                <li>Buat rasionya seperti cara A.</li>
+                                            </ol>
+                                        </td>
+                                        <td>
+                                            Tidak ada angka lama yang berubah; penjualan tetap neto seperti sekarang.
+                                            Harganya: angka rebate diisi terpisah tiap periode, tidak ikut tertarik otomatis.
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="font-weight-bold">C. Cukup diketahui, tidak perlu jadi rasio</td>
+                                        <td>Biarkan apa adanya.</td>
+                                        <td>Rebate tetap mengurangi penjualan; tidak ada rasio rebate.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <p class="text-muted mb-0">
+                            Pola yang sama berlaku untuk perkara lain: <strong>Retur &amp; potongan penjualan</strong>,
+                            <strong>Sales discount</strong>, <strong>beban pemasaran</strong>, <strong>beban logistik</strong>,
+                            <strong>pendapatan lain-lain</strong> — semuanya kini lebur di PA01 atau PA03. Bila salah satunya
+                            ingin dipantau sebagai rasio tersendiri, buat pos akunnya lebih dulu, baru rumusnya.
+                            Sesudah menambah rasio, jangan lupa menata ulang bobot agar totalnya kembali 100.
+                        </p>
                     </div>
                     <div class="modal-ft">
                         <button type="button" wire:click="tutupPanduan" class="btn btn-teal btn-sm">

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\AccountBalances;
 use App\Livewire\RatioCatalog;
 use App\Models\AccountBalance;
+use App\Models\AccountMapping;
 use App\Models\AccountPostDefinition;
 use App\Models\Entity;
 use App\Models\FinancialRatio;
@@ -13,6 +14,7 @@ use App\Models\RatioDefinition;
 use App\Models\User;
 use App\Support\Bsc\AccountPosts;
 use App\Support\Bsc\Formula;
+use App\Support\Bsc\Integration\AccountIntake;
 use App\Support\Bsc\RatioEngine;
 use App\Support\Bsc\RatioLibrary;
 use App\Support\EntityContext;
@@ -461,6 +463,85 @@ class KatalogPosDanRumusTest extends TestCase
         foreach (AccountPosts::builtins() as $kode => $pos) {
             $this->assertArrayHasKey($pos['source'], AccountPosts::sources(), $kode);
         }
+    }
+
+    /**
+     * Rantai lengkap untuk perkara seperti Rebate: akun di Odoo → pos akun
+     * sendiri → rumus → rasio. Kodenya sengaja lebih dari empat huruf, karena
+     * kolom pemetaan dulu hanya menampung PA01–PA16.
+     */
+    public function test_a_source_account_reaches_a_ratio_through_a_post_of_its_own(): void
+    {
+        AccountPostDefinition::create([
+            'code' => 'REBATE', 'name' => 'Rebate', 'kind' => AccountPosts::ALIRAN,
+            'source' => 'GL', 'is_active' => true, 'is_builtin' => false, 'sort' => 17,
+        ]);
+
+        AccountMapping::create(['source_code' => '41000010', 'source_name' => 'Penjualan', 'post_code' => 'PA01', 'invert' => true]);
+        AccountMapping::create(['source_code' => '41000062', 'source_name' => 'Rebate', 'post_code' => 'REBATE', 'invert' => false]);
+
+        // Saldo apa adanya dari buku besar: penjualan kredit (negatif), rebate debit.
+        app(AccountIntake::class)->apply('2026-08', [
+            ['code' => '41000010', 'amount' => -800_000_000],
+            ['code' => '41000062', 'amount' => 40_000_000],
+        ], ['source' => 'Uji']);
+
+        $this->assertEqualsWithDelta(800_000_000, (float) AccountBalance::where('period', '2026-08')->where('code', 'PA01')->value('amount'), 0.01);
+        $this->assertEqualsWithDelta(40_000_000, (float) AccountBalance::where('period', '2026-08')->where('code', 'REBATE')->value('amount'), 0.01);
+
+        Livewire::test(RatioCatalog::class, ['year' => '2026'])
+            ->call('newRatio')
+            ->set('formCode', 'R1')
+            ->set('formName', 'Rebate terhadap penjualan')
+            ->set('formGroup', 'Profitabilitas')
+            ->set('formUnit', '%')
+            ->set('formPolarity', RatioLibrary::TURUN)
+            ->set('formWeight', '4')
+            ->set('formExpression', 'REBATE / PA01 * 100')
+            ->call('saveRatio')
+            ->assertHasNoErrors();
+
+        // 40 jt ÷ 800 jt × 100 = 5%. Disetahunkan di pembilang dan penyebut,
+        // jadi perbandingannya tidak berubah.
+        $this->assertEqualsWithDelta(
+            5.0,
+            (float) FinancialRatio::where('period', '2026-08')->where('ratio_code', 'R1')->value('actual'),
+            1e-9
+        );
+    }
+
+    public function test_a_long_post_code_can_still_be_mapped_from_the_source_system(): void
+    {
+        AccountPostDefinition::create([
+            'code' => 'REBATE', 'name' => 'Rebate', 'kind' => AccountPosts::ALIRAN,
+            'source' => 'GL', 'is_active' => true, 'is_builtin' => false, 'sort' => 17,
+        ]);
+
+        // Kolom pemetaan dulu varchar(4); pos berkode panjang ditawarkan di layar
+        // tetapi gagal disimpan.
+        AccountMapping::create(['source_code' => '41000062', 'post_code' => 'REBATE', 'invert' => false]);
+
+        $this->assertSame('REBATE', AccountMapping::where('source_code', '41000062')->value('post_code'));
+    }
+
+    public function test_a_post_filled_by_hand_works_even_when_odoo_keeps_the_account_elsewhere(): void
+    {
+        // Pilihan "penjualan tetap neto": akun rebate tetap mengurangi PA01 di
+        // Odoo, sedangkan pos Rebate diisi terpisah memakai kode pos langsung.
+        AccountPostDefinition::create([
+            'code' => 'PA17', 'name' => 'Rebate', 'kind' => AccountPosts::ALIRAN,
+            'source' => 'Manual', 'is_active' => true, 'is_builtin' => false, 'sort' => 17,
+        ]);
+
+        app(AccountIntake::class)->apply('2026-08', [
+            ['code' => 'PA17', 'amount' => 40_000_000],
+        ], ['source' => 'Unggahan CSV']);
+
+        $this->assertEqualsWithDelta(
+            40_000_000,
+            (float) AccountBalance::where('period', '2026-08')->where('code', 'PA17')->value('amount'),
+            0.01
+        );
     }
 
     public function test_a_viewer_cannot_change_the_catalog(): void

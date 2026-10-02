@@ -24,11 +24,14 @@
             <div class="card card-primary card-outline card-tabs">
                 <div class="card-header p-0 pt-1 border-bottom-0">
                     <ul class="nav nav-tabs" role="tablist">
-                        <li class="nav-item">
-                            <a wire:click="switchTab('panduan')" class="nav-link {{ $tab === 'panduan' ? 'active' : '' }}" href="#" role="tab">
-                                <i class="fas fa-route mr-1"></i> Panduan Pengisian
-                            </a>
-                        </li>
+                        @foreach ($dokumen as $kunci => $d)
+                            <li class="nav-item">
+                                <a wire:click="switchTab('{{ $kunci }}')" class="nav-link {{ $tab === $kunci ? 'active' : '' }}"
+                                   href="#" role="tab" title="{{ $d['ringkas'] }}">
+                                    <i class="fas {{ $d['ikon'] }} mr-1"></i> {{ $d['judul'] }}
+                                </a>
+                            </li>
+                        @endforeach
                         <li class="nav-item">
                             <a wire:click="switchTab('metode')" class="nav-link {{ $tab === 'metode' ? 'active' : '' }}" href="#" role="tab">
                                 <i class="fas fa-square-root-alt mr-1"></i> Metode Skoring
@@ -43,11 +46,12 @@
                 </div>
 
                 <div class="card-body">
-                    @if ($tab === 'panduan')
+                    @if (array_key_exists($tab, $dokumen))
                         @if ($panduan)
+                            <p class="text-muted small">{{ $dokumen[$tab]['ringkas'] }}</p>
                             <div class="doc-markdown">{!! $panduan !!}</div>
                         @else
-                            <div class="text-muted">Berkas <code>docs/panduan-pengisian.md</code> tidak ditemukan.</div>
+                            <div class="text-muted">Berkas <code>{{ $berkasPanduan }}</code> tidak ditemukan.</div>
                         @endif
 
                     @elseif ($tab === 'metode')

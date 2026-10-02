@@ -34,7 +34,7 @@ kode saat ini. Bagian yang **belum diimplementasikan** pada basis kode:
 - **Integrasi Odoo sudah nyata** (lihat [Integrasi Odoo](integrasi-odoo.md)):
   aplikasi menarik saldo akun dari Odoo lewat JSON-RPC, memetakannya ke pos akun,
   lalu menghitung ulang rasio. Unggahan CSV juga benar-benar dibaca dan
-  diterapkan. Yang masih **simulasi** di menu Integrasi Sistem hanyalah tombol
+  diterapkan. Yang masih **simulasi** di menu Integrasi & Gateway hanyalah tombol
   *Uji Coba Kirim API Payload Inbound* dan *Kirim Payload Simulasi* di Staging
   Log — keduanya hanya menulis baris jejak, tidak mengubah data.
 - Realisasi **KPI dari HRIS** belum ditarik otomatis; jalurnya unggahan CSV,

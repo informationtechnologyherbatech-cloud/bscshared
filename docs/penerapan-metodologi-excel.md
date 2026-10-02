@@ -166,7 +166,7 @@ dengan bentuk dan arti yang sama untuk keempat entitas.
 - Menu **Perencanaan Target**, per entitas per tahun target (tahun dasar = tahun
   sebelumnya):
   - **A** estimasi akhir tahun dasar = YTD × 12 ÷ n, otomatis dari realisasi di
-    menu Target Revenue (dapat ditimpa manual bila data bulanan belum ada);
+    menu Target & Realisasi (dapat ditimpa manual bila data bulanan belum ada);
   - **B** realisasi 3 tahun sebelumnya → YoY, CAGR, dan regresi linear (setara
     `FORECAST` Excel);
   - **C** bottom-up brand × channel dengan growth per brand → target per brand
@@ -178,7 +178,7 @@ dengan bentuk dan arti yang sama untuk keempat entitas.
     per metode atau angka ketikan sendiri (revisi yang sudah ada tidak berubah);
   - **G** indeks musiman dari realisasi tahun dasar → **Terapkan ke Target
     Revenue** mengisi 12 target bulanan (realisasi yang sudah ada tidak berubah).
-- Fasing "Ikuti pola musiman" di menu Target Revenue kini memakai metode yang
+- Fasing "Ikuti pola musiman" di menu Target & Realisasi kini memakai metode yang
   sama (bagian G), sehingga cukup realisasi sebagian tahun — sebelumnya wajib
   12 bulan lengkap.
 - Rumus di `App\Support\Bsc\RevenueForecast`; kebenaran dijaga
