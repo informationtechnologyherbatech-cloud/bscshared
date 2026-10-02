@@ -5,7 +5,7 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">
-                        <i class="fas fa-list-check text-teal mr-2"></i> Program Kerja / Action Plan (Level 4)
+                        <i class="fas fa-list-check text-teal mr-2"></i> Program Kerja / Action Plan (Tingkat 4)
                     </h1>
                 </div>
             </div>
@@ -34,6 +34,16 @@
                                 <i class="fas fa-plus-circle mr-1"></i> Tambah Inisiatif Perbaikan
                             </h3>
                         </div>
+                        @unless ($canWrite)
+                            <div class="card-body">
+                                <p class="text-muted mb-0">
+                                    <i class="fas fa-eye mr-1"></i>
+                                    Anda membuka halaman ini sebagai pembaca. Menambah program kerja dan mengubah
+                                    progresnya butuh izin <strong>manage actionplans</strong> — ada pada peran
+                                    Admin HRIS, Admin FAT, Kepala Departemen, Operator, dan Super Admin.
+                                </p>
+                            </div>
+                        @else
                         <div class="card-body">
                             <form wire:submit.prevent="createPlan">
                                 <div class="form-group">
@@ -65,6 +75,7 @@
                                 </button>
                             </form>
                         </div>
+                        @endunless
                     </div>
                 </div>
 
@@ -125,9 +136,13 @@
                                                     @endif
                                                 </td>
                                                 <td class="text-center">
-                                                    <button wire:click="editProgressModal({{ $plan->id }})" class="btn btn-xs btn-outline-danger">
-                                                        <i class="fas fa-sliders-h mr-1"></i> Update Progres
-                                                    </button>
+                                                    @if ($canWrite)
+                                                        <button wire:click="editProgressModal({{ $plan->id }})" class="btn btn-xs btn-outline-danger">
+                                                            <i class="fas fa-sliders-h mr-1"></i> Update Progres
+                                                        </button>
+                                                    @else
+                                                        <span class="text-muted small">—</span>
+                                                    @endif
                                                 </td>
                                             @endif
                                         </tr>

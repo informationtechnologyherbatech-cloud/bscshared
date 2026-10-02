@@ -31,6 +31,12 @@ class MethodDocumentation extends Component
             'ikon' => 'fa-route',
             'ringkas' => 'Langkah mengisi aplikasi dari nol, per tingkat piramida.',
         ],
+        'pengelolaan' => [
+            'judul' => 'Panduan Pengelolaan',
+            'berkas' => 'docs/panduan-pengelolaan.md',
+            'ikon' => 'fa-screwdriver-wrench',
+            'ringkas' => 'Mengurus aplikasinya: periode, peran, pengguna, unit kerja, integrasi, dan jejak audit.',
+        ],
         'katalog' => [
             'judul' => 'Pos Akun & Rumus',
             'berkas' => 'docs/katalog-pos-dan-rumus.md',

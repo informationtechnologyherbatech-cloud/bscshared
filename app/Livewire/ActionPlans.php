@@ -2,25 +2,31 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Livewire\WithPagination;
-use Livewire\Attributes\Url;
 use App\Models\ActionPlan;
 use App\Models\DepartmentObjective;
+use App\Models\Period;
 use App\Models\WorkUnit;
+use App\Support\EntityContext;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Url;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class ActionPlans extends Component
 {
     use WithPagination;
 
     public $title = '';
+
     public $ownerDept = '';
+
     public $objectiveId = null;
 
     #[Url(as: 'status')]
     public $selectedStatus = '';
 
     public $editingPlanId = null;
+
     public $editProgress = 0;
 
     public function mount()
@@ -35,18 +41,19 @@ class ActionPlans extends Component
 
     public function createPlan()
     {
-        if (!auth()->user()?->can('manage actionplans')) {
+        if (! auth()->user()?->can('manage actionplans')) {
             session()->flash('error', 'Akses ditolak: butuh manage actionplans (HRIS, FAT, Kadep, Operator, Super Admin). Viewer baca-saja.');
+
             return;
         }
         $this->validate([
             'title' => 'required|min:5|max:255',
             // Harus salah satu unit kerja aktif entitas ini — sebelumnya teks bebas,
             // sehingga salah ketik membuat departemen "baru" yang tidak ada.
-            'ownerDept' => ['required', 'string', 'max:30', \Illuminate\Validation\Rule::in(WorkUnit::active()->pluck('code')->all())],
+            'ownerDept' => ['required', 'string', 'max:30', Rule::in(WorkUnit::active()->pluck('code')->all())],
             // Sasaran harus milik entitas aktif (model berentitas) — id buatan
             // dari entitas lain ditolak.
-            'objectiveId' => ['nullable', \Illuminate\Validation\Rule::exists('department_objectives', 'id')->where('entity_id', app(\App\Support\EntityContext::class)->id())],
+            'objectiveId' => ['nullable', Rule::exists('department_objectives', 'id')->where('entity_id', app(EntityContext::class)->id())],
         ]);
 
         ActionPlan::create([
@@ -63,8 +70,9 @@ class ActionPlans extends Component
 
     public function editProgressModal($id)
     {
-        if (!auth()->user()?->can('manage actionplans')) {
+        if (! auth()->user()?->can('manage actionplans')) {
             session()->flash('error', 'Akses ditolak: butuh manage actionplans untuk ubah progres.');
+
             return;
         }
         $plan = ActionPlan::findOrFail($id);
@@ -74,17 +82,24 @@ class ActionPlans extends Component
 
     public function updateProgress()
     {
-        if (!$this->editingPlanId) return;
-        if (!auth()->user()?->can('manage actionplans')) {
+        if (! $this->editingPlanId) {
+            return;
+        }
+        if (! auth()->user()?->can('manage actionplans')) {
             session()->flash('error', 'Akses ditolak: peran Anda tidak berwenang.');
             $this->editingPlanId = null;
+
             return;
         }
 
         $plan = ActionPlan::findOrFail($this->editingPlanId);
         $prog = intval($this->editProgress);
-        if ($prog > 100) $prog = 100;
-        if ($prog < 0) $prog = 0;
+        if ($prog > 100) {
+            $prog = 100;
+        }
+        if ($prog < 0) {
+            $prog = 0;
+        }
 
         $status = $prog >= 100 ? 'Completed' : ($prog > 0 ? 'On Progress' : 'Off-Target');
 
@@ -94,7 +109,7 @@ class ActionPlans extends Component
         ]);
 
         $this->editingPlanId = null;
-        session()->flash('message', 'Progres program kerja ' . $plan->title . ' diperbarui menjadi ' . $prog . '%!');
+        session()->flash('message', 'Progres program kerja '.$plan->title.' diperbarui menjadi '.$prog.'%!');
     }
 
     public function updatedSelectedStatus(): void
@@ -128,7 +143,7 @@ class ActionPlans extends Component
         $actionPlans = $query->latest('id')->paginate(25);
         // Hanya sasaran periode terbaru — sebelumnya semua periode, sehingga kode
         // KPI yang sama muncul berulang kali di pilihan.
-        $offTargetObjectives = DepartmentObjective::where('period', \App\Models\Period::currentPeriod())
+        $offTargetObjectives = DepartmentObjective::where('period', Period::currentPeriod())
             ->where('status', '!=', 'Tercapai')
             ->orderBy('dept_code')->orderBy('kpi_code')
             ->get();
@@ -137,6 +152,9 @@ class ActionPlans extends Component
             'actionPlans' => $actionPlans,
             'offTargetObjectives' => $offTargetObjectives,
             'units' => WorkUnit::active()->get(),
+            // Kontrol tulis disembunyikan bagi yang tidak berhak, bukan dibiarkan
+            // tampil lalu ditolak diam-diam saat disimpan.
+            'canWrite' => (bool) auth()->user()?->can('manage actionplans'),
         ])->layout('layouts.app', ['title' => 'Program Kerja']);
     }
 }

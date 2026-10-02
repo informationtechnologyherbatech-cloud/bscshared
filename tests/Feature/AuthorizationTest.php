@@ -2,15 +2,20 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\ActionPlans;
 use App\Livewire\AppSettings;
 use App\Livewire\BscDashboard;
+use App\Livewire\DepartmentObjectives;
 use App\Livewire\StagingLogs;
 use App\Livewire\SystemIntegration;
+use App\Livewire\WorkUnits;
 use App\Models\AppSetting;
 use App\Models\FinancialRatio;
 use App\Models\Period;
 use App\Models\StagingLog;
 use App\Models\User;
+use App\Models\WorkUnit;
+use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -75,6 +80,48 @@ class AuthorizationTest extends TestCase
     }
 
     /* --------------------------------------------------------- integrasi */
+
+    /**
+     * Pembaca tidak boleh DITAWARI tombol tulis.
+     *
+     * Formulir yang tampil lalu ditolak diam-diam saat disimpan adalah jebakan:
+     * pengguna sudah mengetik, baru tahu tidak boleh. Semua halaman tulis
+     * menyembunyikan kontrolnya; Program Kerja dulu tidak.
+     */
+    public function test_a_viewer_is_not_offered_write_controls(): void
+    {
+        $this->actingAs($this->userWithRole('Viewer'));
+
+        $halaman = [
+            ActionPlans::class => ['Simpan Program Kerja', 'Update Progres'],
+            DepartmentObjectives::class => ['Simpan'],
+            WorkUnits::class => ['Tambah unit'],
+        ];
+
+        foreach ($halaman as $komponen => $tombol) {
+            $uji = Livewire::test($komponen);
+
+            foreach ($tombol as $teks) {
+                $uji->assertDontSee($teks);
+            }
+        }
+
+        // Keterangannya jelas, bukan halaman yang diam-diam setengah kosong.
+        Livewire::test(ActionPlans::class)->assertSee('sebagai pembaca');
+    }
+
+    public function test_a_viewer_cannot_create_an_action_plan_even_by_calling_it_directly(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $this->actingAs($this->userWithRole('Viewer'));
+
+        Livewire::test(ActionPlans::class)
+            ->set('title', 'Program selundupan')
+            ->set('ownerDept', WorkUnit::query()->value('code') ?? 'PROD')
+            ->call('createPlan');
+
+        $this->assertDatabaseMissing('action_plans', ['title' => 'Program selundupan']);
+    }
 
     public function test_the_audit_log_page_never_writes_anything(): void
     {
