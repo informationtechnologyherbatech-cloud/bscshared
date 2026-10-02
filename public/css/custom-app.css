@@ -1309,3 +1309,106 @@ select.form-control.is-invalid:not([multiple]):not([size]) {
 .nb-cal {
     transition: transform 0.15s ease;
 }
+/* Ikon "?" pada judul kolom: hadir tetapi tidak menarik perhatian dari angkanya. */
+.col-info {
+    color: #9aa7b1;
+    cursor: help;
+    font-size: .82em;
+    margin-left: .15rem;
+    vertical-align: baseline;
+}
+.col-info:hover,
+.col-info:focus {
+    color: var(--teal, #0f766e);
+    outline: none;
+}
+.col-info:focus-visible {
+    outline: 2px solid var(--teal, #0f766e);
+    outline-offset: 2px;
+    border-radius: 50%;
+}
+
+/* Langkah perhitungan rasio di Telusur: satu baris = satu langkah aritmetika,
+   dibaca dari atas ke bawah sampai ketemu angka yang tampil di tabel. */
+.hitung-langkah {
+    display: flex;
+    gap: .6rem;
+    padding: .5rem .6rem;
+    border-left: 3px solid #dde3e8;
+    background: #fbfcfd;
+    margin-bottom: .4rem;
+    border-radius: 0 4px 4px 0;
+}
+.hitung-langkah--akhir {
+    border-left-color: var(--teal, #0f766e);
+    background: #f2fbfa;
+}
+.hitung-nomor {
+    flex: 0 0 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    background: #dde3e8;
+    color: #46535d;
+    font-size: .72rem;
+    font-weight: 700;
+    line-height: 1.4rem;
+    text-align: center;
+}
+.hitung-langkah--akhir .hitung-nomor {
+    background: var(--teal, #0f766e);
+    color: #fff;
+}
+.hitung-isi { min-width: 0; }
+.hitung-label { font-weight: 700; color: #21323c; font-size: .88rem; }
+.hitung-rumus { color: #6b7a85; font-size: .8rem; }
+.hitung-angka {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .8rem;
+    color: #46535d;
+    word-break: break-word;
+}
+.hitung-hasil {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .88rem;
+    font-weight: 700;
+    color: #21323c;
+}
+.hitung-langkah--akhir .hitung-hasil { color: var(--teal, #0f766e); font-size: 1rem; }
+
+/* Baris pos akun yang dituju dari penelusuran rasio: disorot sebentar supaya
+   pengguna tahu baris mana yang dimaksud tombol "Ubah". */
+tr[id^="pos-"]:target > td {
+    background: #fff8e1;
+    box-shadow: inset 3px 0 0 #f0ad4e;
+}
+
+/* Bagian "angka-angka itu asalnya": tertutup secara bawaan, dibuka lewat panah. */
+.asal-akordeon > summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: #6b7a85;
+    padding: .35rem .5rem;
+    border: 1px dashed #d7dee3;
+    border-radius: 4px;
+    user-select: none;
+}
+.asal-akordeon > summary::-webkit-details-marker { display: none; }
+.asal-akordeon > summary:hover {
+    color: var(--teal, #0f766e);
+    border-color: var(--teal, #0f766e);
+    background: #f5fbfa;
+}
+.asal-akordeon > summary:focus-visible {
+    outline: 2px solid var(--teal, #0f766e);
+    outline-offset: 2px;
+}
+.asal-akordeon__panah { transition: transform .15s ease; }
+.asal-akordeon[open] > summary { color: var(--teal, #0f766e); border-style: solid; }
+.asal-akordeon[open] .asal-akordeon__panah { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+    .asal-akordeon__panah { transition: none; }
+}

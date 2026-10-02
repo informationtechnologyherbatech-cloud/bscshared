@@ -9,8 +9,10 @@ use App\Models\DepartmentObjective;
 use App\Models\FinancialRatio;
 use App\Models\Period;
 use App\Models\RevenueTarget;
+use App\Support\Bsc\AccountPosts;
 use App\Support\Bsc\MonitoringSync;
 use App\Support\Bsc\RatioEngine;
+use App\Support\Bsc\RatioLibrary;
 use App\Support\Bsc\Scorecard;
 use App\Support\ScoreStatus;
 use Carbon\Carbon;
@@ -181,12 +183,88 @@ class BscDashboard extends Component
         $this->redirect(route('dashboard'));
     }
 
+    /**
+     * Dari mana angka Actual sebuah rasio berasal: rumusnya, pos akun
+     * pembentuknya, dan nilai yang benar-benar dipakai menghitungnya.
+     *
+     * Tanpa ini, Telusur hanya mengulang angka yang sudah terlihat di tabel —
+     * padahal pertanyaan yang muncul saat melihat angka janggal justru
+     * "dihitung dari apa?".
+     *
+     * @return array<string, mixed>
+     */
+    private function asalAngkaRasio(FinancialRatio $ratio): array
+    {
+        $kode = $ratio->ratio_code;
+        $meta = RatioLibrary::all()[$kode] ?? null;
+
+        if (! $meta) {
+            // Rasio di luar katalog baku (mis. diisi tangan): tidak ada rumusnya.
+            return ['formula' => null, 'pembentuk' => [], 'catatan' => null];
+        }
+
+        $dipakai = app(RatioEngine::class)->evaluate($this->selectedPeriod)['used'];
+        $hitungan = RatioLibrary::steps($kode, $dipakai);
+        $katalog = AccountPosts::all();
+
+        // Hanya pos yang BENAR-BENAR masuk perhitungan — diambil dari langkahnya,
+        // bukan dari peta dampak, yang sengaja lebih luas.
+        $isian = app(RatioEngine::class)->inputs($this->selectedPeriod);
+        $bulan = RatioEngine::monthOf($this->selectedPeriod);
+        $pembentuk = [];
+
+        foreach ($hitungan['posts'] as $pos) {
+            $asal = AccountPosts::derivation(
+                $pos,
+                $isian[$pos]['amount'] ?? null,
+                $isian[$pos]['opening'] ?? null,
+                $bulan
+            );
+
+            $pembentuk[] = [
+                'code' => $pos,
+                'name' => $katalog[$pos]['name'] ?? $pos,
+                // Angka APA ADANYA seperti yang diketik di menu Pos Akun …
+                'amount' => $isian[$pos]['amount'] ?? null,
+                'opening' => $isian[$pos]['opening'] ?? null,
+                // … dan bagaimana ia menjadi nilai yang masuk rumus.
+                'label' => $asal['label'],
+                'arithmetic' => $asal['arithmetic'],
+                'value' => $dipakai[$pos] ?? null,
+                'hris' => in_array($katalog[$pos]['kind'] ?? '', [AccountPosts::HRIS_RATA, AccountPosts::HRIS_ALIRAN], true),
+            ];
+        }
+
+        // Penyebut negatif adalah penyebab paling sering angka rasio terlihat
+        // ganjil (mis. ROE −349% padahal labanya positif). Katakan sebabnya.
+        $penyebut = $hitungan['penyebut'];
+        $peringatan = ($penyebut && $penyebut['value'] !== null && $penyebut['value'] < 0)
+            ? [
+                'pos' => $penyebut['code'],
+                'teks' => $penyebut['name'].' bernilai NEGATIF ('.rupiah($penyebut['value']).'), sehingga pembilang yang '
+                    .'positif pun menghasilkan angka negatif besar. Dua tempat yang biasanya perlu diperiksa: isian pos '
+                    .$penyebut['code'].' itu sendiri, dan — bila datanya ditarik dari Odoo — centang "balik tanda" pada '
+                    .'pemetaan akunnya, karena akun bersaldo kredit datang bertanda negatif.',
+            ]
+            : null;
+
+        return [
+            'formula' => $meta['formula'],
+            'langkah' => $hitungan['steps'],
+            'pembentuk' => $pembentuk,
+            'peringatan' => $peringatan,
+            'catatan' => 'Angka di tiap langkah adalah "nilai dipakai": pos aliran disetahunkan ×12 ÷ '
+                .RatioEngine::monthOf($this->selectedPeriod).' bulan berjalan, pos neraca dirata-rata '
+                .'(saldo awal + saldo akhir) ÷ 2. Angka mentahnya ada di menu Pos Akun.',
+        ];
+    }
+
     public function inspectItem($type, $id)
     {
         if ($type === 'ratio') {
             $ratio = FinancialRatio::find($id);
             if ($ratio) {
-                $this->selectedItemDetail = [
+                $this->selectedItemDetail = array_merge([
                     'type' => 'Rasio Keuangan (Tingkat 2)',
                     'code' => $ratio->category,
                     'name' => $ratio->ratio_name,
@@ -197,7 +275,7 @@ class BscDashboard extends Component
                     'upstream' => 'Piramida Tingkat 1 (Apex Score Keuangan)',
                     'downstream' => 'Drive Sasaran Mutu Departemen (Tingkat 3)',
                     'description' => 'Indikator kinerja keuangan utama yang menyokong kesehatan finansial dan apex score perusahaan.',
-                ];
+                ], $this->asalAngkaRasio($ratio));
                 $this->showModal = true;
             }
         } elseif ($type === 'objective') {

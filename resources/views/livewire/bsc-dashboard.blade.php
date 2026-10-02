@@ -766,13 +766,13 @@
                             <table class="table table-hover table-bordered align-middle">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th>Kategori Rasio</th>
-                                        <th>Nama Indikator Rasio</th>
-                                        <th class="text-center">Target</th>
-                                        <th class="text-center">Actual</th>
-                                        <th class="text-center">Capaian (%)</th>
-                                        <th class="text-center">Status</th>
-                                        <th class="text-center">Aksi Telusur</th>
+                                        <th>Kategori Rasio <x-col-info for="kategori" /></th>
+                                        <th>Nama Indikator Rasio <x-col-info for="nama" /></th>
+                                        <th class="text-center">Target <x-col-info for="target" /></th>
+                                        <th class="text-center">Actual <x-col-info for="actual" /></th>
+                                        <th class="text-center">Capaian (%) <x-col-info for="capaian" /></th>
+                                        <th class="text-center">Status <x-col-info for="status" /></th>
+                                        <th class="text-center">Aksi Telusur <x-col-info for="telusur" /></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -939,6 +939,125 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Asal angka Actual: rumus + pos akun pembentuknya. --}}
+                        @if (!empty($selectedItemDetail['formula']))
+                            <div class="p-3 border rounded bg-white mb-3">
+                                <small class="text-muted d-block font-weight-bold text-uppercase mb-1">
+                                    <i class="fas fa-calculator text-teal mr-1"></i> Dari mana angka Actual ini
+                                </small>
+                                <div class="font-weight-bold text-dark mb-3">{{ $selectedItemDetail['formula'] }}</div>
+
+                                {{-- Langkah hitungnya, supaya angkanya dapat diikuti tanpa kalkulator. --}}
+                                @foreach ($selectedItemDetail['langkah'] ?? [] as $i => $step)
+                                    <div class="hitung-langkah {{ $loop->last ? 'hitung-langkah--akhir' : '' }}">
+                                        <span class="hitung-nomor">{{ $i + 1 }}</span>
+                                        <div class="hitung-isi">
+                                            <div class="hitung-label">{{ $step['label'] }}</div>
+                                            <div class="hitung-rumus">{{ $step['rumus'] }}</div>
+                                            <div class="hitung-angka">= {{ $step['angka'] }}</div>
+                                            <div class="hitung-hasil">
+                                                = {{ $step['nilai'] === null ? 'belum dapat dihitung' : ratio_format($step['nilai'], $step['satuan']) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+
+                                @if (!empty($selectedItemDetail['peringatan']))
+                                    <div class="alert alert-warning py-2 small mt-2 mb-2">
+                                        <i class="fas fa-triangle-exclamation mr-1"></i>
+                                        {{ $selectedItemDetail['peringatan']['teks'] }}
+                                        {{-- Tombol menuju tempat perbaikannya: tanpa ini pengguna harus
+                                             menebak-nebak menu mana yang dimaksud. --}}
+                                        <div class="mt-2">
+                                            @can('manage ratios')
+                                                <a href="{{ route('account-balances', ['period' => $selectedPeriod]) }}#pos-{{ $selectedItemDetail['peringatan']['pos'] }}"
+                                                   class="btn btn-xs btn-warning text-nowrap mr-1">
+                                                    <i class="fas fa-pen mr-1"></i> Perbaiki pos {{ $selectedItemDetail['peringatan']['pos'] }}
+                                                </a>
+                                            @endcan
+                                            @canany(['view integration', 'view gateway'])
+                                                <a href="{{ route('system-integration') }}"
+                                                   class="btn btn-xs btn-outline-dark text-nowrap" style="text-decoration:none">
+                                                    <i class="fas fa-diagram-project mr-1"></i> Buka Pemetaan Akun
+                                                </a>
+                                            @endcanany
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Tiap angka di langkah di atas asalnya dari sini: isian Pos Akun,
+                                     lalu diubah menjadi "nilai dipakai". --}}
+                                @if (!empty($selectedItemDetail['pembentuk']))
+                                    {{-- Tertutup secara bawaan: yang dicari kebanyakan orang adalah
+                                         langkah hitungnya, bukan isian mentahnya. Memakai <details>
+                                         bawaan peramban — tanpa JS, jadi tetap hidup setelah Livewire
+                                         menggambar ulang isi modal. --}}
+                                    <details class="asal-akordeon mt-3">
+                                        <summary>
+                                            <i class="fas fa-chevron-right asal-akordeon__panah mr-1"></i>
+                                            Angka-angka itu asalnya dari mana
+                                            <span class="text-muted font-weight-normal">({{ count($selectedItemDetail['pembentuk']) }} pos akun)</span>
+                                        </summary>
+                                        <table class="table table-sm mb-1 mt-2">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th>Pos akun</th>
+                                                    <th class="text-right">Isian di Pos Akun</th>
+                                                    <th>Menjadi nilai dipakai</th>
+                                                    <th class="text-right" style="width:90px"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($selectedItemDetail['pembentuk'] as $pos)
+                                                    <tr>
+                                                        <td>
+                                                            <span class="badge badge-light border">{{ $pos['code'] }}</span>
+                                                            {{ $pos['name'] }}
+                                                        </td>
+                                                        <td class="text-right text-nowrap">
+                                                            @if ($pos['amount'] === null)
+                                                                <span class="text-muted">belum diisi</span>
+                                                            @else
+                                                                {{ $pos['hris'] ? number_format($pos['amount'], 0, ',', '.') : rupiah($pos['amount']) }}
+                                                                @if ($pos['opening'] !== null)
+                                                                    <small class="d-block text-muted">
+                                                                        saldo awal {{ rupiah($pos['opening']) }}
+                                                                    </small>
+                                                                @endif
+                                                            @endif
+                                                        </td>
+                                                        <td class="small">
+                                                            <span class="text-muted">{{ $pos['arithmetic'] }}</span>
+                                                            @if ($pos['value'] !== null)
+                                                                <strong class="d-block text-nowrap">
+                                                                    = {{ $pos['hris'] ? number_format($pos['value'], 0, ',', '.') : rupiah($pos['value']) }}
+                                                                </strong>
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-right">
+                                                            @can('manage ratios')
+                                                                <a href="{{ route('account-balances', ['period' => $selectedPeriod]) }}#pos-{{ $pos['code'] }}"
+                                                                   class="btn btn-xs btn-outline-teal text-nowrap">
+                                                                    <i class="fas fa-pen mr-1"></i> Ubah
+                                                                </a>
+                                                            @endcan
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </details>
+                                @endif
+
+                                <small class="text-muted d-block mt-2">{{ $selectedItemDetail['catatan'] }}</small>
+                                @can('view ratios')
+                                    <a href="{{ route('account-balances', ['period' => $selectedPeriod]) }}" class="btn btn-xs btn-outline-teal mt-2">
+                                        <i class="fas fa-file-invoice-dollar mr-1"></i> Buka Pos Akun {{ $selectedPeriod }}
+                                    </a>
+                                @endcan
+                            </div>
+                        @endif
 
                         <p class="text-muted small mb-0">
                             <strong>Deskripsi Alignment:</strong> {{ $selectedItemDetail['description'] }}

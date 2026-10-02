@@ -576,6 +576,91 @@ if (! function_exists('f1_tanpa_realisasi')) {
     }
 }
 
+if (! function_exists('post_derivation')) {
+    /**
+     * Bagaimana isian sebuah pos akun berubah menjadi "nilai dipakai".
+     *
+     * @return array{label: string, arithmetic: string, value: float|null}
+     */
+    function post_derivation(string $code, mixed $amount, mixed $opening, int $bulan): array
+    {
+        return AccountPosts::derivation(
+            $code,
+            is_numeric($amount) ? (float) $amount : null,
+            is_numeric($opening) ? (float) $opening : null,
+            $bulan
+        );
+    }
+}
+
+if (! function_exists('ratio_column_help')) {
+    /**
+     * Dari mana isi tiap kolom tabel rasio keuangan berasal.
+     *
+     * Pertanyaan yang paling sering muncul saat melihat tabel ini adalah "angka
+     * ini dari mana?" — terutama kolom Actual, yang TIDAK diketik siapa pun
+     * melainkan dihitung aplikasi dari Pos Akun. Keterangannya ditaruh di sini,
+     * bukan di berkas tampilan, supaya tabel rasio di halaman mana pun memakai
+     * penjelasan yang sama persis.
+     *
+     * @return array{judul: string, ringkas: string, rinci: string}
+     */
+    function ratio_column_help(string $kolom): array
+    {
+        $daftar = [
+            'kategori' => [
+                'judul' => 'Kategori Rasio',
+                'ringkas' => 'Kelompok rasio dari Katalog Rasio. Bobot kelompok menentukan sumbangannya ke skor F2.',
+                'rinci' => 'Lima kelompok baku: Profitabilitas, Aktivitas, Produktivitas, Likuiditas, dan Solvabilitas. '
+                    .'Bobot tiap kelompok diatur di config bsc.ratio_groups dan dipakai saat menyusun skor F2.',
+            ],
+            'nama' => [
+                'judul' => 'Nama Indikator Rasio',
+                'ringkas' => 'Salah satu dari 19 rasio baku metodologi BSC; daftarnya ada di menu Katalog Rasio.',
+                'rinci' => 'Rasio yang ditampilkan hanya yang berstatus aktif di Katalog Rasio entitas ini. '
+                    .'Menonaktifkan sebuah rasio membuatnya tidak ikut dihitung maupun diskor.',
+            ],
+            'target' => [
+                'judul' => 'Target',
+                'ringkas' => 'DIISI MANUSIA di menu Katalog Rasio, per tahun. Tidak dihitung aplikasi.',
+                'rinci' => 'Target berlaku setahun penuh dan dipakai untuk seluruh periode di tahun itu. '
+                    .'Target yang belum diisi membuat kolom Capaian kosong dan statusnya "Belum Ada Target" — '
+                    .'nilai Actual-nya tetap dihitung.',
+            ],
+            'actual' => [
+                'judul' => 'Actual (realisasi)',
+                'ringkas' => 'DIHITUNG APLIKASI dari Pos Akun periode ini, bukan diketik. Tekan Telusur untuk melihat rumus & pos pembentuknya.',
+                'rinci' => 'Rantainya: Pos Akun (PA01–PA16) → "nilai dipakai" → rumus rasio. '
+                    .'Pos ALIRAN (penjualan, HPP, beban) diisi nilai YTD lalu disetahunkan ×12 ÷ bulan berjalan; '
+                    .'pos NERACA (kas, piutang, utang, ekuitas) dirata-rata (saldo awal + saldo akhir) ÷ 2, '
+                    .'atau memakai saldo akhir saja bila saldo awal belum diisi. '
+                    .'Pos akunnya sendiri berasal dari tarikan Odoo, unggahan berkas, atau pengisian di menu Pos Akun.',
+            ],
+            'capaian' => [
+                'judul' => 'Capaian (%)',
+                'ringkas' => 'Actual dibanding Target menurut arah rasionya, dibatasi maksimal 100%.',
+                'rinci' => 'Polaritas Naik: actual ÷ target. Polaritas Turun: target ÷ actual (actual 0 dianggap sempurna, '
+                    .'actual negatif dianggap 0). Polaritas Rentang: makin jauh dari target makin kecil. '
+                    .'Melebihi target tidak menambah nilai — konvensi BSC membatasinya di 100%.',
+            ],
+            'status' => [
+                'judul' => 'Status',
+                'ringkas' => 'Dari Capaian: Tercapai ≥ 100%, Waspada 80–99%, Di Bawah Target < 80%.',
+                'rinci' => '"Belum Ada Target" berarti nilainya sudah terhitung tetapi targetnya belum diisi di Katalog Rasio, '
+                    .'sehingga rasio itu tidak ikut menyumbang skor F2.',
+            ],
+            'telusur' => [
+                'judul' => 'Aksi Telusur',
+                'ringkas' => 'Membuka rumus rasio, pos akun pembentuknya, dan nilai yang dipakai menghitungnya.',
+                'rinci' => 'Dipakai untuk memeriksa angka yang terasa janggal: dari situ terlihat pos akun mana '
+                    .'yang menjadi pembilang dan penyebut, beserta nilainya pada periode ini.',
+            ],
+        ];
+
+        return $daftar[$kolom] ?? ['judul' => '', 'ringkas' => '', 'rinci' => ''];
+    }
+}
+
 // ───────────────────────────────────────── Lainnya ─────────────────────────────────────
 
 if (! function_exists('password_hint')) {

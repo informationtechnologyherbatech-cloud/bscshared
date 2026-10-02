@@ -73,13 +73,14 @@
                                         <th>Pos akun</th>
                                         <th class="text-right" style="min-width:150px">Saldo awal tahun</th>
                                         <th class="text-right" style="min-width:150px">Nilai / saldo akhir</th>
-                                        <th class="text-right">Nilai dipakai</th>
+                                        <th class="text-right" style="min-width:190px">Nilai dipakai</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($posts as $kode => $pos)
                                         @php($neraca = post_is_neraca($pos['kind']))
-                                        <tr>
+                                        {{-- id baris menjadi sasaran tombol "Ubah" dari penelusuran rasio. --}}
+                                        <tr id="pos-{{ $kode }}">
                                             <td class="align-middle"><code>{{ $kode }}</code></td>
                                             <td class="align-middle">
                                                 <div class="font-weight-bold">{{ $pos['name'] }}</div>
@@ -112,13 +113,23 @@
                                                     <div class="text-right">{{ $values[$kode]['amount'] !== '' ? number_format((float) $values[$kode]['amount'], 0, ',', '.') : '—' }}</div>
                                                 @endif
                                             </td>
-                                            <td class="text-right align-middle small text-muted">
+                                            {{-- Nilai dipakai + asalnya. Dibuat tidak boleh patah ke baris
+                                                 berikutnya: "Rp" yang terpisah dari angkanya terbaca berantakan. --}}
+                                            <td class="text-right align-middle">
+                                                @php($asal = post_derivation($kode, $values[$kode]['amount'] ?? null, $values[$kode]['opening'] ?? null, $bulan))
                                                 @if (($hasil['used'][$kode] ?? null) === null)
-                                                    —
-                                                @elseif (post_is_hris($pos['kind']))
-                                                    {{ number_format($hasil['used'][$kode], 0, ',', '.') }}
+                                                    <span class="text-muted">—</span>
                                                 @else
-                                                    {{ rupiah($hasil['used'][$kode]) }}
+                                                    <div class="font-weight-bold text-nowrap">
+                                                        @if (post_is_hris($pos['kind']))
+                                                            {{ number_format($hasil['used'][$kode], 0, ',', '.') }}
+                                                        @else
+                                                            {{ rupiah($hasil['used'][$kode]) }}
+                                                        @endif
+                                                    </div>
+                                                    <small class="text-muted text-nowrap d-block" title="{{ $asal['arithmetic'] }}">
+                                                        {{ $asal['label'] }}
+                                                    </small>
                                                 @endif
                                             </td>
                                         </tr>

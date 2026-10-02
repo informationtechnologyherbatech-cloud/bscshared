@@ -159,6 +159,186 @@ class RatioLibrary
     }
 
     /**
+     * Langkah perhitungan satu rasio, supaya angkanya dapat diikuti tanpa
+     * kalkulator: tiap langkah membawa namanya, rumusnya, angka yang
+     * dimasukkan, dan hasilnya.
+     *
+     * Rencana di bawah SENGAJA menirukan compute() baris demi baris. Keduanya
+     * dijaga tetap sama oleh pengujian yang membandingkan hasil langkah terakhir
+     * dengan compute() untuk seluruh 19 rasio — bila kelak salah satu diubah
+     * sendirian, pengujian itu berbunyi.
+     *
+     * Pembilang ditulis sebagai daftar [tanda, kode]; kode 'LK' (laba kotor) dan
+     * 'LB' (laba bersih) dijabarkan lebih dulu menjadi langkahnya sendiri.
+     *
+     * @param  array<string, float|null>  $p  nilai pos akun yang sudah "dipakai"
+     * @return array{steps: array<int, array<string, mixed>>, posts: array<int, string>}
+     */
+    public static function steps(string $code, array $p): array
+    {
+        $rencana = match ($code) {
+            'P1' => [[['+', 'LK']], 'PA01', 'persen'],
+            'P2' => [[['+', 'LB']], 'PA01', 'persen'],
+            'P3' => [[['+', 'LB']], 'PA11', 'persen'],
+            'P4' => [[['+', 'LB']], 'PA13', 'persen'],
+            'A1' => [[['+', 'PA02']], 'PA05', 'kali'],
+            'A2' => [[['+', 'PA01']], 'PA11', 'kali'],
+            'A3' => [[['+', 'PA01']], 'PA06', 'kali'],
+            'A4' => [[['+', 'PA02']], 'PA05', 'hari'],
+            'A5' => [[['+', 'PA01']], 'PA06', 'hari'],
+            'A6' => [[['+', 'PA02']], 'PA07', 'hari'],
+            'D1' => [[['+', 'PA01']], 'PA15', 'rupiah'],
+            'D2' => [[['+', 'PA01']], 'PA16', 'rupiah'],
+            'D3' => [[['+', 'PA01']], 'PA04', 'kali'],
+            'D4' => [[['+', 'LK'], ['-', 'PA04']], 'PA14', 'kali'],
+            'L1' => [[['+', 'PA09']], 'PA10', 'kali'],
+            'L2' => [[['+', 'PA09'], ['-', 'PA05']], 'PA10', 'kali'],
+            'L3' => [[['+', 'PA08']], 'PA10', 'kali'],
+            'S1' => [[['+', 'PA12']], 'PA13', 'kali'],
+            'S2' => [[['+', 'PA12']], 'PA11', 'kali'],
+            default => null,
+        };
+
+        if ($rencana === null) {
+            return ['steps' => [], 'posts' => [], 'penyebut' => null];
+        }
+
+        [$pembilang, $penyebut, $olah] = $rencana;
+        $meta = self::all()[$code] ?? ['name' => $code, 'unit' => ''];
+        $langkah = [];
+        $dipakai = [];
+
+        // Turunan laba kotor & laba bersih ditampilkan sebagai langkahnya sendiri,
+        // karena di situlah angka yang tidak ada di Pos Akun muncul.
+        $turunan = function (string $kode) use ($p, &$langkah, &$dipakai) {
+            if ($kode === 'LK' || $kode === 'LB') {
+                $langkah[] = self::langkah('Laba kotor', [['+', 'PA01'], ['-', 'PA02']], $p, 'Rp');
+                $dipakai[] = 'PA01';
+                $dipakai[] = 'PA02';
+            }
+
+            if ($kode === 'LB') {
+                $langkah[] = self::langkah('Laba bersih', [['+', 'LK'], ['-', 'PA03']], $p, 'Rp');
+                $dipakai[] = 'PA03';
+            }
+        };
+
+        foreach ($pembilang as [, $kode]) {
+            $turunan($kode);
+
+            if (! in_array($kode, ['LK', 'LB'], true)) {
+                $dipakai[] = $kode;
+            }
+        }
+
+        $dipakai[] = $penyebut;
+
+        // Pembagiannya sendiri: pembilang ÷ penyebut, lalu diolah sesuai satuan.
+        $atas = self::nilai($pembilang, $p);
+        $bawah = $p[$penyebut] ?? null;
+        $bagi = ($atas === null || $bawah === null || $bawah == 0.0) ? null : $atas / $bawah;
+
+        $namaAtas = count($pembilang) === 1
+            ? self::namaPos($pembilang[0][1])
+            : implode(' ', array_map(fn ($t) => ($t[0] === '-' ? '− ' : '').self::namaPos($t[1]), $pembilang));
+
+        if ($olah === 'hari') {
+            // DIO/DSO/DPO: perputarannya dulu, baru 365 dibagi perputaran itu.
+            $langkah[] = [
+                'label' => 'Perputaran',
+                'rumus' => $namaAtas.' ÷ '.self::namaPos($penyebut),
+                'angka' => self::angka($atas).' ÷ '.self::angka($bawah),
+                'nilai' => $bagi,
+                'satuan' => 'x',
+            ];
+            $langkah[] = [
+                'label' => $meta['name'],
+                'rumus' => '365 ÷ Perputaran',
+                'angka' => '365 ÷ '.self::angka($bagi),
+                'nilai' => ($bagi === null || $bagi == 0.0) ? null : 365 / $bagi,
+                'satuan' => $meta['unit'],
+            ];
+
+            return ['steps' => $langkah, 'posts' => array_values(array_unique($dipakai)),
+                'penyebut' => ['code' => $penyebut, 'name' => self::namaPos($penyebut), 'value' => $bawah]];
+        }
+
+        $persen = $olah === 'persen';
+        $langkah[] = [
+            'label' => $meta['name'],
+            'rumus' => $namaAtas.' ÷ '.self::namaPos($penyebut).($persen ? ' × 100' : ''),
+            'angka' => self::angka($atas).' ÷ '.self::angka($bawah).($persen ? ' × 100' : ''),
+            'nilai' => $bagi === null ? null : ($persen ? $bagi * 100 : $bagi),
+            'satuan' => $meta['unit'],
+        ];
+
+        return ['steps' => $langkah, 'posts' => array_values(array_unique($dipakai)),
+            'penyebut' => ['code' => $penyebut, 'name' => self::namaPos($penyebut), 'value' => $bawah]];
+    }
+
+    /**
+     * Satu langkah penjumlahan/pengurangan pos akun.
+     *
+     * @param  array<int, array{0: string, 1: string}>  $suku
+     * @param  array<string, float|null>  $p
+     * @return array<string, mixed>
+     */
+    private static function langkah(string $label, array $suku, array $p, string $satuan): array
+    {
+        $rumus = [];
+        $angka = [];
+
+        foreach ($suku as $i => [$tanda, $kode]) {
+            $awalan = $i === 0 ? '' : ($tanda === '-' ? '− ' : '+ ');
+            $rumus[] = $awalan.self::namaPos($kode);
+            $angka[] = $awalan.self::angka($p[$kode] ?? null);
+        }
+
+        return [
+            'label' => $label,
+            'rumus' => implode(' ', $rumus),
+            'angka' => implode(' ', $angka),
+            'nilai' => self::nilai($suku, $p),
+            'satuan' => $satuan,
+        ];
+    }
+
+    /**
+     * @param  array<int, array{0: string, 1: string}>  $suku
+     * @param  array<string, float|null>  $p
+     */
+    private static function nilai(array $suku, array $p): ?float
+    {
+        $jumlah = 0.0;
+
+        foreach ($suku as [$tanda, $kode]) {
+            $nilai = $p[$kode] ?? null;
+
+            if ($nilai === null) {
+                return null;
+            }
+
+            $jumlah += $tanda === '-' ? -$nilai : $nilai;
+        }
+
+        return $jumlah;
+    }
+
+    private static function namaPos(string $kode): string
+    {
+        return match ($kode) {
+            'LK' => 'Laba kotor',
+            'LB' => 'Laba bersih',
+            default => AccountPosts::all()[$kode]['name'] ?? $kode,
+        };
+    }
+
+    private static function angka(?float $nilai): string
+    {
+        return $nilai === null ? '—' : number_format($nilai, 0, ',', '.');
+    }
+
+    /**
      * Pencapaian dalam persen, dibatasi 0–100 (sheet L2 langkah 3):
      *   Naik    = aktual ÷ target
      *   Turun   = target ÷ aktual

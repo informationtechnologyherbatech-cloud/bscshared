@@ -107,6 +107,54 @@ class AccountPosts
     }
 
     /**
+     * Bagaimana SATU pos akun berubah dari isian di layar menjadi "nilai dipakai".
+     *
+     * Dipakai dua layar: kolom "Nilai dipakai" di menu Pos Akun, dan penelusuran
+     * rasio di Piramida — supaya pertanyaan "angka ini asalnya dari mana?"
+     * terjawab di tempat angkanya muncul, bukan harus dihitung sendiri.
+     *
+     * Aturannya SENGAJA menirukan usedValues() baris demi baris; keduanya dijaga
+     * tetap sama oleh pengujian yang membandingkan hasil keduanya untuk seluruh
+     * 16 pos.
+     *
+     * @return array{label: string, arithmetic: string, value: float|null}
+     */
+    public static function derivation(string $code, ?float $amount, ?float $opening, int $bulanBerjalan): array
+    {
+        $jenis = self::all()[$code]['kind'] ?? self::ALIRAN;
+        $n = max(1, min(12, $bulanBerjalan));
+        $angka = fn (?float $x) => $x === null ? '—' : number_format($x, 0, ',', '.');
+
+        if ($amount === null) {
+            return ['label' => 'belum diisi', 'arithmetic' => '', 'value' => null];
+        }
+
+        return match ($jenis) {
+            self::ALIRAN, self::HRIS_ALIRAN => [
+                'label' => 'YTD × 12 ÷ '.$n,
+                'arithmetic' => $angka($amount).' × 12 ÷ '.$n.' bulan',
+                'value' => $amount * 12 / $n,
+            ],
+            self::NERACA => $opening === null
+                ? [
+                    'label' => 'saldo akhir',
+                    'arithmetic' => $angka($amount).' (saldo awal tahun belum diisi)',
+                    'value' => $amount,
+                ]
+                : [
+                    'label' => 'rata-rata awal & akhir',
+                    'arithmetic' => '('.$angka($opening).' + '.$angka($amount).') ÷ 2',
+                    'value' => ($amount + $opening) / 2,
+                ],
+            default => [
+                'label' => 'dipakai apa adanya',
+                'arithmetic' => $angka($amount),
+                'value' => $amount,
+            ],
+        };
+    }
+
+    /**
      * Tambahkan/hitung ulang turunan Laba kotor (LK = PA01 − PA02) dan Laba
      * bersih (LB = LK − PA03) dari nilai dipakai.
      *

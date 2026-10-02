@@ -78,12 +78,12 @@
                     <table class="table table-hover table-bordered m-0">
                         <thead class="bg-light">
                             <tr>
-                                <th style="width: 15%;">Kategori</th>
-                                <th style="width: 30%;">Nama Rasio</th>
-                                <th class="text-center" style="width: 12%;">Target</th>
-                                <th class="text-center" style="width: 12%;">Realisasi (Actual)</th>
-                                <th class="text-center" style="width: 12%;">Capaian (%)</th>
-                                <th class="text-center" style="width: 10%;">Status</th>
+                                <th style="width: 15%;">Kategori <x-col-info for="kategori" /></th>
+                                <th style="width: 30%;">Nama Rasio <x-col-info for="nama" /></th>
+                                <th class="text-center" style="width: 12%;">Target <x-col-info for="target" /></th>
+                                <th class="text-center" style="width: 12%;">Realisasi (Actual) <x-col-info for="actual" /></th>
+                                <th class="text-center" style="width: 12%;">Capaian (%) <x-col-info for="capaian" /></th>
+                                <th class="text-center" style="width: 10%;">Status <x-col-info for="status" /></th>
                                 <th class="text-center" style="width: 9%;">Aksi</th>
                             </tr>
                         </thead>
