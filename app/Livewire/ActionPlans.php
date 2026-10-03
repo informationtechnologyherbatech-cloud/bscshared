@@ -25,6 +25,10 @@ class ActionPlans extends Component
     #[Url(as: 'status')]
     public $selectedStatus = '';
 
+    /** Periode yang ditampilkan; 'semua' memperlihatkan seluruh riwayat. */
+    #[Url(as: 'periode')]
+    public string $selectedPeriod = '';
+
     public $editingPlanId = null;
 
     public $editProgress = 0;
@@ -37,6 +41,15 @@ class ActionPlans extends Component
         if ($this->selectedStatus === 'all') {
             $this->selectedStatus = ''; // "Semua" dari dashboard = tanpa saringan
         }
+
+        if ($this->selectedPeriod === '') {
+            $this->selectedPeriod = Period::currentPeriod();
+        }
+    }
+
+    public function updatedSelectedPeriod(): void
+    {
+        $this->resetPage();
     }
 
     public function createPlan()
@@ -56,8 +69,13 @@ class ActionPlans extends Component
             'objectiveId' => ['nullable', Rule::exists('department_objectives', 'id')->where('entity_id', app(EntityContext::class)->id())],
         ]);
 
+        $sasaran = $this->objectiveId ? DepartmentObjective::find($this->objectiveId) : null;
+
         ActionPlan::create([
             'department_objective_id' => $this->objectiveId ?: null,
+            // Mengikuti sasaran mutu yang dimitigasi; tanpa kaitan, dipakai periode
+            // aktif — supaya program kerja selalu punya tempat di Tingkat 4.
+            'period' => $sasaran?->period ?: Period::currentPeriod(),
             'title' => $this->title,
             'owner_dept' => strtoupper($this->ownerDept),
             'progress_pct' => 0,
@@ -126,6 +144,13 @@ class ActionPlans extends Component
     {
         $query = ActionPlan::with('objective');
 
+        // Periode mengikuti bilah atas seperti menu bulanan lain, supaya daftar
+        // di sini dan Tingkat 4 piramida berisi program kerja yang sama.
+        // "Semua periode" tetap tersedia untuk melihat riwayatnya.
+        if ($this->selectedPeriod !== 'semua') {
+            $query->where('period', $this->selectedPeriod);
+        }
+
         if ($this->selectedStatus) {
             if ($this->selectedStatus === 'bermasalah') {
                 $query->whereIn('status', ['On Progress', 'Off-Target', 'Dalam Proses', 'Belum Dimulai', 'Terhambat']);
@@ -155,6 +180,12 @@ class ActionPlans extends Component
             // Kontrol tulis disembunyikan bagi yang tidak berhak, bukan dibiarkan
             // tampil lalu ditolak diam-diam saat disimpan.
             'canWrite' => (bool) auth()->user()?->can('manage actionplans'),
+            'periods' => Period::orderByDesc('period')->pluck('period'),
+            // Program kerja periode lain yang tersembunyi oleh saringan periode —
+            // supaya daftar yang "hilang" tidak terasa seperti data yang lenyap.
+            'lainPeriode' => $this->selectedPeriod === 'semua'
+                ? 0
+                : ActionPlan::where('period', '!=', $this->selectedPeriod)->count(),
         ])->layout('layouts.app', ['title' => 'Program Kerja']);
     }
 }

@@ -278,12 +278,20 @@ class BscDashboardScoringTest extends TestCase
         $this->assertSame(40.0, (float) $viewData);
     }
 
-    public function test_an_action_plan_without_an_objective_is_not_attributed_to_any_period(): void
+    /**
+     * Program kerja tanpa sasaran mutu tetap sampai ke Tingkat 4.
+     *
+     * Dilaporkan QC: program kerja sudah terisi di menunya, tetapi Tingkat 4
+     * piramida berbunyi "data belum lengkap" dan telusurnya kosong. Sebabnya
+     * periode program kerja dulu hanya disimpulkan dari sasaran mutu yang
+     * dimitigasi — padahal mengaitkannya bersifat opsional.
+     */
+    public function test_an_action_plan_without_an_objective_still_reaches_tier_four(): void
     {
         $this->period('2026-08');
         $this->ratio('2026-08', 90);
 
-        ActionPlan::create([
+        $rencana = ActionPlan::create([
             'department_objective_id' => null,
             'title' => 'Program kerja lepas',
             'owner_dept' => 'PRO',
@@ -291,11 +299,45 @@ class BscDashboardScoringTest extends TestCase
             'status' => 'On Progress',
         ]);
 
-        $html = Livewire::test(BscDashboard::class)
-            ->set('selectedPeriod', '2026-08')
-            ->html();
+        // Periodenya terisi sendiri, tanpa bergantung pada sasaran mutu.
+        $this->assertSame('2026-08', $rencana->fresh()->period);
 
-        $this->assertStringContainsString('data belum lengkap', $html);
+        $uji = Livewire::test(BscDashboard::class)->set('selectedPeriod', '2026-08');
+
+        $this->assertSame(1, $uji->viewData('actionPlanCount'));
+        $this->assertSame(100.0, (float) $uji->viewData('avgActionProgress'));
+
+        // Dan benar-benar tampil di telusur Tingkat 4, bukan sekadar terhitung.
+        $uji->call('selectLevel', 4)->assertSee('Program kerja lepas');
+    }
+
+    public function test_an_action_plan_follows_the_period_of_the_objective_it_mitigates(): void
+    {
+        $this->period('2026-08');
+        $this->period('2026-07');
+
+        $sasaran = DepartmentObjective::create([
+            'period' => '2026-07',
+            'dept_code' => 'PRO',
+            'kpi_code' => 'KPI-LAMA',
+            'kpi_name' => 'Sasaran Juli',
+            'polarity' => 'Naik',
+            'target' => 100,
+            'actual' => 80,
+            'achievement_pct' => 80,
+            'status' => 'Waspada',
+        ]);
+
+        $rencana = ActionPlan::create([
+            'department_objective_id' => $sasaran->id,
+            'title' => 'Mitigasi Juli',
+            'owner_dept' => 'PRO',
+            'progress_pct' => 50,
+            'status' => 'On Progress',
+        ]);
+
+        // Bukan periode berjalan, melainkan periode sasaran yang dimitigasinya.
+        $this->assertSame('2026-07', $rencana->fresh()->period);
     }
 
     public function test_each_tier_carries_a_status_dot_matching_its_score(): void

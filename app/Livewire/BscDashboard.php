@@ -21,9 +21,8 @@ use Livewire\Component;
 
 class BscDashboard extends Component
 {
-    use FollowsActivePeriod;
-
     use AuthorizesWrites;
+    use FollowsActivePeriod;
 
     #[Url]
     public $selectedPeriod = '';
@@ -37,11 +36,14 @@ class BscDashboard extends Component
     public $statusFilter = 'all'; // all, Tercapai, Waspada, Di Bawah Target, bermasalah
 
     public $searchQuery = '';
+
     public $selectedItemDetail = null;
+
     public $showModal = false;
 
     // Period management state
     public $showCreatePeriodModal = false;
+
     public $newPeriodInput = '';
 
     public function mount()
@@ -80,7 +82,7 @@ class BscDashboard extends Component
         if ($period) {
             $newStatus = $period->status === 'OPEN' ? 'CLOSED' : 'OPEN';
             $period->update(['status' => $newStatus]);
-            session()->flash('message', 'Status periode ' . $this->selectedPeriod . ' berhasil diubah menjadi ' . $newStatus . '!');
+            session()->flash('message', 'Status periode '.$this->selectedPeriod.' berhasil diubah menjadi '.$newStatus.'!');
         }
     }
 
@@ -101,7 +103,8 @@ class BscDashboard extends Component
 
         $existing = Period::where('period', $periodStr)->first();
         if ($existing) {
-            session()->flash('error', 'Periode ' . $periodStr . ' sudah ada!');
+            session()->flash('error', 'Periode '.$periodStr.' sudah ada!');
+
             return;
         }
 
@@ -174,10 +177,10 @@ class BscDashboard extends Component
         $this->newPeriodInput = '';
         $this->showCreatePeriodModal = false;
 
-        session()->flash('message', 'Periode baru ' . $periodStr . ' berhasil dibuat'
-            . ($sumber ? ' dari templat ' . $sumber : '')
-            . ($sinkron['created'] ? ', ' . $sinkron['created'] . ' KPI Lolos dari Cascade KPI ditambahkan' : '')
-            . ' (realisasi diinisialisasi 0 per aturan PRD G-05).');
+        session()->flash('message', 'Periode baru '.$periodStr.' berhasil dibuat'
+            .($sumber ? ' dari templat '.$sumber : '')
+            .($sinkron['created'] ? ', '.$sinkron['created'].' KPI Lolos dari Cascade KPI ditambahkan' : '')
+            .' (realisasi diinisialisasi 0 per aturan PRD G-05).');
 
         // Muat ulang agar periode baru ikut tampil di pilihan periode navbar.
         $this->redirect(route('dashboard'));
@@ -270,7 +273,7 @@ class BscDashboard extends Component
                     'name' => $ratio->ratio_name,
                     'target' => $ratio->display($ratio->target),
                     'actual' => $ratio->display($ratio->actual),
-                    'achievement' => number_format($ratio->achievement_pct, 1) . '%',
+                    'achievement' => number_format($ratio->achievement_pct, 1).'%',
                     'status' => $ratio->status,
                     'upstream' => 'Piramida Tingkat 1 (Apex Score Keuangan)',
                     'downstream' => 'Drive Sasaran Mutu Departemen (Tingkat 3)',
@@ -283,17 +286,17 @@ class BscDashboard extends Component
             if ($obj) {
                 $this->selectedItemDetail = [
                     'type' => 'Objective Departemen (Tingkat 3)',
-                    'code' => $obj->kpi_code . ' [' . $obj->dept_code . ']',
+                    'code' => $obj->kpi_code.' ['.$obj->dept_code.']',
                     'name' => $obj->kpi_name,
                     'target' => number_format($obj->target, 1),
                     'actual' => number_format($obj->actual, 1),
-                    'achievement' => number_format($obj->achievement_pct, 1) . '%',
+                    'achievement' => number_format($obj->achievement_pct, 1).'%',
                     'status' => $obj->status,
                     'upstream' => $obj->kpiCascade?->ratio_code
-                        ? 'Menggerakkan ' . \App\Support\Bsc\RatioLibrary::impactName($obj->kpiCascade->ratio_code) . ' (Tingkat 2)'
+                        ? 'Menggerakkan '.RatioLibrary::impactName($obj->kpiCascade->ratio_code).' (Tingkat 2)'
                         : 'Menyokong Rasio Keuangan (Tingkat 2)',
-                    'downstream' => $obj->actionPlans->count() . ' Program Kerja Mitigasi (Tingkat 4)',
-                    'description' => 'Sasaran mutu operasional departemen ' . $obj->dept_code . ' untuk mencapai target strategic BSC.',
+                    'downstream' => $obj->actionPlans->count().' Program Kerja Mitigasi (Tingkat 4)',
+                    'description' => 'Sasaran mutu operasional departemen '.$obj->dept_code.' untuk mencapai target strategic BSC.',
                     'action_plans' => $obj->actionPlans->toArray(),
                 ];
                 $this->showModal = true;
@@ -303,13 +306,13 @@ class BscDashboard extends Component
             if ($ap) {
                 $this->selectedItemDetail = [
                     'type' => 'Program Kerja / Action Plan (Tingkat 4)',
-                    'code' => 'AP-' . $ap->id . ' [' . $ap->owner_dept . ']',
+                    'code' => 'AP-'.$ap->id.' ['.$ap->owner_dept.']',
                     'name' => $ap->title,
                     'target' => '100%',
-                    'actual' => $ap->progress_pct . '%',
-                    'achievement' => $ap->progress_pct . '%',
+                    'actual' => $ap->progress_pct.'%',
+                    'achievement' => $ap->progress_pct.'%',
                     'status' => $ap->status,
-                    'upstream' => $ap->objective ? 'Mitigasi KPI: ' . $ap->objective->kpi_code . ' (' . $ap->objective->kpi_name . ')' : 'Inisiatif Perbaikan',
+                    'upstream' => $ap->objective ? 'Mitigasi KPI: '.$ap->objective->kpi_code.' ('.$ap->objective->kpi_name.')' : 'Inisiatif Perbaikan',
                     'downstream' => 'Eksekusi Lapangan & Pondasi Piramida BSC',
                     'description' => 'Inisiatif perbaikan konkret untuk mengatasi gap pencapaian sasaran mutu departemen.',
                 ];
@@ -403,7 +406,7 @@ class BscDashboard extends Component
             RevenueTarget::where('period', $period)->max('updated_at'),
             FinancialRatio::where('period', $period)->max('updated_at'),
             DepartmentObjective::where('period', $period)->max('updated_at'),
-            ActionPlan::whereHas('objective', fn ($q) => $q->where('period', $period))->max('updated_at'),
+            ActionPlan::where('period', $period)->max('updated_at'),
         ];
 
         $terbaru = null;
@@ -433,7 +436,7 @@ class BscDashboard extends Component
         // Periode yang sudah ditutup memang sengaja dibekukan, dan periode yang
         // belum berisi apa pun bukan "basi" — keduanya tidak perlu diperingatkan.
         $isStale = $hoursSinceSync !== null && $hoursSinceSync >= $ambangBasi && ! $isClosed;
-        
+
         $ratiosQuery = FinancialRatio::where('period', $this->selectedPeriod);
         $ratios = $ratiosQuery->orderBy('id')->get();
         // F2 dari Scorecard — sumber yang sama dengan konsolidasi holding.
@@ -445,15 +448,13 @@ class BscDashboard extends Component
         $objectives = $objectivesQuery->orderBy('id')->get();
         $avgObjScore = $objectives->count() > 0 ? round($objectives->avg('achievement_pct'), 2) : 0;
 
-        // Program kerja tidak punya kolom periode; keterkaitannya lewat sasaran mutu
-        // yang dimitigasinya. Tanpa penyaringan ini, Tingkat 4 dan Apex Score memakai
-        // program kerja dari seluruh periode, dan penanda "data belum lengkap" ikut
-        // salah pada periode yang sebenarnya memang belum punya program kerja.
-        // Program kerja tanpa sasaran mutu tidak dapat diatribusikan ke periode mana
-        // pun, sehingga tidak ikut diskor — daftar lengkapnya tetap ada di menu
-        // Program Kerja.
+        // Program kerja kini memiliki periodenya sendiri, sehingga yang dibuat
+        // tanpa mengaitkan sasaran mutu pun tetap terbaca di Tingkat 4.
+        // Sebelumnya periodenya hanya disimpulkan dari sasaran yang dimitigasi —
+        // padahal kaitan itu opsional — sehingga program kerja yang sudah diisi
+        // tidak pernah sampai ke piramida.
         $actionPlans = ActionPlan::with('objective')
-            ->whereHas('objective', fn ($query) => $query->where('period', $this->selectedPeriod))
+            ->where('period', $this->selectedPeriod)
             ->get();
         // PRD G-03 Requirement: Tier 4 Apex score MUST strictly represent average progress_pct of action plans
         $avgActionProgress = $actionPlans->count() > 0 ? round($actionPlans->avg('progress_pct'), 2) : 0;
@@ -487,7 +488,7 @@ class BscDashboard extends Component
         // render ulang Livewire tidak menulis berulang. Timestamp sengaja tidak
         // disentuh: periods.updated_at menandai sinkronisasi data terakhir,
         // bukan kalkulasi ulang skor (dipakai penanda data basi di atas).
-        if ($periodObj && !$isClosed && (float) $periodObj->apex_score !== $apexScore) {
+        if ($periodObj && ! $isClosed && (float) $periodObj->apex_score !== $apexScore) {
             $periodObj->timestamps = false;
             $periodObj->update(['apex_score' => $apexScore]);
             $periodObj->timestamps = true;
@@ -501,40 +502,43 @@ class BscDashboard extends Component
         ];
 
         // Filtered datasets for active drill-down tier (G-01: Bermasalah filter support)
-        $filteredRatios = $ratios->filter(function($r) {
-            $matchStatus = $this->statusFilter === 'all' || 
+        $filteredRatios = $ratios->filter(function ($r) {
+            $matchStatus = $this->statusFilter === 'all' ||
                 ($this->statusFilter === 'Tercapai' && $r->status === 'Tercapai') ||
                 ($this->statusFilter === 'Waspada' && $r->status === 'Waspada') ||
                 ($this->statusFilter === 'Di Bawah Target' && ($r->status === 'Di Bawah Target' || $r->status === 'Off-Target')) ||
                 ($this->statusFilter === 'bermasalah' && ($r->status === 'Waspada' || $r->status === 'Di Bawah Target' || $r->status === 'Off-Target'));
-            $matchQuery = empty($this->searchQuery) || 
-                stripos($r->ratio_name, $this->searchQuery) !== false || 
+            $matchQuery = empty($this->searchQuery) ||
+                stripos($r->ratio_name, $this->searchQuery) !== false ||
                 stripos($r->category, $this->searchQuery) !== false;
+
             return $matchStatus && $matchQuery;
         });
 
-        $filteredObjectives = $objectives->filter(function($o) {
-            $matchStatus = $this->statusFilter === 'all' || 
+        $filteredObjectives = $objectives->filter(function ($o) {
+            $matchStatus = $this->statusFilter === 'all' ||
                 ($this->statusFilter === 'Tercapai' && $o->status === 'Tercapai') ||
                 ($this->statusFilter === 'Waspada' && $o->status === 'Waspada') ||
                 ($this->statusFilter === 'Di Bawah Target' && ($o->status === 'Di Bawah Target' || $o->status === 'Off-Target')) ||
                 ($this->statusFilter === 'bermasalah' && ($o->status === 'Waspada' || $o->status === 'Di Bawah Target' || $o->status === 'Off-Target'));
-            $matchQuery = empty($this->searchQuery) || 
-                stripos($o->kpi_name, $this->searchQuery) !== false || 
+            $matchQuery = empty($this->searchQuery) ||
+                stripos($o->kpi_name, $this->searchQuery) !== false ||
                 stripos($o->kpi_code, $this->searchQuery) !== false ||
                 stripos($o->dept_code, $this->searchQuery) !== false;
+
             return $matchStatus && $matchQuery;
         });
 
-        $filteredActionPlans = $actionPlans->filter(function($ap) {
-            $matchStatus = $this->statusFilter === 'all' || 
+        $filteredActionPlans = $actionPlans->filter(function ($ap) {
+            $matchStatus = $this->statusFilter === 'all' ||
                 ($this->statusFilter === 'Tercapai' && ($ap->status === 'Completed' || $ap->status === 'Selesai')) ||
                 ($this->statusFilter === 'Waspada' && ($ap->status === 'On Progress' || $ap->status === 'Dalam Proses')) ||
                 ($this->statusFilter === 'Di Bawah Target' && ($ap->status === 'Off-Target' || $ap->status === 'Belum Dimulai')) ||
                 ($this->statusFilter === 'bermasalah' && ($ap->status === 'On Progress' || $ap->status === 'Off-Target' || $ap->status === 'Dalam Proses' || $ap->status === 'Belum Dimulai'));
-            $matchQuery = empty($this->searchQuery) || 
-                stripos($ap->title, $this->searchQuery) !== false || 
+            $matchQuery = empty($this->searchQuery) ||
+                stripos($ap->title, $this->searchQuery) !== false ||
                 stripos($ap->owner_dept, $this->searchQuery) !== false;
+
             return $matchStatus && $matchQuery;
         });
 
@@ -568,4 +572,3 @@ class BscDashboard extends Component
         ])->layout('layouts.app', ['title' => 'Dashboard Piramida BSC']);
     }
 }
-

@@ -62,14 +62,17 @@ class PerformanceTest extends TestCase
 
     public function test_action_plans_are_paginated(): void
     {
-        $sasaran = DB::table('department_objectives')->where('entity_id', $this->erdigma->id)->value('id');
+        $sasaran = DB::table('department_objectives')->where('entity_id', $this->erdigma->id)->first();
         $sekarang = now();
         DB::table('action_plans')->insert(array_map(fn ($i) => [
-            'entity_id' => $this->erdigma->id, 'department_objective_id' => $sasaran, 'title' => 'Program '.$i,
+            // Sisipan SQL mentah melewati model, jadi periodenya ditulis sendiri —
+            // sama seperti yang dilakukan aplikasi saat menyimpan.
+            'entity_id' => $this->erdigma->id, 'department_objective_id' => $sasaran->id,
+            'period' => $sasaran->period, 'title' => 'Program '.$i,
             'owner_dept' => 'SCM', 'progress_pct' => 10, 'status' => 'On Progress', 'created_at' => $sekarang, 'updated_at' => $sekarang,
         ], range(1, 40)));
 
-        Livewire::test(ActionPlans::class)
+        Livewire::test(ActionPlans::class, ['selectedPeriod' => $sasaran->period])
             ->assertViewHas('actionPlans', fn ($p) => $p->count() === 25 && $p->total() > 40);
     }
 }

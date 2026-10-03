@@ -183,6 +183,13 @@ polaritas (Naik / Turun / Rentang).
 
 ## Tingkat 4 · Program Kerja (Action)
 
+> **Program kerja menempel pada satu periode.** Periodenya mengikuti sasaran mutu
+> yang dimitigasi; bila tidak dikaitkan ke sasaran mana pun, dipakai periode yang
+> sedang aktif di bilah atas. Periode itulah yang dibaca Tingkat 4 di Piramida
+> BSC — jadi daftar di menu Program Kerja dan isi Tingkat 4 selalu berisi
+> hal yang sama. Pilih **Semua periode** di menu Program Kerja untuk melihat
+> riwayat seluruh periode.
+
 1. Untuk sasaran yang **Waspada** atau **Di Bawah Target**, buat program kerja
    perbaikan: judul, unit pemilik, dan sasaran yang dimitigasi.
 2. Perbarui **progres (%)** secara berkala.

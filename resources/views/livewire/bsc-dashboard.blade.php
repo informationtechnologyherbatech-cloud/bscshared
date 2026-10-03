@@ -886,7 +886,16 @@
                                 </div>
                             @empty
                                 <div class="col-12 text-center text-muted py-4">
-                                    Tidak ada data program kerja (action plan) yang sesuai filter.
+                                    @if ($actionPlanCount === 0)
+                                        Belum ada program kerja pada periode {{ period_label($selectedPeriod) }}.
+                                        <div class="small mt-1">
+                                            Program kerja menempel pada satu periode; yang dibuat di periode lain tidak muncul di sini.
+                                            Tambahkan lewat menu <a href="{{ route('action-plans', ['periode' => $selectedPeriod]) }}">Program Kerja</a>.
+                                        </div>
+                                    @else
+                                        Tidak ada program kerja yang sesuai saringan status/pencarian —
+                                        periode {{ period_label($selectedPeriod) }} punya {{ $actionPlanCount }} program kerja.
+                                    @endif
                                 </div>
                             @endforelse
                         </div>

@@ -2,11 +2,24 @@
     <!-- Content Header -->
     <div class="content-header">
         <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
+            <div class="row mb-2 align-items-center">
+                <div class="col-sm-7">
                     <h1 class="m-0 text-dark">
                         <i class="fas fa-list-check text-teal mr-2"></i> Program Kerja / Action Plan (Tingkat 4)
                     </h1>
+                    <small class="text-muted">
+                        Program kerja menempel pada satu periode — periode yang sama inilah yang dibaca
+                        Tingkat 4 di Piramida BSC.
+                    </small>
+                </div>
+                <div class="col-sm-5 text-sm-right mt-2 mt-sm-0">
+                    <label for="periodeAksi" class="mr-2 font-weight-bold">Periode:</label>
+                    <select wire:model.live="selectedPeriod" id="periodeAksi" class="form-control form-control-sm d-inline-block" style="width:150px">
+                        @foreach ($periods as $p)
+                            <option value="{{ $p }}">{{ period_label($p) }}</option>
+                        @endforeach
+                        <option value="semua">Semua periode</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -92,6 +105,7 @@
                                 <thead class="bg-light">
                                     <tr>
                                         <th style="width: 8%;">Dept</th>
+                                        <th style="width: 10%;">Periode</th>
                                         <th style="width: 35%;">Judul Inisiatif / Program Kerja</th>
                                         <th style="width: 25%;">Progress Fisik (%)</th>
                                         <th class="text-center" style="width: 15%;">Status</th>
@@ -102,6 +116,7 @@
                                     @forelse($actionPlans as $plan)
                                         <tr>
                                             <td><span class="badge badge-dark">{{ $plan->owner_dept }}</span></td>
+                                            <td class="small">{{ $plan->period ? period_label($plan->period) : '—' }}</td>
                                             <td>
                                                 <div class="font-weight-bold text-dark">{{ $plan->title }}</div>
                                                 @if($plan->objective)
@@ -148,7 +163,12 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="text-center text-muted py-4">Belum ada program kerja yang terdaftar.</td>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                Belum ada program kerja pada periode ini.
+                                                @if ($lainPeriode)
+                                                    <div class="mt-1">Ada <strong>{{ $lainPeriode }}</strong> program kerja di periode lain — pilih <em>Semua periode</em> untuk melihatnya.</div>
+                                                @endif
+                                            </td>
                                         </tr>
                                     @endforelse
                                 </tbody>
