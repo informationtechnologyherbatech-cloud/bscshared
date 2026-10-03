@@ -116,18 +116,45 @@ Dua hal yang sering ditanyakan:
 
 ---
 
-## 5. Unit Kerja
+## 5. Unit Kerja (master data departemen)
 
-Menu **Unit Kerja** (Admin HRIS / Super Admin) berisi daftar departemen entitas.
-Kodenya dipakai di seluruh aplikasi — sasaran mutu, cascade KPI, program kerja —
-jadi tentukan sejak awal.
+Menu **Unit Kerja** adalah tempat departemen ditambah, diubah, dan
+dinonaktifkan. Kodenya dipakai di seluruh aplikasi — sasaran mutu, cascade KPI,
+program kerja, dan unit pengguna — jadi tentukan sejak awal.
 
-Aturan yang dijaga aplikasi:
+**Siapa yang boleh:** Admin HRIS dan Super Admin (izin `manage units`).
+**Admin FAT tidak**, meskipun ia berwenang atas angka keuangan. Jalan pintas ke
+menu ini juga tersedia lewat tombol *Kelola unit kerja* di menu Objective
+Departemen.
 
-- Kode unik **di dalam satu entitas**; entitas lain boleh memakai kode yang sama.
-- Kode yang sudah dipakai data lain **tidak dapat diganti**.
-- Unit yang sudah dipakai **tidak dapat dihapus** — nonaktifkan saja. Unit
-  nonaktif tidak lagi muncul di pilihan, tetapi data lamanya tetap utuh.
+### Menambah departemen
+**Tambah Unit** → isi **kode** (singkat, dipakai di seluruh aplikasi) dan
+**nama**, lalu lengkapi *stream*, *reports to*, dan *scope* bila perlu →
+**Simpan**. Departemen langsung muncul di semua pilihan departemen.
+
+### Mengubah departemen
+Ikon pensil pada barisnya. Namanya bebas diubah kapan saja. **Kodenya hanya
+dapat diubah selama belum dipakai data lain** — begitu ada sasaran mutu, KPI,
+atau program kerja yang memakainya, kode dikunci supaya rujukan lama tidak
+putus.
+
+### Menonaktifkan departemen yang tidak dipakai lagi
+Tombol **Nonaktifkan** pada barisnya. Sesudah itu:
+
+- departemen **hilang dari semua pilihan** — Objective Departemen, Cascade KPI,
+  Program Kerja, dan unit pengguna;
+- **data lamanya tetap utuh dan tetap terbaca**; penyaring Objective Departemen
+  masih menampilkan kodenya selama masih ada sasaran mutu yang memakainya,
+  sehingga riwayatnya tidak hilang dari layar;
+- barisnya menghilang dari daftar Unit Kerja. Untuk melihat atau
+  **mengaktifkannya kembali**, centang **Tampilkan nonaktif** di atas daftar.
+
+### Menghapus
+Hanya untuk departemen yang **belum pernah dipakai**. Bila sudah dipakai,
+aplikasi menolak menghapusnya — nonaktifkan saja. Ini disengaja: menghapus
+departemen yang masih dirujuk akan membuat data lama kehilangan pemiliknya.
+
+> Ringkasnya: **belum pernah dipakai → boleh dihapus; sudah dipakai → nonaktifkan.**
 
 ---
 
@@ -142,6 +169,7 @@ Menu **Manage User** (Super Admin). Satu pengguna terdiri atas:
 | Peran | Lihat tabel di bagian 4. |
 | Entitas | Kosongkan hanya untuk pengguna **holding**. Diisi = pengguna terikat satu entitas. |
 | Unit kerja | Dipakai menyaring sasaran mutu & program kerja miliknya. |
+| Foto | Opsional. JPG/PNG/WEBP maksimal 1 MB. Fotonya tampil sebagai avatar di bilah atas dan di daftar pengguna; bila kosong dipakai inisial nama. Centang *Hapus foto* untuk kembali ke inisial. |
 | Aktif | Menonaktifkan akun tanpa menghapusnya — cara yang benar untuk karyawan yang keluar. |
 
 ---

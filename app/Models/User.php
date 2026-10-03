@@ -5,8 +5,10 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -22,6 +24,8 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        // Lokasi berkas foto di disk public; kosong = memakai inisial nama.
+        'photo_path',
         'password',
         'is_active',
         'dept_code',
@@ -67,11 +71,12 @@ class User extends Authenticatable
 
         $this->forceFill(['must_change_password' => $wajib])->save();
     }
+
     /**
      * Entitas tempat pengguna bekerja. Kosong = pengguna level holding yang
      * dapat berpindah antarentitas.
      */
-    public function entity(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function entity(): BelongsTo
     {
         return $this->belongsTo(Entity::class);
     }
@@ -79,5 +84,30 @@ class User extends Authenticatable
     public function isHoldingLevel(): bool
     {
         return $this->entity_id === null;
+    }
+
+    /**
+     * URL foto pengguna, atau null bila belum mengunggah.
+     *
+     * Keberadaan berkasnya ikut diperiksa supaya foto yang hilang dari disk
+     * tidak menyisakan gambar rusak di navbar — sama seperti logo entitas.
+     */
+    public function photoUrl(): ?string
+    {
+        if (! $this->photo_path || ! Storage::disk('public')->exists($this->photo_path)) {
+            return null;
+        }
+
+        return asset('storage/'.ltrim($this->photo_path, '/'));
+    }
+
+    /** Inisial nama — dipakai bila belum ada foto. */
+    public function initials(): string
+    {
+        return collect(preg_split('/\s+/', trim((string) $this->name)))
+            ->filter()
+            ->take(2)
+            ->map(fn ($kata) => mb_strtoupper(mb_substr($kata, 0, 1)))
+            ->implode('') ?: 'U';
     }
 }

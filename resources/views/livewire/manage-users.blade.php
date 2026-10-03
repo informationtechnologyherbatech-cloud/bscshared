@@ -62,13 +62,22 @@
                         <table class="table table-hover table-striped mb-0">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>#</th><th>Nama</th><th>Email</th><th>Role</th><th>Entitas</th><th>Dept</th><th>Status</th><th class="text-center">Aksi</th>
+                                    <th>#</th><th style="width:52px">Foto</th><th>Nama</th><th>Email</th><th>Role</th><th>Entitas</th><th>Dept</th><th>Status</th><th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($users as $u)
                                     <tr>
                                         <td>{{ $loop->iteration + ($users->currentPage()-1)*$users->perPage() }}</td>
+                                        <td>
+                                            <span class="avatar-tabel">
+                                                @if ($u->photoUrl())
+                                                    <img src="{{ $u->photoUrl() }}" alt="Foto {{ $u->name }}">
+                                                @else
+                                                    {{ $u->initials() }}
+                                                @endif
+                                            </span>
+                                        </td>
                                         <td><strong>{{ $u->name }}</strong></td>
                                         <td>{{ $u->email }}</td>
                                         <td>
@@ -109,7 +118,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="8" class="text-center py-4 text-muted">Tidak ada pengguna.</td></tr>
+                                    <tr><td colspan="9" class="text-center py-4 text-muted">Tidak ada pengguna.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -143,6 +152,36 @@
                     <button type="button" class="modal-close" wire:click="closeModal" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
+                    {{-- Foto pengguna: tampil juga sebagai avatar di bilah atas. --}}
+                    <div class="form-group d-flex align-items-center">
+                        <span class="avatar-pratinjau mr-3">
+                            {{-- isPreviewable(): berkas yang bukan gambar (mis. PDF) tidak punya
+                                 pratinjau dan temporaryUrl() akan melempar galat — biarkan
+                                 validasi yang menolaknya dengan pesan, bukan layar yang pecah. --}}
+                            @if ($photoUpload && $photoUpload->isPreviewable())
+                                <img src="{{ $photoUpload->temporaryUrl() }}" alt="Pratinjau foto">
+                            @elseif ($currentPhotoUrl && ! $removePhoto)
+                                <img src="{{ $currentPhotoUrl }}" alt="Foto pengguna">
+                            @else
+                                {{ $name ? mb_strtoupper(mb_substr($name, 0, 1)) : 'U' }}
+                            @endif
+                        </span>
+                        <div class="flex-grow-1">
+                            <label for="fotoPengguna" class="small font-weight-bold mb-1">Foto pengguna <span class="text-muted font-weight-normal">(opsional)</span></label>
+                            <input type="file" id="fotoPengguna" wire:model="photoUpload" accept="image/jpeg,image/png,image/webp"
+                                   class="form-control-file @error('photoUpload') is-invalid @enderror">
+                            <small class="text-muted d-block">JPG, PNG, atau WEBP · maksimal 1 MB. Kosong = memakai inisial nama.</small>
+                            @error('photoUpload') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
+                            <div wire:loading wire:target="photoUpload" class="small text-muted">Mengunggah…</div>
+                            @if ($currentPhotoUrl)
+                                <div class="custom-control custom-checkbox mt-1">
+                                    <input type="checkbox" wire:model.live="removePhoto" class="custom-control-input" id="hapusFoto">
+                                    <label class="custom-control-label small" for="hapusFoto">Hapus foto, kembali ke inisial</label>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label>Nama *</label>
                         <input type="text" wire:model="name" class="form-control @error('name') is-invalid @enderror">

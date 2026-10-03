@@ -3,49 +3,76 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\AuthorizesWrites;
-use Livewire\Component;
-use Livewire\WithPagination;
+use App\Models\Entity;
 use App\Models\User;
+use App\Models\WorkUnit;
+use App\Support\EntityContext;
 use App\Support\PasswordPolicy;
-use Spatie\Permission\Models\Role;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Livewire\Component;
+use Livewire\WithFileUploads;
+use Livewire\WithPagination;
+use Spatie\Permission\Models\Role;
 
 class ManageUsers extends Component
 {
     use AuthorizesWrites;
+    use WithFileUploads;
     use WithPagination;
 
     public $search = '';
+
     public $filterRole = '';
+
     public $filterStatus = ''; // active, inactive, all
 
     // Form fields
     public $userId = null;
+
     public $name = '';
+
     public $email = '';
+
     public $password = '';
+
     public $role = 'Viewer';
+
     public $dept_code = '';
 
     /** Kosong = pengguna level holding yang dapat berpindah antarentitas. */
     public $entity_id = '';
+
     public $is_active = true;
+
+    /** Berkas foto yang baru dipilih; null = foto tidak diubah. */
+    public $photoUpload = null;
+
+    /** Foto yang tersimpan saat ini, untuk pratinjau di formulir. */
+    public ?string $currentPhotoUrl = null;
+
+    /** Dicentang = foto dilepas, kembali memakai inisial nama. */
+    public bool $removePhoto = false;
 
     /** Paksa pengguna mengganti kata sandi pada login berikutnya. */
     public $must_change_password = true;
 
     public $showModal = false;
+
     public $isEdit = false;
 
     public $confirmDeleteId = null;
+
     public $showDeleteModal = false;
 
     protected function rules()
     {
         $rules = [
             'name' => 'required|string|min:3|max:255',
-            'email' => ['required','email','max:255', Rule::unique('users','email')->ignore($this->userId)],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->userId)],
             'role' => 'required|exists:roles,name',
             'entity_id' => ['nullable', 'integer', Rule::in($this->selectableEntities()->pluck('id')->all())],
             // Bila entitas dipilih, departemen harus salah satu unit kerjanya.
@@ -54,6 +81,8 @@ class ManageUsers extends Component
             'dept_code' => $this->entity_id
                 ? ['nullable', 'string', 'max:30', Rule::in($this->unitsForSelectedEntity()->pluck('code')->all())]
                 : ['nullable', 'string', 'max:30'],
+            // Foto: gambar kecil saja — navbar hanya menampilkan lingkaran 32 px.
+            'photoUpload' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1024'],
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
         ];
@@ -67,6 +96,27 @@ class ManageUsers extends Component
         ];
 
         return $rules;
+    }
+
+    /**
+     * Periksa fotonya begitu dipilih, bukan menunggu tombol Simpan — pengguna
+     * langsung tahu berkasnya ditolak dan mengapa.
+     */
+    public function updatedPhotoUpload(): void
+    {
+        $this->validateOnly('photoUpload');
+    }
+
+    /** Nama kolom yang enak dibaca pada pesan validasi. */
+    protected function validationAttributes(): array
+    {
+        return [
+            'photoUpload' => 'foto',
+            'dept_code' => 'departemen',
+            'entity_id' => 'entitas',
+            'is_active' => 'status aktif',
+            'must_change_password' => 'wajib ganti kata sandi',
+        ];
     }
 
     public function openCreate()
@@ -88,6 +138,9 @@ class ManageUsers extends Component
         $this->entity_id = $user->entity_id ?? $this->installationDefault();
         $this->is_active = (bool) $user->is_active;
         $this->must_change_password = (bool) $user->must_change_password;
+        $this->currentPhotoUrl = $user->photoUrl();
+        $this->photoUpload = null;
+        $this->removePhoto = false;
         $this->isEdit = true;
         $this->showModal = true;
     }
@@ -109,6 +162,9 @@ class ManageUsers extends Component
         $this->entity_id = $this->installationDefault();
         $this->is_active = true;
         $this->must_change_password = true;
+        $this->photoUpload = null;
+        $this->currentPhotoUrl = null;
+        $this->removePhoto = false;
         $this->resetErrorBag();
     }
 
@@ -130,14 +186,16 @@ class ManageUsers extends Component
             if ($user && $user->hasRole('Super Admin')) {
                 if ($this->isLastSuperAdmin($user->id)) {
                     session()->flash('error', 'Super Admin terakhir tidak dapat diubah role-nya atau dinonaktifkan!');
+
                     return;
                 }
             }
         }
-        if ($this->isEdit && !$this->is_active) {
+        if ($this->isEdit && ! $this->is_active) {
             $user = $this->manageableUsers()->find($this->userId);
             if ($user && $user->hasRole('Super Admin') && $this->isLastSuperAdmin($user->id)) {
                 session()->flash('error', 'Super Admin terakhir tidak dapat dinonaktifkan!');
+
                 return;
             }
         }
@@ -152,13 +210,13 @@ class ManageUsers extends Component
                 'is_active' => $this->is_active,
                 'must_change_password' => $this->must_change_password,
             ];
-            if (!empty($this->password)) {
+            if (! empty($this->password)) {
                 $data['password'] = Hash::make($this->password);
                 $data['password_changed_at'] = now();
             }
             $user->update($data);
             $user->syncRoles([$this->role]);
-            session()->flash('message', 'Pengguna ' . $user->name . ' berhasil diperbarui!');
+            session()->flash('message', 'Pengguna '.$user->name.' berhasil diperbarui!');
         } else {
             $user = User::create([
                 'name' => $this->name,
@@ -171,10 +229,40 @@ class ManageUsers extends Component
                 'password_changed_at' => now(),
             ]);
             $user->assignRole($this->role);
-            session()->flash('message', 'Pengguna ' . $user->name . ' berhasil ditambahkan!');
+            session()->flash('message', 'Pengguna '.$user->name.' berhasil ditambahkan!');
         }
 
+        $this->applyPhoto($user);
+
         $this->closeModal();
+    }
+
+    /**
+     * Simpan / lepas foto pengguna.
+     *
+     * Berkas lama selalu dihapus saat diganti maupun dilepas, supaya disk tidak
+     * menumpuk foto yang tidak lagi dirujuk siapa pun.
+     */
+    private function applyPhoto(User $user): void
+    {
+        if (! $this->photoUpload && ! $this->removePhoto) {
+            return;
+        }
+
+        $lama = $user->photo_path;
+
+        $user->update([
+            'photo_path' => $this->photoUpload
+                ? $this->photoUpload->store('avatar', 'public')
+                : null,
+        ]);
+
+        if ($lama && $lama !== $user->photo_path) {
+            Storage::disk('public')->delete($lama);
+        }
+
+        $this->photoUpload = null;
+        $this->removePhoto = false;
     }
 
     public function confirmDelete($id)
@@ -195,18 +283,28 @@ class ManageUsers extends Component
             return;
         }
 
-        if (!$this->confirmDeleteId) return;
+        if (! $this->confirmDeleteId) {
+            return;
+        }
         $user = $this->manageableUsers()->findOrFail($this->confirmDeleteId);
 
         if ($user->hasRole('Super Admin') && $this->isLastSuperAdmin($user->id)) {
             session()->flash('error', 'Super Admin terakhir tidak dapat dihapus!');
             $this->cancelDelete();
+
             return;
         }
 
         $name = $user->name;
+        $foto = $user->photo_path;
         $user->delete();
-        session()->flash('message', 'Pengguna ' . $name . ' berhasil dihapus!');
+
+        // Fotonya ikut dihapus; tanpa ini berkasnya tertinggal selamanya di disk.
+        if ($foto) {
+            Storage::disk('public')->delete($foto);
+        }
+
+        session()->flash('message', 'Pengguna '.$name.' berhasil dihapus!');
         $this->cancelDelete();
     }
 
@@ -217,33 +315,47 @@ class ManageUsers extends Component
         }
 
         $user = $this->manageableUsers()->findOrFail($id);
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             $user->update(['is_active' => true]);
-            session()->flash('message', 'Pengguna ' . $user->name . ' diaktifkan kembali!');
+            session()->flash('message', 'Pengguna '.$user->name.' diaktifkan kembali!');
+
             return;
         }
         // Deactivating
         if ($user->hasRole('Super Admin') && $this->isLastSuperAdmin($user->id)) {
             session()->flash('error', 'Super Admin terakhir tidak dapat dinonaktifkan!');
+
             return;
         }
         $user->update(['is_active' => false]);
-        session()->flash('message', 'Pengguna ' . $user->name . ' dinonaktifkan!');
+        session()->flash('message', 'Pengguna '.$user->name.' dinonaktifkan!');
     }
 
     private function isLastSuperAdmin($excludeUserId = null): bool
     {
-        $query = User::whereHas('roles', fn($q) => $q->where('name', 'Super Admin'))
+        $query = User::whereHas('roles', fn ($q) => $q->where('name', 'Super Admin'))
             ->where('is_active', true);
         if ($excludeUserId) {
             $query->where('id', '!=', $excludeUserId);
         }
+
         return $query->count() === 0;
     }
 
-    public function updatingSearch() { $this->resetPage(); }
-    public function updatingFilterRole() { $this->resetPage(); }
-    public function updatingFilterStatus() { $this->resetPage(); }
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterRole()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterStatus()
+    {
+        $this->resetPage();
+    }
 
     /**
      * Entitas yang boleh dipilih di formulir: semua entitas aktif di instalasi
@@ -254,7 +366,7 @@ class ManageUsers extends Component
      * semua; admin yang terikat satu entitas hanya pengguna entitasnya sendiri —
      * tidak dapat mengubah pengguna entitas lain atau menjadikan siapa pun level holding.
      */
-    private function manageableUsers(): \Illuminate\Database\Eloquent\Builder
+    private function manageableUsers(): Builder
     {
         $query = User::query();
 
@@ -265,19 +377,19 @@ class ManageUsers extends Component
         return $query;
     }
 
-    private function selectableEntities(): \Illuminate\Support\Collection
+    private function selectableEntities(): Collection
     {
         if ($entitasSaya = auth()->user()?->entity_id) {
-            return \App\Models\Entity::whereKey($entitasSaya)->get();
+            return Entity::whereKey($entitasSaya)->get();
         }
 
-        $konteks = app(\App\Support\EntityContext::class);
+        $konteks = app(EntityContext::class);
 
         if (! $konteks->isHoldingMode() && ($id = $konteks->installationEntityId())) {
-            return \App\Models\Entity::whereKey($id)->get();
+            return Entity::whereKey($id)->get();
         }
 
-        return \App\Models\Entity::active()->get();
+        return Entity::active()->get();
     }
 
     /** Instalasi satu entitas: pengguna baru langsung tertaut ke entitas itu. */
@@ -287,7 +399,7 @@ class ManageUsers extends Component
             return (string) $entitasSaya;
         }
 
-        $konteks = app(\App\Support\EntityContext::class);
+        $konteks = app(EntityContext::class);
 
         return $konteks->isHoldingMode() ? '' : (string) ($konteks->installationEntityId() ?? '');
     }
@@ -302,13 +414,13 @@ class ManageUsers extends Component
      * Unit kerja aktif milik entitas yang dipilih pada formulir — bukan entitas
      * yang sedang dibuka Super Admin, karena ia dapat mengatur pengguna entitas lain.
      */
-    private function unitsForSelectedEntity(): \Illuminate\Support\Collection
+    private function unitsForSelectedEntity(): Collection
     {
         if (! $this->entity_id) {
             return collect();
         }
 
-        return \App\Models\WorkUnit::withoutGlobalScopes()
+        return WorkUnit::withoutGlobalScopes()
             ->where('entity_id', $this->entity_id)
             ->where('is_active', true)
             ->orderBy('sort')
@@ -320,13 +432,13 @@ class ManageUsers extends Component
         $query = $this->manageableUsers()->with(['roles', 'entity']);
 
         if ($this->search) {
-            $query->where(function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('email', 'like', '%' . $this->search . '%');
+            $query->where(function ($q) {
+                $q->where('name', 'like', '%'.$this->search.'%')
+                    ->orWhere('email', 'like', '%'.$this->search.'%');
             });
         }
         if ($this->filterRole) {
-            $query->whereHas('roles', fn($q) => $q->where('name', $this->filterRole));
+            $query->whereHas('roles', fn ($q) => $q->where('name', $this->filterRole));
         }
         if ($this->filterStatus === 'active') {
             $query->where('is_active', true);
@@ -344,7 +456,7 @@ class ManageUsers extends Component
             'roles' => $roles,
             'entities' => $this->selectableEntities(),
             // Admin yang terikat satu entitas tidak dapat membuat pengguna level holding.
-            'holdingMode' => app(\App\Support\EntityContext::class)->isHoldingMode() && ! auth()->user()?->entity_id,
+            'holdingMode' => app(EntityContext::class)->isHoldingMode() && ! auth()->user()?->entity_id,
             'units' => $this->unitsForSelectedEntity(),
         ])->layout('layouts.app', ['title' => 'Manage User']);
     }

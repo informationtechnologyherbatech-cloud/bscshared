@@ -161,9 +161,16 @@
             <li class="nav-item">
                 @php($peran = auth()->user()->getRoleNames()->first() ?? 'User')
                 @php($dept = auth()->user()->dept_code)
-                @php($inisial = collect(preg_split('/\s+/', trim(auth()->user()->name)))->filter()->take(2)->map(fn ($k) => mb_strtoupper(mb_substr($k, 0, 1)))->implode(''))
+                @php($fotoPengguna = auth()->user()->photoUrl())
                 <a id="navLogoutTrigger" class="nav-link nb-chip nb-user" href="javascript:void(0)" onclick="event.preventDefault(); if(window.jQuery){ jQuery('#logoutModal').modal('show'); } return false;" title="Klik untuk logout — {{ auth()->user()->name }} ({{ $peran }}{{ $dept ? ' · '.$dept : '' }})">
-                    <span class="nb-avatar">{{ $inisial ?: 'U' }}</span>
+                    {{-- Foto pengguna bila ada; selainnya inisial nama seperti sebelumnya. --}}
+                    <span class="nb-avatar">
+                        @if ($fotoPengguna)
+                            <img src="{{ $fotoPengguna }}" alt="Foto {{ auth()->user()->name }}">
+                        @else
+                            {{ auth()->user()->initials() }}
+                        @endif
+                    </span>
                     {{-- Peran &amp; departemen: satu-satunya info yang dulu hanya ada di panel sidebar. --}}
                     <span class="nb-chip-text d-none d-md-flex">
                         <strong>{{ Str::limit(auth()->user()->name, 18) }}</strong>
