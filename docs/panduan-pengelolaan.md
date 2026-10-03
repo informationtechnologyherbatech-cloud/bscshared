@@ -76,7 +76,7 @@ Semua data bulanan menempel pada periode. Kelolanya di **Piramida BSC**:
 
 | Tombol | Gunanya | Siapa |
 |---|---|---|
-| **Periode Baru** | Membuat bulan berikutnya. Sasaran mutu periode sebelumnya ikut tersalin dengan realisasi 0, jadi tidak perlu mengetik ulang. | Admin FAT · Super Admin |
+| **Periode Baru** | Membuat bulan berikutnya. Bulannya **dipilih**, bukan diketik — tombol *Bulan berikutnya* mengisinya sekali klik. Sasaran mutu periode sebelumnya ikut tersalin dengan realisasi 0, dan program kerja yang belum selesai ikut terbawa bertanda *Lanjutan*. | Admin FAT · Super Admin |
 | **Kunci Periode** | Menutup periode (status CLOSED) setelah angkanya final. | Admin FAT · Super Admin |
 
 **Apa yang berubah setelah periode ditutup:**

@@ -382,6 +382,82 @@ class BscDashboardScoringTest extends TestCase
         $uji->call('selectLevel', 4)->assertSee('Masih berjalan')->assertSee('Lanjutan');
     }
 
+    /**
+     * Periode dipilih, bukan diketik.
+     *
+     * Diminta QC: mengetik kode periode dengan tangan memancing salah ketik
+     * (2026-13, 2026-8). Modalnya kini memakai pemilih bulan, menawarkan bulan
+     * berikutnya sekali klik, dan menolak periode yang sudah ada tepat di
+     * kotaknya.
+     */
+    public function test_the_new_period_modal_offers_the_next_month_in_one_click(): void
+    {
+        $this->period('2027-03');
+        $this->actingAs($this->userWithOverride());
+
+        Livewire::test(BscDashboard::class)
+            ->call('useNextPeriod')
+            ->assertSet('newPeriodInput', '2027-04');
+
+        // Tanpa periode sama sekali, usulannya bulan berjalan.
+        Period::query()->delete();
+        Livewire::test(BscDashboard::class)
+            ->call('useNextPeriod')
+            ->assertSet('newPeriodInput', now()->format('Y-m'));
+    }
+
+    public function test_the_month_picker_replaces_free_text_and_is_bounded(): void
+    {
+        $this->period('2026-08');
+        $this->actingAs($this->userWithOverride());
+
+        $html = Livewire::test(BscDashboard::class)
+            ->set('showCreatePeriodModal', true)
+            ->html();
+
+        // Kotak bulan, bukan teks bebas.
+        $this->assertStringContainsString('type="month"', $html);
+        $this->assertStringContainsString('id="periodeBaru"', $html);
+
+        // Dibatasi rentang tahun yang masuk akal.
+        $batas = Livewire::test(BscDashboard::class)->instance()->periodBounds();
+        $this->assertSame(now()->subYear()->startOfYear()->format('Y-m'), $batas['min']);
+        $this->assertSame(now()->addYears(3)->endOfYear()->format('Y-m'), $batas['max']);
+    }
+
+    public function test_an_impossible_month_is_refused(): void
+    {
+        $this->period('2026-08');
+        $this->actingAs($this->userWithOverride());
+
+        foreach (['2026-13', '2026-8', '2026-00', 'bukan-bulan'] as $salah) {
+            Livewire::test(BscDashboard::class)
+                ->set('newPeriodInput', $salah)
+                ->call('createNewPeriod')
+                ->assertHasErrors('newPeriodInput');
+
+            $this->assertFalse(Period::where('period', $salah)->exists(), $salah.' seharusnya ditolak');
+        }
+    }
+
+    public function test_a_duplicate_period_is_flagged_on_the_field_itself(): void
+    {
+        $this->period('2026-08');
+        $this->actingAs($this->userWithOverride());
+
+        $uji = Livewire::test(BscDashboard::class)
+            ->set('showCreatePeriodModal', true)
+            ->set('newPeriodInput', '2026-08');
+
+        // Ketahuan selagi diketik, sebelum tombolnya ditekan …
+        $this->assertTrue($uji->instance()->periodAlreadyExists());
+        $uji->assertSee('sudah pernah dibuat');
+
+        // … dan tetap ditolak di server bila tombolnya tetap ditekan.
+        $uji->call('createNewPeriod')->assertHasErrors('newPeriodInput');
+        $this->assertSame(1, Period::where('period', '2026-08')->count());
+    }
+
     public function test_a_plan_carried_across_several_periods_still_points_at_its_origin(): void
     {
         $this->period('2026-08');

@@ -1105,17 +1105,38 @@
                         <div class="alert alert-info py-2" style="font-size: 12px;">
                             <i class="fas fa-info-circle mr-1"></i> <strong>Aturan PRD G-05:</strong> Periode baru akan dibuat dengan nilai realisasi diawali <code>0.00</code> (bukan menyalin nilai target) sampai data aktual disinkronkan.
                         </div>
-                        <div class="form-group">
-                            <label class="font-weight-bold">Kode Periode Baru (YYYY-MM):</label>
-                            <input type="text" wire:model="newPeriodInput" class="form-control @error('newPeriodInput') is-invalid @enderror" placeholder="Misal: 2026-09">
+                        <div class="form-group mb-2">
+                            <label for="periodeBaru" class="font-weight-bold">Bulan periode baru</label>
+                            {{--
+                                Pemilih bulan bawaan peramban: bulannya dipilih, bukan diketik,
+                                sehingga "2026-13" atau "2026-8" tidak mungkin terjadi. Nilainya
+                                tetap YYYY-MM, sama dengan yang disimpan.
+                            --}}
+                            <input type="month" id="periodeBaru" wire:model.live="newPeriodInput"
+                                   min="{{ $periodBounds['min'] }}" max="{{ $periodBounds['max'] }}"
+                                   class="form-control @error('newPeriodInput') is-invalid @enderror {{ $periodExists ? 'is-invalid' : '' }}">
                             @error('newPeriodInput')
-                                <span class="invalid-feedback">{{ $message }}</span>
+                                <span class="invalid-feedback d-block">{{ $message }}</span>
                             @enderror
+                            @if ($periodExists && ! $errors->has('newPeriodInput'))
+                                <span class="invalid-feedback d-block">
+                                    Periode {{ period_label($newPeriodInput) }} sudah pernah dibuat. Pilih bulan lain.
+                                </span>
+                            @endif
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center">
+                            <button type="button" wire:click="useNextPeriod" class="btn btn-sm btn-ghost mr-2">
+                                <i class="fas fa-forward-step mr-1"></i> Bulan berikutnya ({{ period_label($nextPeriod) }})
+                            </button>
+                            <small class="text-muted">
+                                Bulan sesudah periode terakhir yang ada — sekali klik, tanpa mengetik.
+                            </small>
                         </div>
                     </div>
                     <div class="modal-ft">
                         <button type="button" class="btn btn-ghost" wire:click="$set('showCreatePeriodModal', false)">Batal</button>
-                        <button type="button" class="btn btn-teal" wire:click="createNewPeriod">
+                        <button type="button" class="btn btn-teal" wire:click="createNewPeriod" @disabled($periodExists)>
                             <i class="fas fa-save mr-1"></i> Buat Periode
                         </button>
                     </div>

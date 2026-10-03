@@ -86,6 +86,44 @@ class BscDashboard extends Component
         }
     }
 
+    /**
+     * Bulan sesudah periode terakhir — usulan sekali klik.
+     *
+     * Mengetik "2027-04" dengan tangan mengundang salah ketik (2026-13, 2026-8);
+     * yang hampir selalu dibutuhkan adalah bulan berikutnya.
+     */
+    public function nextPeriodSuggestion(): string
+    {
+        $terakhir = Period::orderByDesc('period')->value('period');
+
+        return $terakhir
+            ? Carbon::createFromFormat('Y-m', $terakhir)->addMonth()->format('Y-m')
+            : now()->format('Y-m');
+    }
+
+    /** Isi kotak periode dengan bulan berikutnya. */
+    public function useNextPeriod(): void
+    {
+        $this->newPeriodInput = $this->nextPeriodSuggestion();
+        $this->resetErrorBag('newPeriodInput');
+    }
+
+    /** Batas pemilih bulan: setahun ke belakang sampai tiga tahun ke depan. */
+    public function periodBounds(): array
+    {
+        return [
+            'min' => now()->subYear()->startOfYear()->format('Y-m'),
+            'max' => now()->addYears(3)->endOfYear()->format('Y-m'),
+        ];
+    }
+
+    /** Periode yang diketik sudah pernah dibuat — diperiksa selagi diketik. */
+    public function periodAlreadyExists(): bool
+    {
+        return preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $this->newPeriodInput) === 1
+            && Period::where('period', $this->newPeriodInput)->exists();
+    }
+
     public function createNewPeriod()
     {
         if ($this->lacksPermission('can_override')) {
@@ -93,17 +131,19 @@ class BscDashboard extends Component
         }
 
         $this->validate([
-            'newPeriodInput' => 'required|regex:/^\d{4}-\d{2}$/',
+            // Bulan harus 01–12: "2026-13" dan "2026-8" dulu lolos regex lama.
+            'newPeriodInput' => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
         ], [
-            'newPeriodInput.required' => 'Format periode harus YYYY-MM.',
-            'newPeriodInput.regex' => 'Format periode harus YYYY-MM (misal: 2026-09).',
+            'newPeriodInput.required' => 'Pilih bulan periodenya lebih dulu.',
+            'newPeriodInput.regex' => 'Periode harus berupa bulan yang sah, format YYYY-MM (misal 2026-09).',
         ]);
 
         $periodStr = $this->newPeriodInput;
 
-        $existing = Period::where('period', $periodStr)->first();
-        if ($existing) {
-            session()->flash('error', 'Periode '.$periodStr.' sudah ada!');
+        if (Period::where('period', $periodStr)->exists()) {
+            // Ditempelkan pada kotaknya, bukan pesan melayang di luar modal yang
+            // tertutup lapisan gelap dan tidak terbaca.
+            $this->addError('newPeriodInput', 'Periode '.period_label($periodStr).' sudah pernah dibuat. Pilih bulan lain.');
 
             return;
         }
@@ -596,6 +636,11 @@ class BscDashboard extends Component
             'periodObj' => $periodObj,
             'isClosed' => $isClosed,
             'isStale' => $isStale,
+            // Bahan pemilih periode di modal: usulan sekali klik, batas tahun,
+            // dan peringatan duplikat yang muncul selagi diketik.
+            'nextPeriod' => $this->nextPeriodSuggestion(),
+            'periodBounds' => $this->periodBounds(),
+            'periodExists' => $this->periodAlreadyExists(),
             'hoursSinceSync' => $hoursSinceSync,
             'lastSyncTime' => $lastSyncTime,
             'apexScore' => $apexScore,
