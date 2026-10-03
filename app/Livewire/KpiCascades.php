@@ -278,7 +278,8 @@ class KpiCascades extends Component
             'form.post_code' => ['nullable', Rule::in(array_keys(AccountPosts::all()))],
             'form.direction' => ['nullable', Rule::in(['Menaikkan', 'Menurunkan'])],
             'form.individual_type' => ['nullable', Rule::in(['Rutin', 'Milestone'])],
-            'form.validation_status' => ['required', Rule::in(KpiCascade::STATUSES)],
+            // form.validation_status sengaja tidak divalidasi: nilainya tidak
+            // pernah dipakai (lihat save()), karena status hanya lahir di Uji Indikator.
             'form.finance_notes' => ['nullable', 'string', 'max:2000'],
         ], [], [
             'form.code' => 'kode KPI', 'form.unit_code' => 'unit', 'form.position' => 'jabatan / PIC',
@@ -298,18 +299,27 @@ class KpiCascades extends Component
         $kodeLama = $kpi->exists ? $kpi->code : null;
 
         if (! $bolehIsi) {
-            // Keuangan tanpa hak isi KPI hanya menetapkan status & catatan.
+            // Keuangan tanpa hak isi KPI hanya menulis catatan.
             if (! $kpi->exists) {
                 return;
             }
-            $nilai = array_intersect_key($nilai, array_flip(['validation_status', 'finance_notes']));
+            $nilai = array_intersect_key($nilai, array_flip(['finance_notes']));
         } elseif (! $bolehValidasi) {
-            // Status validasi hanya ditetapkan Keuangan. Mengubah isi KPI yang
-            // sudah divalidasi mengembalikannya ke "Belum diuji".
-            unset($nilai['validation_status'], $nilai['finance_notes']);
-            if ($kpi->exists && $this->contentChanged($kpi, $nilai)) {
-                $nilai['validation_status'] = KpiCascade::BELUM_DIUJI;
-            }
+            unset($nilai['finance_notes']);
+        }
+
+        // Status validasi TIDAK PERNAH datang dari formulir ini — siapa pun
+        // penggunanya. Lolos hanya lahir di menu Uji Indikator, yang menolaknya
+        // bila hasil uji tersimpan tidak menganjurkan Lolos. Tanpa aturan ini,
+        // pembuat KPI (atau Keuangan) dapat meluluskan KPI-nya sendiri dengan
+        // satu klik dan seluruh pengujian menjadi tidak ada gunanya.
+        unset($nilai['validation_status']);
+
+        // Mengubah isi KPI yang sudah divalidasi mengembalikannya ke "Belum
+        // diuji", supaya hasil uji lama tidak menempel pada KPI yang sudah
+        // berbeda.
+        if ($kpi->exists && $this->contentChanged($kpi, $nilai)) {
+            $nilai['validation_status'] = KpiCascade::BELUM_DIUJI;
         }
 
         DB::transaction(function () use ($kpi, $nilai, $kodeLama) {

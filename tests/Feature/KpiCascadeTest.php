@@ -242,21 +242,38 @@ class KpiCascadeTest extends TestCase
         $this->assertSame(7.0, $kpi->fresh()->target);
     }
 
-    public function test_only_finance_sets_the_validation_status(): void
+    /**
+     * Status validasi tidak boleh lahir dari formulir KPI — siapa pun
+     * penggunanya, termasuk Keuangan.
+     *
+     * Dilaporkan penguji: pada modal pembuatan KPI ada pilihan status
+     * "Belum diuji / Lolos / Revisi", sehingga KPI dapat diluluskan sendiri
+     * tanpa pernah diuji — "jika di KPI bisa di-Lolos, kenapa perlu diuji?".
+     * Lolos hanya lahir di menu Uji Indikator, yang menolaknya bila hasil uji
+     * tersimpan tidak menganjurkannya.
+     */
+    public function test_the_kpi_form_can_never_approve_a_kpi_by_itself(): void
     {
-        $this->actingAsRole('Admin FAT');
+        $this->actingAsRole('Admin FAT'); // peran dengan hak validasi sekalipun
         $this->seedExamples(KpiCascade::BELUM_DIUJI);
         $kpi = KpiCascade::where('code', 'SCM-H02')->first();
 
-        Livewire::test(KpiCascades::class, ['year' => '2026'])
+        $uji = Livewire::test(KpiCascades::class, ['year' => '2026'])
             ->call('openEdit', $kpi->id)
             ->set('form.validation_status', 'Lolos')
             ->set('form.finance_notes', 'Uji A 8 Ya')
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertSame(KpiCascade::LOLOS, $kpi->fresh()->validation_status);
+        // Statusnya tidak bergerak; catatan keuangan tetap boleh ditulis.
+        $this->assertSame(KpiCascade::BELUM_DIUJI, $kpi->fresh()->validation_status);
         $this->assertSame('Uji A 8 Ya', $kpi->fresh()->finance_notes);
+
+        // Formulirnya pun tidak menawarkan pilihan status, dan menerangkan ke mana harus pergi.
+        $uji->call('openEdit', $kpi->id)
+            ->assertSee('Status validasi tidak diisi di sini')
+            ->assertSee('Uji Indikator')
+            ->assertDontSeeHtml('wire:model="form.validation_status"');
     }
 
     public function test_renaming_a_code_keeps_children_attached(): void

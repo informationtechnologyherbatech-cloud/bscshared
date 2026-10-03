@@ -458,25 +458,33 @@
                         </fieldset>
 
                         <h6 class="text-muted text-uppercase small font-weight-bold mt-2">Validasi Keuangan</h6>
-                        <fieldset @disabled(! $canValidate)>
-                            <div class="form-row">
-                                <div class="form-group col-md-3">
-                                    <label class="small">Status validasi</label>
-                                    <select wire:model="form.validation_status" class="form-control form-control-sm">
-                                        @foreach (kpi_statuses() as $s)
-                                            <option value="{{ $s }}">{{ $s }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="form-group col-md-9">
-                                    <label class="small">Catatan keuangan</label>
-                                    <input type="text" wire:model="form.finance_notes" class="form-control form-control-sm">
+                        <div class="form-row">
+                            <div class="form-group col-md-3">
+                                <label class="small">Status validasi</label>
+                                {{--
+                                    Sengaja TIDAK dapat dipilih di sini. Status Lolos hanya lahir
+                                    dari menu Uji Indikator, yang menolaknya bila hasil uji tidak
+                                    menganjurkannya. Bila status dapat dipilih di formulir ini,
+                                    KPI dapat meluluskan dirinya sendiri tanpa pernah diuji.
+                                --}}
+                                <div>
+                                    <span class="badge badge-{{ $statusBadge[$form['validation_status']] ?? 'secondary' }} p-2">
+                                        {{ $form['validation_status'] ?: 'Belum diuji' }}
+                                    </span>
                                 </div>
                             </div>
-                        </fieldset>
-                        @unless ($canValidate)
-                            <small class="text-muted">Status validasi ditetapkan Keuangan. Mengubah isi KPI yang sudah Lolos mengembalikannya ke "Belum diuji".</small>
-                        @endunless
+                            <div class="form-group col-md-9">
+                                <label class="small">Catatan keuangan</label>
+                                <input type="text" wire:model="form.finance_notes" class="form-control form-control-sm" @disabled(! $canValidate)>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block">
+                            <i class="fas fa-lock mr-1"></i>
+                            Status validasi tidak diisi di sini — ia ditetapkan setelah KPI diuji di menu
+                            <a href="{{ route('indicator-tests', ['year' => $year]) }}">Uji Indikator</a>,
+                            dan <strong>Lolos</strong> hanya dapat diberikan bila hasil ujinya memang menganjurkan demikian.
+                            Mengubah isi KPI yang sudah Lolos mengembalikannya ke "Belum diuji" supaya diuji ulang.
+                        </small>
                     </div>
                     <div class="modal-ft">
                         <button wire:click="closeModal" class="btn btn-ghost">Batal</button>

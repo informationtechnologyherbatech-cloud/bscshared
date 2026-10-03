@@ -155,6 +155,12 @@ boleh diklaim tiap unit.
    transmisi per pos akun.
 3. **Simpan hasil uji**, lalu **Tetapkan Lolos** atau **Tetapkan Revisi**.
 
+> **Status validasi tidak diisi di menu Cascade KPI.** Pada formulir KPI, status
+> hanya ditampilkan sebagai label — tidak dapat dipilih siapa pun, termasuk
+> Keuangan. Kalau status dapat dipilih di sana, sebuah KPI bisa meluluskan
+> dirinya sendiri dan pengujian ini menjadi tidak ada gunanya. Mengubah isi KPI
+> yang sudah Lolos otomatis mengembalikannya ke "Belum diuji" supaya diuji ulang.
+
 > **Tetapkan Lolos terkunci?** Tombol itu hanya terbuka bila hasil uji yang
 > **sudah tersimpan** menganjurkan Lolos — Guardrail cukup lolos Uji A, Driver
 > harus lolos Uji A *dan* Uji B. Keterangan di bawah tombol menyebutkan apa yang
