@@ -38,6 +38,13 @@
                 </div>
             @endif
 
+            @if ($periodClosed)
+                <div class="alert alert-secondary">
+                    <i class="fas fa-lock mr-1"></i>
+                    Periode {{ period_label($targetPeriod) }} sudah <strong>DITUTUP</strong> — program kerja periode ini hanya dapat dilihat.
+                </div>
+            @endif
+
             <div class="row">
                 <!-- Form Tambah Program Kerja -->
                 <div class="col-md-4">
@@ -47,14 +54,23 @@
                                 <i class="fas fa-plus-circle mr-1"></i> Tambah Inisiatif Perbaikan
                             </h3>
                         </div>
-                        @unless ($canWrite)
+                        @unless ($canWrite && ! $periodClosed)
                             <div class="card-body">
-                                <p class="text-muted mb-0">
-                                    <i class="fas fa-eye mr-1"></i>
-                                    Anda membuka halaman ini sebagai pembaca. Menambah program kerja dan mengubah
-                                    progresnya butuh izin <strong>manage actionplans</strong> — ada pada peran
-                                    Admin HRIS, Admin FAT, Kepala Departemen, Operator, dan Super Admin.
-                                </p>
+                                @if ($periodClosed)
+                                    <p class="text-muted mb-0">
+                                        <i class="fas fa-lock mr-1"></i>
+                                        Periode {{ period_label($targetPeriod) }} sudah ditutup, jadi program kerjanya
+                                        hanya dapat dilihat. Pilih periode lain di atas, atau buka kembali periodenya
+                                        lewat Piramida BSC bila memang perlu diubah.
+                                    </p>
+                                @else
+                                    <p class="text-muted mb-0">
+                                        <i class="fas fa-eye mr-1"></i>
+                                        Anda membuka halaman ini sebagai pembaca. Menambah program kerja dan mengubah
+                                        progresnya butuh izin <strong>manage actionplans</strong> — ada pada peran
+                                        Admin HRIS, Admin FAT, Kepala Departemen, Operator, dan Super Admin.
+                                    </p>
+                                @endif
                             </div>
                         @else
                         <div class="card-body">
@@ -82,7 +98,17 @@
                                             <option value="{{ $offObj->id }}">[{{ $offObj->dept_code }}] {{ $offObj->kpi_code }} - {{ Str::limit($offObj->kpi_name, 30) }}</option>
                                         @endforeach
                                     </select>
+                                    @if ($offTargetObjectives->isEmpty())
+                                        <small class="text-muted">Belum ada sasaran mutu di periode {{ period_label($targetPeriod) }}.</small>
+                                    @endif
                                 </div>
+
+                                {{-- Periode tujuan disebut terang-terangan: daftar di halaman ini
+                                     tersaring per periode, jadi pembuatnya harus tahu isiannya mendarat di mana. --}}
+                                <p class="small text-muted">
+                                    <i class="fas fa-calendar-day mr-1"></i>
+                                    Disimpan pada periode <strong>{{ period_label($targetPeriod) }}</strong>.
+                                </p>
                                 <button type="submit" class="btn btn-danger btn-sm btn-block">
                                     <i class="fas fa-save mr-1"></i> Simpan Program Kerja
                                 </button>
@@ -155,7 +181,7 @@
                                                     @endif
                                                 </td>
                                                 <td class="text-center">
-                                                    @if ($canWrite)
+                                                    @if ($canWrite && ! $periodClosed)
                                                         <button wire:click="editProgressModal({{ $plan->id }})" class="btn btn-xs btn-outline-danger">
                                                             <i class="fas fa-sliders-h mr-1"></i> Update Progres
                                                         </button>
@@ -191,7 +217,7 @@
     </section>
 
     {{-- Penyunting progres: modal, supaya tabelnya tidak melar dan angkanya terbaca jelas --}}
-    @if ($canWrite && $editingPlan)
+    @if ($canWrite && ! $periodClosed && $editingPlan)
         @php($statusBaru = $editProgress >= 100 ? 'Selesai' : ($editProgress > 0 ? 'On Progress' : 'Belum mulai'))
         <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-dialog-centered">

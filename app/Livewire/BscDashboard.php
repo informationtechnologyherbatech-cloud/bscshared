@@ -139,6 +139,16 @@ class BscDashboard extends Component
         ]);
 
         $periodStr = $this->newPeriodInput;
+        $batas = $this->periodBounds();
+
+        // Batas yang sama dengan pemilih bulan ditegakkan juga di sini: pemilih
+        // hanya menjaga layar, sedangkan periode sejauh 2099-12 akan mengotori
+        // setiap daftar periode dan membelokkan pemilihan periode terbaru.
+        if ($periodStr < $batas['min'] || $periodStr > $batas['max']) {
+            $this->addError('newPeriodInput', 'Periode harus antara '.period_label($batas['min']).' dan '.period_label($batas['max']).'.');
+
+            return;
+        }
 
         if (Period::where('period', $periodStr)->exists()) {
             // Ditempelkan pada kotaknya, bukan pesan melayang di luar modal yang

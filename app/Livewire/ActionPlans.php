@@ -59,6 +59,12 @@ class ActionPlans extends Component
 
             return;
         }
+        if ($this->periodIsClosed()) {
+            session()->flash('error', 'Periode '.$this->targetPeriod().' telah DITUTUP. Program kerja baru tidak dapat ditambahkan di periode itu.');
+
+            return;
+        }
+
         $this->validate([
             'title' => 'required|min:5|max:255',
             // Harus salah satu unit kerja aktif entitas ini — sebelumnya teks bebas,
@@ -73,9 +79,12 @@ class ActionPlans extends Component
 
         ActionPlan::create([
             'department_objective_id' => $this->objectiveId ?: null,
-            // Mengikuti sasaran mutu yang dimitigasi; tanpa kaitan, dipakai periode
-            // aktif — supaya program kerja selalu punya tempat di Tingkat 4.
-            'period' => $sasaran?->period ?: Period::currentPeriod(),
+            // Mengikuti sasaran mutu yang dimitigasi; tanpa kaitan, dipakai
+            // periode YANG SEDANG DILIHAT di halaman ini — bukan periode aktif
+            // di bilah atas. Keduanya bisa berbeda, dan memakai periode bilah
+            // atas membuat program kerja yang baru dibuat langsung hilang dari
+            // daftar di depan mata pembuatnya.
+            'period' => $sasaran?->period ?: $this->targetPeriod(),
             'title' => $this->title,
             'owner_dept' => strtoupper($this->ownerDept),
             'progress_pct' => 0,
@@ -84,6 +93,30 @@ class ActionPlans extends Component
 
         $this->reset(['title', 'ownerDept', 'objectiveId']);
         session()->flash('message', 'Program kerja baru berhasil ditambahkan!');
+    }
+
+    /**
+     * Periode tempat program kerja baru akan disimpan: periode yang sedang
+     * dilihat. Saat daftar menampilkan "Semua periode" tidak ada satu periode
+     * yang sedang dilihat, jadi dipakai periode aktif.
+     */
+    public function targetPeriod(): string
+    {
+        return $this->selectedPeriod === 'semua' || $this->selectedPeriod === ''
+            ? Period::currentPeriod()
+            : $this->selectedPeriod;
+    }
+
+    /**
+     * Periode yang sudah ditutup tidak boleh diubah — aturan yang sama dengan
+     * Pos Akun dan Target & Realisasi. Tanpa ini, program kerja menjadi satu-
+     * satunya menu bulanan yang masih dapat ditulisi setelah buku ditutup.
+     */
+    public function periodIsClosed(?string $period = null): bool
+    {
+        $period ??= $this->targetPeriod();
+
+        return (bool) Period::where('period', $period)->first()?->isClosed();
     }
 
     public function editProgressModal($id)
@@ -111,6 +144,14 @@ class ActionPlans extends Component
         }
 
         $plan = ActionPlan::findOrFail($this->editingPlanId);
+
+        if ($this->periodIsClosed($plan->period)) {
+            $this->editingPlanId = null;
+            session()->flash('error', 'Periode '.$plan->period.' telah DITUTUP. Progres program kerja di periode itu tidak dapat diubah.');
+
+            return;
+        }
+
         $prog = intval($this->editProgress);
         if ($prog > 100) {
             $prog = 100;
@@ -168,7 +209,7 @@ class ActionPlans extends Component
         $actionPlans = $query->latest('id')->paginate(25);
         // Hanya sasaran periode terbaru — sebelumnya semua periode, sehingga kode
         // KPI yang sama muncul berulang kali di pilihan.
-        $offTargetObjectives = DepartmentObjective::where('period', Period::currentPeriod())
+        $offTargetObjectives = DepartmentObjective::where('period', $this->targetPeriod())
             ->where('status', '!=', 'Tercapai')
             ->orderBy('dept_code')->orderBy('kpi_code')
             ->get();
@@ -180,6 +221,10 @@ class ActionPlans extends Component
             // Kontrol tulis disembunyikan bagi yang tidak berhak, bukan dibiarkan
             // tampil lalu ditolak diam-diam saat disimpan.
             'canWrite' => (bool) auth()->user()?->can('manage actionplans'),
+            // Periode tempat program kerja baru akan tersimpan — disebut di formulir
+            // supaya tidak ada yang mengira isiannya masuk ke periode lain.
+            'targetPeriod' => $this->targetPeriod(),
+            'periodClosed' => $this->selectedPeriod !== 'semua' && $this->periodIsClosed(),
             'periods' => Period::orderByDesc('period')->pluck('period'),
             // Program kerja yang sedang disunting progresnya — dipakai modal.
             'editingPlan' => $this->editingPlanId ? ActionPlan::with('objective')->find($this->editingPlanId) : null,

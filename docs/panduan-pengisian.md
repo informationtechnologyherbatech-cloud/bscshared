@@ -191,6 +191,11 @@ polaritas (Naik / Turun / Rentang).
 > lama tetap utuh. Program kerja yang terbawa berbulan-bulan tetap menunjuk
 > periode awal pekerjaannya, bukan periode perantara.
 
+> **Program kerja baru masuk ke periode yang sedang dilihat** di menu Program
+> Kerja (bukan periode di bilah atas, bila keduanya berbeda) — periodenya
+> disebutkan di bawah formulir. Periode yang sudah **ditutup** tidak dapat diisi
+> maupun diubah progresnya, sama seperti Pos Akun dan Target & Realisasi.
+
 > **Program kerja menempel pada satu periode.** Periodenya mengikuti sasaran mutu
 > yang dimitigasi; bila tidak dikaitkan ke sasaran mana pun, dipakai periode yang
 > sedang aktif di bilah atas. Periode itulah yang dibaca Tingkat 4 di Piramida

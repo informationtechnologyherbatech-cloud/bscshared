@@ -440,6 +440,36 @@ class BscDashboardScoringTest extends TestCase
         }
     }
 
+    /**
+     * Batas tahun ditegakkan di server, bukan hanya di pemilih bulan.
+     *
+     * Pemilih hanya menjaga layar. Periode sejauh 2099-12 akan mengotori setiap
+     * daftar periode dan membelokkan pemilihan periode terbaru.
+     */
+    public function test_a_period_far_outside_the_allowed_range_is_refused(): void
+    {
+        $this->period('2026-08');
+        $this->actingAs($this->userWithOverride());
+
+        foreach (['1900-01', '2099-12', '2050-06'] as $jauh) {
+            Livewire::test(BscDashboard::class)
+                ->set('newPeriodInput', $jauh)
+                ->call('createNewPeriod')
+                ->assertHasErrors('newPeriodInput');
+
+            $this->assertFalse(Period::where('period', $jauh)->exists(), $jauh.' seharusnya ditolak');
+        }
+
+        // Yang di dalam rentang tetap diterima.
+        $dalam = now()->addMonths(2)->format('Y-m');
+        Livewire::test(BscDashboard::class)
+            ->set('newPeriodInput', $dalam)
+            ->call('createNewPeriod')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(Period::where('period', $dalam)->exists());
+    }
+
     public function test_a_duplicate_period_is_flagged_on_the_field_itself(): void
     {
         $this->period('2026-08');

@@ -165,6 +165,106 @@ class AuthorizationTest extends TestCase
         $this->assertSame('Completed', $rencana->fresh()->status);
     }
 
+    /**
+     * Program kerja baru mendarat di periode yang sedang DILIHAT.
+     *
+     * Daftar di halaman ini tersaring per periode, sedangkan periode di bilah
+     * atas bisa berbeda. Memakai periode bilah atas membuat program kerja yang
+     * baru dibuat langsung hilang dari daftar di depan mata pembuatnya.
+     */
+    public function test_a_new_action_plan_lands_in_the_period_being_viewed(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $this->actingAs($this->userWithRole('Super Admin'));
+
+        Period::firstOrCreate(['period' => '2026-09'], ['status' => 'OPEN', 'apex_score' => 0]);
+        $unit = WorkUnit::query()->value('code');
+
+        // Bilah atas pada periode terbaru, halaman menampilkan periode lebih lama.
+        $this->assertSame('2026-09', Period::currentPeriod());
+
+        Livewire::test(ActionPlans::class, ['selectedPeriod' => '2026-08'])
+            ->set('title', 'Program periode Agustus')
+            ->set('ownerDept', $unit)
+            ->call('createPlan')
+            ->assertHasNoErrors()
+            // Dan langsung terlihat di daftar yang sedang dibuka.
+            ->assertSee('Program periode Agustus');
+
+        $this->assertSame('2026-08', ActionPlan::where('title', 'Program periode Agustus')->value('period'));
+
+        // "Semua periode" tidak menunjuk satu periode, jadi dipakai periode aktif.
+        Livewire::test(ActionPlans::class, ['selectedPeriod' => 'semua'])
+            ->set('title', 'Program tanpa periode terpilih')
+            ->set('ownerDept', $unit)
+            ->call('createPlan')
+            ->assertHasNoErrors();
+
+        $this->assertSame('2026-09', ActionPlan::where('title', 'Program tanpa periode terpilih')->value('period'));
+    }
+
+    public function test_the_kpi_list_in_the_form_follows_the_period_being_viewed(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $this->actingAs($this->userWithRole('Super Admin'));
+
+        Period::firstOrCreate(['period' => '2026-09'], ['status' => 'OPEN', 'apex_score' => 0]);
+
+        $sasaranAgustus = DepartmentObjective::where('period', '2026-08')->first();
+        $this->assertNotNull($sasaranAgustus, 'data contoh harus punya sasaran Agustus');
+
+        // Menampilkan Agustus → sasaran Agustus yang ditawarkan, bukan September.
+        Livewire::test(ActionPlans::class, ['selectedPeriod' => '2026-08'])
+            ->assertViewHas('offTargetObjectives', fn ($daftar) => $daftar->every(fn ($o) => $o->period === '2026-08'));
+
+        Livewire::test(ActionPlans::class, ['selectedPeriod' => '2026-09'])
+            ->assertViewHas('offTargetObjectives', fn ($daftar) => $daftar->every(fn ($o) => $o->period === '2026-09'));
+    }
+
+    /**
+     * Periode yang sudah ditutup juga mengunci Program Kerja.
+     *
+     * Pos Akun dan Target & Realisasi sudah menolak perubahan pada periode
+     * CLOSED; program kerja dulu satu-satunya menu bulanan yang masih bisa
+     * ditulisi setelah buku ditutup.
+     */
+    public function test_a_closed_period_locks_action_plans_too(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $this->actingAs($this->userWithRole('Super Admin'));
+
+        Period::where('period', '2026-08')->update(['status' => 'CLOSED']);
+        $unit = WorkUnit::query()->value('code');
+
+        $lama = ActionPlan::create([
+            'period' => '2026-08', 'title' => 'Program lama', 'owner_dept' => $unit,
+            'progress_pct' => 30, 'status' => 'On Progress',
+        ]);
+
+        $uji = Livewire::test(ActionPlans::class, ['selectedPeriod' => '2026-08']);
+
+        // Menambah ditolak …
+        $uji->set('title', 'Program selundupan')->set('ownerDept', $unit)->call('createPlan');
+        $this->assertDatabaseMissing('action_plans', ['title' => 'Program selundupan']);
+
+        // … dan mengubah progres juga ditolak.
+        $uji->call('editProgressModal', $lama->id)->set('editProgress', 90)->call('updateProgress');
+        $this->assertSame(30, (int) $lama->fresh()->progress_pct);
+
+        // Layarnya mengatakannya, bukan menolak diam-diam.
+        $uji->assertSee('sudah ditutup')
+            ->assertDontSee('Simpan Program Kerja')
+            ->assertDontSee('Update Progres');
+
+        // Periode lain tetap dapat diisi seperti biasa.
+        Period::firstOrCreate(['period' => '2026-09'], ['status' => 'OPEN', 'apex_score' => 0]);
+        Livewire::test(ActionPlans::class, ['selectedPeriod' => '2026-09'])
+            ->set('title', 'Program periode terbuka')->set('ownerDept', $unit)->call('createPlan')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('action_plans', ['title' => 'Program periode terbuka', 'period' => '2026-09']);
+    }
+
     public function test_the_audit_log_page_never_writes_anything(): void
     {
         $this->actingAs($this->userWithRole('Viewer'));
