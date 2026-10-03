@@ -266,6 +266,51 @@ class EntityIsolationTest extends TestCase
 
     /* ─────────────────────────── Batas antarentitas tetap ─────────────────────────── */
 
+    /**
+     * Kode entitas yang salah ketik di .env harus BERBUNYI.
+     *
+     * Tanpa ini, satu huruf keliru membuat aplikasi diam-diam jatuh ke entitas
+     * lain: angkanya tetap terlihat wajar, padahal pemasangan itu melayani
+     * entitas yang bukan dimaksudkan.
+     */
+    public function test_an_unknown_entity_code_in_the_env_is_announced(): void
+    {
+        $konteks = app(EntityContext::class);
+
+        Config::set('bsc.default_entity', 'ERDIGMA');
+        $konteks->forget();
+        $this->assertFalse($konteks->installationMisconfigured());
+
+        Config::set('bsc.default_entity', 'SALAHKETIK');
+        $konteks->forget();
+        $this->assertTrue($konteks->installationMisconfigured());
+
+        // Entitas yang dinonaktifkan sama berbahayanya dengan kode yang tidak ada.
+        $erdigma = $this->entitas('ERDIGMA');
+        $erdigma->update(['is_active' => false]);
+        Config::set('bsc.default_entity', 'ERDIGMA');
+        $konteks->forget();
+        $this->assertTrue($konteks->installationMisconfigured());
+    }
+
+    public function test_the_warning_is_visible_on_every_page_not_buried_in_a_log(): void
+    {
+        Config::set('bsc.holding_mode', false);
+        Config::set('bsc.default_entity', 'SALAHKETIK');
+        app(EntityContext::class)->forget();
+
+        $pengguna = User::create([
+            'name' => 'Staf', 'email' => 'staf-salah@contoh.test',
+            'password' => bcrypt('x'), 'is_active' => true, 'entity_id' => $this->entitas('ERDIGMA')->id,
+        ]);
+        $pengguna->assignRole('Super Admin');
+
+        $this->actingAs($pengguna)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('tidak dikenali', false)
+            ->assertSee('BSC_DEFAULT_ENTITY=SALAHKETIK', false);
+    }
+
     public function test_an_entity_installation_never_sees_another_entity(): void
     {
         Config::set('bsc.holding_mode', false);

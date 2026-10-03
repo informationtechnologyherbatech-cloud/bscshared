@@ -447,6 +447,21 @@
 
     <!-- Content Wrapper. Contains page content -->
     <div class="content-wrapper">
+        {{--
+            Salah ketik BSC_DEFAULT_ENTITY tidak boleh diam: tanpa peringatan ini
+            pemasangan dapat melayani entitas yang bukan dimaksudkan, dan angkanya
+            terlihat wajar-wajar saja.
+        --}}
+        @if (entity_misconfigured())
+            <div class="alert alert-danger mb-0 rounded-0" role="alert">
+                <i class="fas fa-triangle-exclamation mr-1"></i>
+                <strong>Pengaturan entitas di <code>.env</code> tidak dikenali.</strong>
+                <code>BSC_DEFAULT_ENTITY={{ configured_entity_code() }}</code> tidak cocok dengan entitas aktif mana pun,
+                sehingga aplikasi memakai <strong>{{ active_entity()?->code ?? '—' }}</strong> sebagai gantinya.
+                Periksa ejaan kodenya atau aktifkan entitas tersebut, lalu jalankan
+                <code>php artisan config:clear</code>.
+            </div>
+        @endif
         @include('partials.sumber-entitas')
         {{ $slot }}
     </div>

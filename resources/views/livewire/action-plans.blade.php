@@ -124,18 +124,11 @@
                                                 @endif
                                             </td>
 
-                                            @if($editingPlanId === $plan->id)
-                                                <td colspan="2" class="align-middle">
-                                                    <div class="d-flex align-items-center">
-                                                        <input type="range" min="0" max="100" wire:model="editProgress" class="form-control-range mr-2">
-                                                        <span class="font-weight-bold text-teal" style="min-width: 45px;">{{ $editProgress }}%</span>
-                                                    </div>
-                                                </td>
-                                                <td class="text-center align-middle">
-                                                    <button wire:click="updateProgress" class="btn btn-xs btn-success mr-1" title="Simpan Progress"><i class="fas fa-check"></i></button>
-                                                    <button wire:click="cancelEdit" class="btn btn-xs btn-secondary" title="Batal"><i class="fas fa-times"></i></button>
-                                                </td>
-                                            @else
+                                            {{--
+                                                Progres diubah lewat modal, bukan disisipkan ke dalam sel:
+                                                slider + tombol di dalam sel membuat lebar kolom melar dan
+                                                tata letak tabel rusak.
+                                            --}}
                                                 <td class="align-middle">
                                                     <div class="progress progress-xs mb-1">
                                                         <div class="progress-bar {{ $plan->progress_pct >= 100 ? 'bg-success' : ($plan->progress_pct >= 50 ? 'bg-warning' : 'bg-danger') }}" 
@@ -159,7 +152,6 @@
                                                         <span class="text-muted small">—</span>
                                                     @endif
                                                 </td>
-                                            @endif
                                         </tr>
                                     @empty
                                         <tr>
@@ -186,4 +178,76 @@
 
         </div>
     </section>
+
+    {{-- Penyunting progres: modal, supaya tabelnya tidak melar dan angkanya terbaca jelas --}}
+    @if ($canWrite && $editingPlan)
+        @php($statusBaru = $editProgress >= 100 ? 'Selesai' : ($editProgress > 0 ? 'On Progress' : 'Belum mulai'))
+        <div class="modal show d-block modal-lw" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-hd">
+                        <span class="modal-hd-icon"><i class="fas fa-sliders-h"></i></span>
+                        <div>
+                            <h5 class="modal-title">Perbarui progres</h5>
+                            <small>{{ $editingPlan->owner_dept }} · {{ $editingPlan->period ? period_label($editingPlan->period) : '—' }}</small>
+                        </div>
+                        <button type="button" class="modal-close" wire:click="cancelEdit" aria-label="Tutup"><i class="fas fa-xmark"></i></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <p class="font-weight-bold mb-1">{{ $editingPlan->title }}</p>
+                        @if ($editingPlan->objective)
+                            <p class="small text-muted"><i class="fas fa-link mr-1"></i> Memitigasi KPI {{ $editingPlan->objective->kpi_code }}</p>
+                        @endif
+
+                        <div class="text-center my-3">
+                            <span class="progres-angka">{{ $editProgress }}%</span>
+                        </div>
+
+                        <div class="progress progress-sm mb-3">
+                            <div class="progress-bar {{ $editProgress >= 100 ? 'bg-success' : ($editProgress >= 50 ? 'bg-warning' : 'bg-danger') }}"
+                                 style="width: {{ max(0, min(100, (int) $editProgress)) }}%"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="progresGeser" class="small font-weight-bold">Geser untuk mengubah</label>
+                            {{-- .live: angkanya ikut bergerak saat digeser, bukan tetap 0% sampai disimpan --}}
+                            <input type="range" min="0" max="100" step="5" id="progresGeser"
+                                   wire:model.live="editProgress" class="custom-range">
+                        </div>
+
+                        <div class="form-row align-items-end">
+                            <div class="form-group col-5">
+                                <label for="progresAngka" class="small font-weight-bold">atau ketik angkanya</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" min="0" max="100" id="progresAngka"
+                                           wire:model.live="editProgress" class="form-control text-right">
+                                    <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                </div>
+                            </div>
+                            <div class="form-group col-7 text-right">
+                                @foreach ([0, 25, 50, 75, 100] as $cepat)
+                                    <button type="button" wire:click="$set('editProgress', {{ $cepat }})"
+                                            class="btn btn-xs btn-ghost">{{ $cepat }}%</button>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="callout callout-info py-2 mb-0 small">
+                            Setelah disimpan, statusnya menjadi <strong>{{ $statusBaru }}</strong>.
+                            Progres ini ikut menentukan skor Tingkat 4 pada periode
+                            {{ $editingPlan->period ? period_label($editingPlan->period) : 'program kerja ini' }}.
+                        </div>
+                    </div>
+
+                    <div class="modal-ft">
+                        <button type="button" wire:click="cancelEdit" class="btn btn-ghost">Batal</button>
+                        <button type="button" wire:click="updateProgress" class="btn btn-teal">
+                            <i class="fas fa-save mr-1"></i> Simpan progres
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

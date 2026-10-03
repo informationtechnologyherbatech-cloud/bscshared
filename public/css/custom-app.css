@@ -1448,3 +1448,19 @@ tr.revenue-terkunci .badge { font-weight: 600; }
     border-color: #0f6f67;
     background: #f0faf8;
 }
+
+/* Angka progres di modal Program Kerja — besar supaya terbaca sambil menggeser. */
+.progres-angka {
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #0f6f67;
+}
+
+/* Kode di dalam peringatan merah harus tetap terbaca. */
+.alert-danger code {
+    color: #fff;
+    background: rgba(0, 0, 0, .22);
+    padding: 0 .3em;
+    border-radius: 3px;
+}

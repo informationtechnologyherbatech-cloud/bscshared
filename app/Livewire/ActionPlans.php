@@ -181,6 +181,8 @@ class ActionPlans extends Component
             // tampil lalu ditolak diam-diam saat disimpan.
             'canWrite' => (bool) auth()->user()?->can('manage actionplans'),
             'periods' => Period::orderByDesc('period')->pluck('period'),
+            // Program kerja yang sedang disunting progresnya — dipakai modal.
+            'editingPlan' => $this->editingPlanId ? ActionPlan::with('objective')->find($this->editingPlanId) : null,
             // Program kerja periode lain yang tersembunyi oleh saringan periode —
             // supaya daftar yang "hilang" tidak terasa seperti data yang lenyap.
             'lainPeriode' => $this->selectedPeriod === 'semua'

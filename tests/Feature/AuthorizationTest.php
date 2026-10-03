@@ -9,7 +9,9 @@ use App\Livewire\DepartmentObjectives;
 use App\Livewire\StagingLogs;
 use App\Livewire\SystemIntegration;
 use App\Livewire\WorkUnits;
+use App\Models\ActionPlan;
 use App\Models\AppSetting;
+use App\Models\DepartmentObjective;
 use App\Models\FinancialRatio;
 use App\Models\Period;
 use App\Models\StagingLog;
@@ -121,6 +123,46 @@ class AuthorizationTest extends TestCase
             ->call('createPlan');
 
         $this->assertDatabaseMissing('action_plans', ['title' => 'Program selundupan']);
+    }
+
+    /**
+     * Progres program kerja diubah lewat modal, bukan disisipkan ke dalam sel tabel.
+     *
+     * Dilaporkan QC: slider beserta tombol ✓/✗ dirender langsung di dalam sel,
+     * sehingga lebar kolom melar dan tata letak tabel rusak; angka persennya pun
+     * tetap 0% selagi digeser, sehingga terkesan tidak tersimpan.
+     */
+    public function test_progress_is_edited_in_a_dialog_not_inside_the_table_cell(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $this->actingAs($this->userWithRole('Super Admin'));
+
+        $sasaran = DepartmentObjective::query()->firstOrFail();
+        $rencana = ActionPlan::create([
+            'department_objective_id' => $sasaran->id,
+            'title' => 'Program yang diuji',
+            'owner_dept' => $sasaran->dept_code,
+            'progress_pct' => 20,
+            'status' => 'On Progress',
+        ]);
+
+        $uji = Livewire::test(ActionPlans::class, ['selectedPeriod' => $rencana->period])
+            ->call('editProgressModal', $rencana->id);
+
+        // Penyuntingnya berupa dialog, dengan judul program kerjanya.
+        $uji->assertSee('Perbarui progres')
+            ->assertSee('Program yang diuji')
+            ->assertSeeHtml('modal-lw');
+
+        // Angkanya terikat hidup, sehingga ikut bergerak selagi digeser.
+        $uji->assertSeeHtml('wire:model.live="editProgress"')
+            ->assertDontSeeHtml('wire:model="editProgress"');
+
+        // Dan nilainya benar-benar tersimpan beserta statusnya.
+        $uji->set('editProgress', 100)->call('updateProgress');
+
+        $this->assertSame(100, (int) $rencana->fresh()->progress_pct);
+        $this->assertSame('Completed', $rencana->fresh()->status);
     }
 
     public function test_the_audit_log_page_never_writes_anything(): void

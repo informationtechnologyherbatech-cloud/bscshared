@@ -121,6 +121,27 @@ class EntityContext
         return (bool) config('bsc.holding_mode');
     }
 
+    /**
+     * BSC_DEFAULT_ENTITY diisi, tetapi kodenya tidak dikenal atau entitasnya
+     * nonaktif.
+     *
+     * Tanpa penanda ini salah ketik satu huruf di .env tidak berbunyi apa pun:
+     * aplikasi diam-diam jatuh ke entitas lain, sehingga satu pemasangan bisa
+     * melayani entitas yang BUKAN dimaksudkan tanpa seorang pun menyadarinya.
+     */
+    public function installationMisconfigured(): bool
+    {
+        $kode = (string) config('bsc.default_entity');
+
+        return $kode !== '' && $this->installationEntityId() === null;
+    }
+
+    /** Kode entitas yang tertulis di .env, apa adanya. */
+    public function configuredEntityCode(): string
+    {
+        return (string) config('bsc.default_entity');
+    }
+
     /** Entitas instalasi (BSC_DEFAULT_ENTITY), bila kodenya dikenal & aktif. */
     public function installationEntityId(): ?int
     {

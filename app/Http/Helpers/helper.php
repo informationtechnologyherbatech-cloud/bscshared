@@ -262,6 +262,22 @@ if (! function_exists('active_entity')) {
     }
 }
 
+if (! function_exists('entity_misconfigured')) {
+    /** BSC_DEFAULT_ENTITY di .env menyebut entitas yang tidak dikenal/nonaktif. */
+    function entity_misconfigured(): bool
+    {
+        return entity_context()->installationMisconfigured();
+    }
+}
+
+if (! function_exists('configured_entity_code')) {
+    /** Kode entitas yang tertulis di .env, apa adanya. */
+    function configured_entity_code(): string
+    {
+        return entity_context()->configuredEntityCode();
+    }
+}
+
 if (! function_exists('can_switch_entity')) {
     /** Pengguna ini boleh berpindah entitas (hanya instalasi holding). */
     function can_switch_entity(): bool

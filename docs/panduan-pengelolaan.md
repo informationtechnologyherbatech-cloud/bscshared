@@ -41,6 +41,35 @@ Dua hal di pojok kanan atas menentukan **semua angka yang Anda lihat**:
 
 ---
 
+### Satu pemasangan melayani satu entitas
+
+Pada pemasangan entitas (`BSC_HOLDING_MODE=false`), **entitas di `.env` yang
+berlaku untuk semua orang** — termasuk pengguna yang akunnya terikat entitas
+lain. Itu memang disengaja: satu pemasangan dipakai satu entitas, dengan
+databasenya sendiri.
+
+Tiga hal yang perlu dijaga:
+
+1. **Satu database untuk satu entitas.** Selama databasenya hanya berisi data
+   entitas itu, tidak ada yang bisa terlihat silang. Bila sebuah database yang
+   memuat beberapa entitas dipakai pada pemasangan entitas, maka siapa pun yang
+   masuk akan melihat entitas yang tertulis di `.env` — bukan entitas akunnya.
+2. **Kode entitas harus tepat.** Bila `BSC_DEFAULT_ENTITY` salah ketik atau
+   entitasnya dinonaktifkan, aplikasi menampilkan **spanduk merah di setiap
+   halaman** yang menyebutkan kode yang salah dan entitas mana yang dipakai
+   sebagai gantinya. Jangan diabaikan — artinya pemasangan sedang melayani
+   entitas yang bukan dimaksudkan.
+3. **Bersihkan cache konfigurasi setelah mengubah `.env`.** Bila
+   `bootstrap/cache/config.php` ada, isi `.env` **tidak dibaca lagi** sehingga
+   perubahan apa pun tidak berpengaruh. Jalankan `php artisan config:clear`
+   (atau `config:cache` ulang) setiap kali `.env` berubah.
+
+Pada pemasangan holding (`BSC_HOLDING_MODE=true`), pengguna yang terikat entitas
+tetap melihat entitasnya sendiri, dan hanya pengguna tanpa entitas yang dapat
+berpindah antarentitas.
+
+---
+
 ## 3. Periode: membuat, menutup, membuka lagi
 
 Semua data bulanan menempel pada periode. Kelolanya di **Piramida BSC**:
