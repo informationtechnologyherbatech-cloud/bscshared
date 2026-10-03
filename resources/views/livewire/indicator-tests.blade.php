@@ -314,13 +314,44 @@
                             <label class="small">Catatan keuangan</label>
                             <textarea wire:model="notes" rows="2" class="form-control form-control-sm" @disabled(! $canTest)></textarea>
                         </div>
+                        {{--
+                            Umpan balik diulang DI SINI, bukan hanya di atas halaman:
+                            tombolnya berada jauh di bawah, sehingga pesan di puncak
+                            halaman tidak pernah terlihat saat tombol ditekan.
+                        --}}
+                        @if (session()->has('message'))
+                            <div class="alert alert-success py-2 small mb-3">
+                                <i class="fas fa-check-circle mr-1"></i> {{ session('message') }}
+                            </div>
+                        @endif
+                        @if (session()->has('error'))
+                            <div class="alert alert-danger py-2 small mb-3">
+                                <i class="fas fa-triangle-exclamation mr-1"></i> {{ session('error') }}
+                            </div>
+                        @endif
+
+                        @php($bolehLolos = $recommendedSaved === 'Lolos')
+
                         <div class="d-flex flex-wrap align-items-center justify-content-between">
                             <div class="small mb-2">
-                                Status yang dianjurkan:
-                                @if ($result['recommended'])
-                                    <span class="badge badge-{{ $statusBadge[$result['recommended']] }} p-2">{{ $result['recommended'] }}</span>
+                                {{-- Status yang BERLAKU sekarang, supaya perubahannya terlihat di tempat tombolnya. --}}
+                                <span class="mr-3">
+                                    Status validasi tersimpan:
+                                    <span class="badge badge-{{ $statusBadge[$kpi->validation_status] ?? 'secondary' }} p-2">{{ $kpi->validation_status }}</span>
+                                </span>
+                                {{-- Anjuran dari hasil uji TERSIMPAN — inilah yang menentukan tombolnya. --}}
+                                Dianjurkan hasil uji tersimpan:
+                                @if ($recommendedSaved)
+                                    <span class="badge badge-{{ $statusBadge[$recommendedSaved] }} p-2">{{ $recommendedSaved }}</span>
                                 @else
                                     <span class="text-muted">lengkapi {{ $uA === null ? 'Uji A' : 'Uji B' }} dulu</span>
+                                @endif
+                                @if ($result['recommended'] !== $recommendedSaved)
+                                    <span class="text-muted ml-1">
+                                        · isian di layar sekarang menganjurkan
+                                        <strong>{{ $result['recommended'] ?? 'belum lengkap' }}</strong> —
+                                        tekan <em>Simpan hasil uji</em> agar dipakai
+                                    </span>
                                 @endif
                                 @if ($kpi->test?->tested_at)
                                     <span class="text-muted ml-2">· terakhir diuji {{ $kpi->test->tested_at->format('d/m/Y H:i') }}{{ $kpi->test->tester ? ' oleh '.$kpi->test->tester->name : '' }}</span>
@@ -329,11 +360,32 @@
                             @if ($canTest)
                                 <div class="mb-2">
                                     <button wire:click="save" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i> Simpan hasil uji</button>
-                                    <button wire:click="applyStatus('Lolos')" class="btn btn-success btn-sm"><i class="fas fa-check mr-1"></i> Tetapkan Lolos</button>
+                                    <button wire:click="applyStatus('Lolos')" class="btn btn-success btn-sm" @disabled(! $bolehLolos)
+                                            title="{{ $bolehLolos
+                                                ? 'Hasil uji tersimpan menganjurkan Lolos.'
+                                                : ($recommendedSaved === null
+                                                    ? 'Hasil uji belum lengkap atau belum disimpan — lengkapi lalu tekan Simpan hasil uji.'
+                                                    : 'Hasil uji tersimpan menganjurkan '.$recommendedSaved.', jadi Lolos tidak dapat ditetapkan.') }}">
+                                        <i class="fas fa-check mr-1"></i> Tetapkan Lolos
+                                    </button>
                                     <button wire:click="applyStatus('Revisi')" class="btn btn-outline-danger btn-sm"><i class="fas fa-undo mr-1"></i> Tetapkan Revisi</button>
                                 </div>
                             @endif
                         </div>
+
+                        @if ($canTest && ! $bolehLolos)
+                            <div class="small text-muted">
+                                <i class="fas fa-lock mr-1"></i>
+                                <strong>Tetapkan Lolos terkunci.</strong>
+                                @if ($recommendedSaved === null)
+                                    Hasil uji belum lengkap atau belum disimpan. Lengkapi
+                                    {{ $uA === null ? 'Uji A' : 'Uji B' }}, lalu tekan <em>Simpan hasil uji</em>.
+                                @else
+                                    Hasil uji yang tersimpan menganjurkan <strong>{{ $recommendedSaved }}</strong>.
+                                    Perbaiki KPI atau pos akun yang digerakkannya, uji ulang, lalu simpan hasilnya.
+                                @endif
+                            </div>
+                        @endif
                     </div>
                 </div>
             @endif

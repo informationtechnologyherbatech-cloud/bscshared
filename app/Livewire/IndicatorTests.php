@@ -228,7 +228,31 @@ class IndicatorTests extends Component
             .($hasil['recommended'] ? ' Status yang dianjurkan: '.$hasil['recommended'].'.' : ''));
     }
 
-    /** Tulis hasil akhir ke kolom "Status validasi keuangan" L3. */
+    /**
+     * Status yang dianjurkan menurut hasil uji yang SUDAH TERSIMPAN.
+     *
+     * Sengaja dibaca dari baris uji, bukan dari isian yang sedang tampil di
+     * layar: isian yang belum disimpan boleh saja sudah terlihat lolos, tetapi
+     * yang menjadi dasar keputusan adalah hasil uji yang tercatat.
+     */
+    public function savedRecommendation(?KpiCascade $kpi = null): ?string
+    {
+        $kpi ??= $this->selectedId ? KpiCascade::where('year', $this->year)->find($this->selectedId) : null;
+
+        if (! $kpi?->test) {
+            return null;
+        }
+
+        return IndicatorTest::recommendedStatus($kpi, $kpi->test->uji_a_result, $kpi->test->uji_b_result);
+    }
+
+    /**
+     * Tulis hasil akhir ke kolom "Status validasi keuangan" L3.
+     *
+     * Lolos hanya boleh ditetapkan bila hasil uji yang tersimpan memang
+     * menganjurkannya — gerbang validasi, bukan sekadar anjuran yang dapat
+     * dilewati dengan satu klik.
+     */
     public function applyStatus(string $status): void
     {
         if ($this->lacksPermission('manage ratios')) {
@@ -241,10 +265,24 @@ class IndicatorTests extends Component
 
         $kpi = KpiCascade::where('year', $this->year)->findOrFail($this->selectedId);
 
-        if ($status === KpiCascade::LOLOS && ! $kpi->test) {
-            session()->flash('error', 'Simpan hasil uji '.$kpi->code.' lebih dulu sebelum menetapkannya Lolos.');
+        if ($status === KpiCascade::LOLOS) {
+            if (! $kpi->test) {
+                session()->flash('error', 'Simpan hasil uji '.$kpi->code.' lebih dulu sebelum menetapkannya Lolos.');
 
-            return;
+                return;
+            }
+
+            $anjuran = $this->savedRecommendation($kpi);
+
+            if ($anjuran !== KpiCascade::LOLOS) {
+                session()->flash('error', $anjuran === null
+                    ? 'Hasil uji '.$kpi->code.' belum lengkap, jadi belum dapat ditetapkan Lolos. Lengkapi '
+                      .($kpi->test->uji_a_result === null ? 'Uji A' : 'Uji B').', lalu simpan hasil ujinya.'
+                    : 'Hasil uji '.$kpi->code.' menganjurkan '.$anjuran.', jadi tidak dapat ditetapkan Lolos. '
+                      .'Perbaiki KPI atau pos akun yang digerakkannya, uji ulang, lalu simpan hasilnya.');
+
+                return;
+            }
         }
 
         $uji = $kpi->test;
@@ -278,6 +316,10 @@ class IndicatorTests extends Component
             'posts' => AccountPosts::all(),
             'periods' => $this->baselinePeriods(),
             'canTest' => (bool) auth()->user()?->can('manage ratios'),
+            // Dasar penguncian tombol "Tetapkan Lolos" — sama dengan yang
+            // diperiksa applyStatus(), sehingga tombolnya tidak pernah
+            // menawarkan sesuatu yang kemudian ditolak.
+            'recommendedSaved' => $this->savedRecommendation($terpilih),
             'entity' => app(EntityContext::class)->entity(),
             'years' => range((int) now()->format('Y') - 2, (int) now()->format('Y') + 2),
             'impactName' => fn (?string $kode) => $kode ? RatioLibrary::impactName($kode) : null,

@@ -155,6 +155,14 @@ boleh diklaim tiap unit.
    transmisi per pos akun.
 3. **Simpan hasil uji**, lalu **Tetapkan Lolos** atau **Tetapkan Revisi**.
 
+> **Tetapkan Lolos terkunci?** Tombol itu hanya terbuka bila hasil uji yang
+> **sudah tersimpan** menganjurkan Lolos — Guardrail cukup lolos Uji A, Driver
+> harus lolos Uji A *dan* Uji B. Keterangan di bawah tombol menyebutkan apa yang
+> kurang. Dua sebab tersering: hasil ujinya belum ditekan **Simpan hasil uji**
+> (isian di layar belum menjadi hasil tersimpan), atau Uji B memang menyimpulkan
+> Revisi karena baseline pos akunnya masih kosong. **Tetapkan Revisi** selalu
+> dapat ditekan.
+
 ### d. Masukkan ke monitoring
 Di **Cascade KPI**, kartu *Masukkan ke monitoring*: pilih periode, lalu klik
 **Masukkan**. Hanya KPI berstatus **Lolos** yang masuk ke Objective Departemen.

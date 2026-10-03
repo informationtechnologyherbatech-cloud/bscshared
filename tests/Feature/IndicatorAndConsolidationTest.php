@@ -134,6 +134,134 @@ class IndicatorAndConsolidationTest extends TestCase
         $this->assertSame(KpiCascade::BELUM_DIUJI, $kpi->fresh()->validation_status);
     }
 
+    /**
+     * Gerbang validasi, bukan sekadar anjuran.
+     *
+     * Dilaporkan penguji: "Tetapkan Lolos" tetap dapat ditekan walau kesimpulan
+     * Uji B menyatakan REVISI, sehingga KPI yang belum layak bisa lolos hanya
+     * dengan satu klik.
+     */
+    public function test_a_kpi_whose_test_concludes_revisi_cannot_be_approved(): void
+    {
+        $this->user('Admin FAT', $this->erdigma->id);
+        $kpi = $this->adCostKpi();
+
+        KpiTest::create([
+            'kpi_cascade_id' => $kpi->id,
+            'uji_a_result' => 'LOLOS',
+            'uji_b_result' => 'REVISI',
+            'tested_at' => now(),
+        ]);
+
+        $uji = Livewire::test(IndicatorTests::class, ['year' => '2026'])
+            ->call('select', $kpi->id)
+            ->call('applyStatus', 'Lolos');
+
+        $this->assertNotSame(KpiCascade::LOLOS, $kpi->fresh()->validation_status);
+
+        // Tombolnya pun terkunci, lengkap dengan alasannya — bukan tampil lalu
+        // ditolak diam-diam setelah ditekan.
+        $uji->assertSee('Tetapkan Lolos terkunci')
+            ->assertSee('menganjurkan');
+
+        // Revisi tetap boleh ditetapkan kapan saja.
+        $uji->call('applyStatus', 'Revisi');
+        $this->assertSame(KpiCascade::REVISI, $kpi->fresh()->validation_status);
+    }
+
+    public function test_an_incomplete_test_cannot_be_approved_either(): void
+    {
+        $this->user('Admin FAT', $this->erdigma->id);
+        $kpi = $this->adCostKpi();
+
+        // Driver: Uji A lolos tetapi Uji B belum ada hasilnya.
+        KpiTest::create([
+            'kpi_cascade_id' => $kpi->id,
+            'uji_a_result' => 'LOLOS',
+            'uji_b_result' => null,
+            'tested_at' => now(),
+        ]);
+
+        Livewire::test(IndicatorTests::class, ['year' => '2026'])
+            ->call('select', $kpi->id)
+            ->call('applyStatus', 'Lolos')
+            ->assertSee('Tetapkan Lolos terkunci');
+
+        $this->assertNotSame(KpiCascade::LOLOS, $kpi->fresh()->validation_status);
+    }
+
+    /**
+     * Gerbangnya menilai hasil uji yang TERSIMPAN, bukan isian yang sedang
+     * tampil — kalau tidak, isian layar dapat diubah sampai terlihat lolos lalu
+     * ditetapkan tanpa pernah disimpan.
+     */
+    public function test_the_gate_judges_the_saved_test_not_the_form_on_screen(): void
+    {
+        $this->user('Admin FAT', $this->erdigma->id);
+        $this->seedErdigmaFinance();
+        $kpi = $this->adCostKpi();
+
+        KpiTest::create([
+            'kpi_cascade_id' => $kpi->id,
+            'uji_a_result' => 'REVISI',
+            'uji_b_result' => 'REVISI',
+            'tested_at' => now(),
+        ]);
+
+        Livewire::test(IndicatorTests::class, ['year' => '2026'])
+            ->call('select', $kpi->id)
+            // Isian dibuat seolah-olah lolos, tetapi TIDAK disimpan.
+            ->set('answers.1', 'ya')->set('answers.2', 'ya')->set('answers.5', 'ya')->set('answers.6', 'ya')
+            ->set('period', '2026-08')
+            ->set('improvement', '5')
+            ->set('coefficients.PA01', '0.4')->set('coefficients.PA02', '0.4')->set('coefficients.PA03', '-0.3')
+            ->call('applyStatus', 'Lolos')
+            ->assertSee('Tetapkan Lolos terkunci');
+
+        $this->assertNotSame(KpiCascade::LOLOS, $kpi->fresh()->validation_status);
+    }
+
+    /**
+     * Umpan balik harus muncul di dekat tombolnya.
+     *
+     * Dilaporkan penguji: sesudah menekan tombol, tidak ada tanda apa pun di
+     * sekitar tombol, sehingga aksinya dikira gagal. Pesannya memang ada, tetapi
+     * hanya di puncak halaman — jauh di luar layar saat tombol ditekan.
+     */
+    public function test_the_result_of_pressing_the_button_is_shown_beside_the_button(): void
+    {
+        $this->user('Admin FAT', $this->erdigma->id);
+        $kpi = $this->adCostKpi();
+
+        KpiTest::create([
+            'kpi_cascade_id' => $kpi->id,
+            'uji_a_result' => 'LOLOS',
+            'uji_b_result' => 'LOLOS',
+            'tested_at' => now(),
+        ]);
+
+        $uji = Livewire::test(IndicatorTests::class, ['year' => '2026'])
+            ->call('select', $kpi->id)
+            ->call('applyStatus', 'Lolos');
+
+        $html = $uji->html();
+        $pesan = 'ditetapkan: Lolos';
+
+        $this->assertStringContainsString($pesan, $html);
+
+        // Pesannya berada SESUDAH kotak catatan keuangan, yaitu di kartu tempat
+        // tombolnya — bukan hanya di pesan puncak halaman.
+        $this->assertGreaterThan(
+            strpos($html, 'Catatan keuangan'),
+            strrpos($html, $pesan),
+            'Pesan hasil tidak muncul di kartu tombolnya.'
+        );
+
+        // Status yang berlaku ikut tampil di situ, jadi perubahannya terlihat.
+        $uji->assertSee('Status validasi tersimpan');
+        $this->assertSame(KpiCascade::LOLOS, $kpi->fresh()->validation_status);
+    }
+
     public function test_only_finance_may_record_tests(): void
     {
         $this->user('Kepala Departemen', $this->erdigma->id);
