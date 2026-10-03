@@ -145,6 +145,13 @@ class BscDashboard extends Component
             ]);
         }
 
+        // Program kerja yang BELUM selesai ikut dibawa ke periode baru, ditandai
+        // "Lanjutan". Yang sudah 100% ditinggalkan di periodenya sendiri supaya
+        // periode baru dimulai bersih — tanpa ini, pekerjaan yang masih berjalan
+        // hilang dari layar begitu periode berganti, sementara tugas yang sudah
+        // tuntas ikut memenuhi daftar.
+        $this->carryOverActionPlans($sumber, $periodStr);
+
         // Copy template of financial ratios with 0 actuals
         // Rasio hasil hitungan tidak disalin — periode baru mendapatkannya
         // saat pos akunnya diisi di menu Pos Akun.
@@ -400,6 +407,49 @@ class BscDashboard extends Component
      *
      * null = periode itu memang belum berisi apa pun; itu bukan data basi.
      */
+    /**
+     * Bawa program kerja yang belum tuntas dari periode sumber ke periode baru.
+     *
+     * Hanya yang progresnya di bawah 100% — yang sudah selesai tidak ikut,
+     * sehingga periode baru tidak langsung penuh oleh tugas yang sudah beres.
+     * Kaitan ke sasaran mutu disambungkan ulang ke sasaran SALINAN di periode
+     * baru (dicocokkan lewat unit + kode KPI), bukan ke sasaran periode lama.
+     */
+    private function carryOverActionPlans(?string $sumber, string $periodeBaru): void
+    {
+        if (! $sumber) {
+            return;
+        }
+
+        $belumTuntas = ActionPlan::where('period', $sumber)
+            ->where('progress_pct', '<', 100)
+            ->get();
+
+        if ($belumTuntas->isEmpty()) {
+            return;
+        }
+
+        $sasaranBaru = DepartmentObjective::where('period', $periodeBaru)
+            ->get()
+            ->keyBy(fn ($o) => $o->dept_code.'|'.$o->kpi_code);
+
+        foreach ($belumTuntas as $lama) {
+            $kunci = $lama->objective ? $lama->objective->dept_code.'|'.$lama->objective->kpi_code : null;
+
+            ActionPlan::create([
+                'department_objective_id' => $kunci ? ($sasaranBaru[$kunci]->id ?? null) : null,
+                'period' => $periodeBaru,
+                // Periode asalnya yang pertama, bukan periode perantara, supaya
+                // program kerja yang terbawa berbulan-bulan tetap menunjuk awalnya.
+                'carried_from' => $lama->carried_from ?: $sumber,
+                'title' => $lama->title,
+                'owner_dept' => $lama->owner_dept,
+                'progress_pct' => $lama->progress_pct,
+                'status' => $lama->status,
+            ]);
+        }
+    }
+
     private function dataTerakhirBerubah(string $period): ?Carbon
     {
         $waktu = [

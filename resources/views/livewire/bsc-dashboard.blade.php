@@ -858,7 +858,15 @@
                                     <div class="card card-outline card-danger h-100 shadow-sm">
                                         <div class="card-body p-3">
                                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <span class="badge badge-dark">{{ $ap->owner_dept }}</span>
+                                                <span>
+                                                    <span class="badge badge-dark">{{ $ap->owner_dept }}</span>
+                                                    @if ($ap->isCarriedOver())
+                                                        <span class="badge badge-warning"
+                                                              title="Belum selesai di periode {{ period_label($ap->carried_from) }}, dibawa ke periode ini.">
+                                                            <i class="fas fa-arrow-right-long mr-1"></i> Lanjutan
+                                                        </span>
+                                                    @endif
+                                                </span>
                                                 <span class="badge {{ $ap->status === 'Selesai' ? 'badge-success' : ($ap->status === 'Dalam Proses' ? 'badge-warning' : 'badge-danger') }}">
                                                     {{ $ap->status }}
                                                 </span>

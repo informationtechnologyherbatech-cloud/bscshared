@@ -118,7 +118,18 @@
                                             <td><span class="badge badge-dark">{{ $plan->owner_dept }}</span></td>
                                             <td class="small">{{ $plan->period ? period_label($plan->period) : '—' }}</td>
                                             <td>
-                                                <div class="font-weight-bold text-dark">{{ $plan->title }}</div>
+                                                <div class="font-weight-bold text-dark">
+                                                    {{ $plan->title }}
+                                                    @if ($plan->isCarriedOver())
+                                                        <span class="badge badge-warning"
+                                                              title="Belum selesai di periode {{ period_label($plan->carried_from) }}, dibawa ke periode ini.">
+                                                            <i class="fas fa-arrow-right-long mr-1"></i> Lanjutan
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                @if ($plan->isCarriedOver())
+                                                    <small class="text-muted d-block">Lanjutan dari {{ period_label($plan->carried_from) }}</small>
+                                                @endif
                                                 @if($plan->objective)
                                                     <small class="text-muted"><i class="fas fa-link mr-1"></i> KPI: {{ $plan->objective->kpi_code }}</small>
                                                 @endif

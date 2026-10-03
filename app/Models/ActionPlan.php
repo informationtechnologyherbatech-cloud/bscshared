@@ -16,6 +16,8 @@ class ActionPlan extends Model
         // Periode milik program kerja itu sendiri; kaitan ke sasaran mutu opsional,
         // sehingga periode tidak boleh bergantung padanya.
         'period',
+        // Periode asal bila program kerja ini lanjutan dari periode sebelumnya.
+        'carried_from',
         'title',
         'owner_dept',
         'progress_pct',
@@ -43,6 +45,12 @@ class ActionPlan extends Model
 
             $rencana->period ??= Period::currentPeriod();
         });
+    }
+
+    /** Program kerja ini terbawa dari periode sebelumnya karena belum selesai. */
+    public function isCarriedOver(): bool
+    {
+        return $this->carried_from !== null;
     }
 
     public function objective()

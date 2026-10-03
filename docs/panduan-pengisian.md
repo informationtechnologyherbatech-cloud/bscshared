@@ -183,6 +183,14 @@ polaritas (Naik / Turun / Rentang).
 
 ## Tingkat 4 · Program Kerja (Action)
 
+> **Periode baru: yang belum selesai ikut, yang sudah selesai ditinggal.**
+> Saat periode baru dibuat, program kerja yang progresnya **di bawah 100%**
+> otomatis dibawa ke periode itu beserta progres terakhirnya, ditandai lencana
+> kuning **Lanjutan** dan keterangan periode asalnya. Program kerja yang sudah
+> **100% selesai tidak ikut** — periode baru dimulai bersih, dan riwayat periode
+> lama tetap utuh. Program kerja yang terbawa berbulan-bulan tetap menunjuk
+> periode awal pekerjaannya, bukan periode perantara.
+
 > **Program kerja menempel pada satu periode.** Periodenya mengikuti sasaran mutu
 > yang dimitigasi; bila tidak dikaitkan ke sasaran mana pun, dipakai periode yang
 > sedang aktif di bilah atas. Periode itulah yang dibaca Tingkat 4 di Piramida

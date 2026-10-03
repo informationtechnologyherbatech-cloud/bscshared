@@ -10,8 +10,10 @@ use App\Models\FinancialRatio;
 use App\Models\Period;
 use App\Models\RevenueTarget;
 use App\Models\StagingLog;
+use App\Models\User;
 use App\Support\EntityContext;
 use App\Support\ScoreStatus;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -30,6 +32,25 @@ class BscDashboardScoringTest extends TestCase
         parent::setUp();
 
         app(EntityContext::class)->use(Entity::where('code', 'HERBATECH')->value('id'));
+    }
+
+    /** Pengguna berwenang membuat/menutup periode (izin can_override). */
+    private function userWithOverride(): User
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $pengguna = User::create([
+            'name' => 'Admin Periode',
+            'email' => 'admin-periode@contoh.test',
+            'password' => bcrypt('x'),
+            'is_active' => true,
+            'entity_id' => Entity::where('code', 'HERBATECH')->value('id'),
+        ]);
+        $pengguna->assignRole('Super Admin');
+
+        app(EntityContext::class)->use(Entity::where('code', 'HERBATECH')->value('id'));
+
+        return $pengguna;
     }
 
     private function period(string $period = '2026-08'): Period
@@ -309,6 +330,73 @@ class BscDashboardScoringTest extends TestCase
 
         // Dan benar-benar tampil di telusur Tingkat 4, bukan sekadar terhitung.
         $uji->call('selectLevel', 4)->assertSee('Program kerja lepas');
+    }
+
+    /**
+     * Periode baru: yang belum tuntas ikut, yang sudah tuntas ditinggal.
+     *
+     * Dilaporkan QC: membuat periode baru membuat menu Program Kerja menampilkan
+     * daftar periode lama — termasuk tugas yang sudah 100% selesai — sedangkan
+     * Piramida berbunyi "data belum lengkap". Dua layar, dua cerita.
+     */
+    public function test_a_new_period_carries_unfinished_plans_and_leaves_finished_ones(): void
+    {
+        $this->period('2026-08');
+        $this->actingAs($this->userWithOverride());
+
+        $sasaran = DepartmentObjective::create([
+            'period' => '2026-08', 'dept_code' => 'PRO', 'kpi_code' => 'KPI-A', 'kpi_name' => 'Sasaran A',
+            'polarity' => 'Naik', 'target' => 100, 'actual' => 70, 'achievement_pct' => 70, 'status' => 'Waspada',
+        ]);
+
+        $selesai = ActionPlan::create([
+            'department_objective_id' => $sasaran->id, 'title' => 'Sudah tuntas',
+            'owner_dept' => 'PRO', 'progress_pct' => 100, 'status' => 'Completed',
+        ]);
+        $berjalan = ActionPlan::create([
+            'department_objective_id' => $sasaran->id, 'title' => 'Masih berjalan',
+            'owner_dept' => 'PRO', 'progress_pct' => 40, 'status' => 'On Progress',
+        ]);
+
+        Livewire::test(BscDashboard::class)
+            ->set('newPeriodInput', '2026-09')
+            ->call('createNewPeriod');
+
+        $diPeriodeBaru = ActionPlan::where('period', '2026-09')->get();
+
+        // Hanya yang belum tuntas yang terbawa.
+        $this->assertSame(['Masih berjalan'], $diPeriodeBaru->pluck('title')->all());
+        $this->assertSame(40, (int) $diPeriodeBaru->first()->progress_pct);
+
+        // Ditandai lanjutan, lengkap dengan periode asalnya.
+        $this->assertTrue($diPeriodeBaru->first()->isCarriedOver());
+        $this->assertSame('2026-08', $diPeriodeBaru->first()->carried_from);
+
+        // Yang asli tidak dipindah — riwayat periode lama tetap utuh.
+        $this->assertSame('2026-08', $selesai->fresh()->period);
+        $this->assertSame('2026-08', $berjalan->fresh()->period);
+
+        // Dan Tingkat 4 periode baru membacanya, bukan lagi "belum lengkap".
+        $uji = Livewire::test(BscDashboard::class)->set('selectedPeriod', '2026-09');
+        $this->assertSame(1, $uji->viewData('actionPlanCount'));
+        $uji->call('selectLevel', 4)->assertSee('Masih berjalan')->assertSee('Lanjutan');
+    }
+
+    public function test_a_plan_carried_across_several_periods_still_points_at_its_origin(): void
+    {
+        $this->period('2026-08');
+        $this->actingAs($this->userWithOverride());
+
+        ActionPlan::create([
+            'department_objective_id' => null, 'title' => 'Berlarut',
+            'owner_dept' => 'PRO', 'progress_pct' => 10, 'status' => 'On Progress',
+        ]);
+
+        Livewire::test(BscDashboard::class)->set('newPeriodInput', '2026-09')->call('createNewPeriod');
+        Livewire::test(BscDashboard::class)->set('newPeriodInput', '2026-10')->call('createNewPeriod');
+
+        // Bukan 2026-09 (periode perantara), melainkan asal mula pekerjaannya.
+        $this->assertSame('2026-08', ActionPlan::where('period', '2026-10')->value('carried_from'));
     }
 
     public function test_an_action_plan_follows_the_period_of_the_objective_it_mitigates(): void
