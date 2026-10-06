@@ -124,6 +124,44 @@ class BladeHelpersTest extends TestCase
             'Komentar Blade akan tercetak di halaman: '.implode(' | ', $pelanggar));
     }
 
+    /**
+     * Pemilih periode tidak boleh memanjang ke bawah seiring bertambahnya tahun.
+     *
+     * Susunannya: satu baris tab tahun, lalu satu kisi Januari–Desember untuk
+     * tahun yang dipilih — bukan seluruh tahun ditumpuk berurutan.
+     */
+    public function test_the_period_picker_shows_one_year_at_a_time(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $erdigma = Entity::where('code', 'ERDIGMA')->firstOrFail();
+        app(EntityContext::class)->use($erdigma->id);
+
+        $pengguna = User::create([
+            'name' => 'Admin', 'email' => 'periode@contoh.test', 'password' => bcrypt('x'),
+            'is_active' => true, 'entity_id' => $erdigma->id,
+        ]);
+        $pengguna->assignRole('Super Admin');
+
+        foreach (['2025-11', '2025-12', '2026-08', '2027-01'] as $p) {
+            Period::firstOrCreate(['period' => $p], ['status' => 'OPEN', 'apex_score' => 0]);
+        }
+
+        $html = $this->actingAs($pengguna)->get(route('dashboard'))->assertOk()->getContent();
+
+        // Satu tab per tahun …
+        foreach (['2025', '2026', '2027'] as $tahun) {
+            $this->assertStringContainsString('data-tab-tahun="'.$tahun.'"', $html);
+            $this->assertStringContainsString('data-panel-tahun="'.$tahun.'"', $html);
+        }
+
+        // … dan hanya satu kisi yang terlihat; sisanya disembunyikan.
+        $terlihat = preg_match_all('/data-panel-tahun="\d{4}"(?![^>]*hidden)/', $html);
+        $this->assertSame(1, $terlihat, 'Hanya kisi tahun aktif yang boleh tampil.');
+
+        // Tiap kisi utuh 12 bulan, termasuk bulan yang periodenya belum dibuat.
+        $this->assertStringContainsString('belum ada', $html);
+    }
+
     public function test_every_blade_template_still_compiles(): void
     {
         $diperiksa = 0;

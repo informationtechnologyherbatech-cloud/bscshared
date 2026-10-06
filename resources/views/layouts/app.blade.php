@@ -126,17 +126,36 @@
                     <div class="nb-entity-menu-head">
                         <i class="fas fa-calendar-check mr-2"></i>Periode untuk semua halaman
                     </div>
-                    <div class="nb-period-scroll">
-                        @foreach($daftarPeriode->groupBy(fn ($p) => substr($p->period, 0, 4)) as $tahun => $periodeTahun)
-                            <div class="nb-period-year">{{ $tahun }}</div>
-                            <div class="nb-period-grid">
-                                @foreach($periodeTahun->sortBy('period') as $p)
-                                    @php($pilih = $p->period === $periodeAktif)
+                    @php($perTahun = $daftarPeriode->groupBy(fn ($p) => substr($p->period, 0, 4))->sortKeysDesc())
+                    @php($tahunAktif = substr($periodeAktif, 0, 4))
+
+                    {{--
+                        Tahun dipilih lewat tab, bulannya di bawah. Sebelumnya seluruh tahun
+                        ditumpuk ke bawah sehingga daftarnya memanjang terus setiap tahun baru;
+                        kini tingginya tetap — satu baris tab, satu kisi 12 bulan.
+                    --}}
+                    <div class="nb-period-tabs" role="tablist">
+                        @foreach($perTahun as $tahun => $periodeTahun)
+                            <button type="button" class="nb-period-tab {{ (string) $tahun === $tahunAktif ? 'is-active' : '' }}"
+                                    data-tab-tahun="{{ $tahun }}" role="tab"
+                                    aria-selected="{{ (string) $tahun === $tahunAktif ? 'true' : 'false' }}">
+                                {{ $tahun }}
+                            </button>
+                        @endforeach
+                    </div>
+
+                    @foreach($perTahun as $tahun => $periodeTahun)
+                        @php($adaBulan = $periodeTahun->keyBy(fn ($p) => (int) substr($p->period, 5, 2)))
+                        <div class="nb-period-grid" data-panel-tahun="{{ $tahun }}" @if((string) $tahun !== $tahunAktif) hidden @endif>
+                            @for($bulan = 1; $bulan <= 12; $bulan++)
+                                @php($kode = $tahun.'-'.str_pad($bulan, 2, '0', STR_PAD_LEFT))
+                                @php($p = $adaBulan->get($bulan))
+                                @if($p)
                                     <form method="POST" action="{{ route('period.switch') }}" class="m-0">
                                         @csrf
                                         <input type="hidden" name="period" value="{{ $p->period }}">
                                         <button type="submit" data-periode="{{ $p->period }}"
-                                                class="nb-period-item {{ $pilih ? 'is-active' : '' }}"
+                                                class="nb-period-item {{ $p->period === $periodeAktif ? 'is-active' : '' }}"
                                                 title="{{ period_label($p->period) }}{{ period_closed($p->status) ? ' · ditutup' : '' }}">
                                             <strong>{{ month_abbr($p->period) }}</strong>
                                             <small>
@@ -145,10 +164,17 @@
                                             </small>
                                         </button>
                                     </form>
-                                @endforeach
-                            </div>
-                        @endforeach
-                    </div>
+                                @else
+                                    {{-- Bulan yang periodenya belum dibuat: tetap tampil agar kisinya
+                                         utuh Januari–Desember, tetapi tidak dapat dipilih. --}}
+                                    <span class="nb-period-item is-empty" title="Periode {{ period_label($kode) }} belum dibuat">
+                                        <strong>{{ month_abbr($kode) }}</strong>
+                                        <small>belum ada</small>
+                                    </span>
+                                @endif
+                            @endfor
+                        </div>
+                    @endforeach
                     <div class="nb-period-foot">
                         <i class="fas fa-circle-info mr-1"></i>
                         Revenue (F1) dan rasio (F2) dihitung kumulatif sejak Januari. Untuk melihat capaian setahun, pilih bulan terakhir tahun itu.
@@ -574,6 +600,7 @@
 @include('partials.livewire-feedback')
 @include('partials.smart-select')
 @include('partials.confirm-dialog')
+@include('partials.period-tabs')
 <script>
 // FR-15 fallback: pastikan klik profil selalu buka #logoutModal meski data-toggle terhalang Livewire/AdminLTE (fix # -> /# )
 document.addEventListener('DOMContentLoaded', function(){

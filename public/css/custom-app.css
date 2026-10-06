@@ -1490,3 +1490,37 @@ tr.revenue-terkunci .badge { font-weight: 600; }
 .avatar-pratinjau { width: 64px; height: 64px; font-size: 1.5rem; }
 .avatar-tabel img,
 .avatar-pratinjau img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Pemilih periode: tab tahun di atas, kisi 12 bulan di bawahnya. */
+.nb-period-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: .55rem .6rem .35rem;
+    border-bottom: 1px solid rgba(0, 0, 0, .07);
+    margin-bottom: .45rem;
+}
+.nb-period-tab {
+    border: 1px solid rgba(0, 0, 0, .1);
+    background: #fff;
+    border-radius: 999px;
+    padding: .2rem .8rem;
+    font-size: .8rem;
+    font-weight: 700;
+    color: #46606b;
+    cursor: pointer;
+}
+.nb-period-tab:hover { border-color: #0f6f67; color: #0f6f67; }
+.nb-period-tab.is-active {
+    background: #0f6f67;
+    border-color: #0f6f67;
+    color: #fff;
+}
+
+/* Bulan yang periodenya belum dibuat — menjaga kisi tetap Januari–Desember. */
+.nb-period-item.is-empty {
+    opacity: .42;
+    cursor: not-allowed;
+    background: #f5f7f8;
+}
+.nb-period-item.is-empty:hover { background: #f5f7f8; border-color: rgba(0, 0, 0, .08); }
