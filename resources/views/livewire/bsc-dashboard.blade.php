@@ -343,9 +343,22 @@
                             <i class="fas {{ $isClosed ? 'fa-lock' : 'fa-lock-open' }} mr-1"></i> {{ $isClosed ? 'CLOSED (Terkunci)' : 'OPEN (Aktif)' }}
                         </span>
                         @can('can_override')
-                        <button wire:click="togglePeriodStatus" class="btn btn-xs {{ $isClosed ? 'btn-outline-success' : 'btn-outline-secondary' }} mr-3" title="Kunci / Buka Periode">
-                            {{ $isClosed ? 'Buka Periode' : 'Kunci Periode' }}
-                        </button>
+                            {{--
+                                Mengunci hanya masuk akal untuk bulan yang sudah lewat; menutup
+                                buku atas bulan berjalan atau bulan yang belum tiba berarti
+                                memfinalkan angka yang belum selesai dikumpulkan. Membuka kembali
+                                periode lama tetap tersedia.
+                            --}}
+                            @if ($isClosed || $periodFinished)
+                                <button wire:click="togglePeriodStatus" class="btn btn-xs {{ $isClosed ? 'btn-outline-success' : 'btn-outline-secondary' }} mr-3"
+                                        title="{{ $isClosed ? 'Buka kembali periode ini' : 'Kunci periode — angkanya tidak dapat diubah lagi' }}">
+                                    {{ $isClosed ? 'Buka Periode' : 'Kunci Periode' }}
+                                </button>
+                            @else
+                                <span class="text-muted small mr-3" title="Periode dapat dikunci setelah bulannya berakhir.">
+                                    <i class="fas fa-hourglass-half mr-1"></i> Belum berakhir
+                                </span>
+                            @endif
                         @endcan
                         <label for="periodSelect" class="mr-2 font-weight-bold">Periode:</label>
                         <select wire:model.live="selectedPeriod" id="periodSelect" class="form-control form-control-sm border-teal mr-2">

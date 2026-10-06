@@ -72,6 +72,21 @@ class BscDashboard extends Component
         $this->statusFilter = $status;
     }
 
+    /**
+     * Periode yang bulannya sudah lewat.
+     *
+     * Hanya periode seperti inilah yang boleh dikunci: mengunci bulan berjalan
+     * atau bulan yang belum tiba berarti menutup buku atas data yang belum
+     * selesai dikumpulkan.
+     */
+    public function periodIsFinished(?string $period = null): bool
+    {
+        $period ??= $this->selectedPeriod;
+
+        return preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $period) === 1
+            && $period < now()->format('Y-m');
+    }
+
     public function togglePeriodStatus()
     {
         if ($this->lacksPermission('can_override')) {
@@ -79,11 +94,22 @@ class BscDashboard extends Component
         }
 
         $period = Period::where('period', $this->selectedPeriod)->first();
-        if ($period) {
-            $newStatus = $period->status === 'OPEN' ? 'CLOSED' : 'OPEN';
-            $period->update(['status' => $newStatus]);
-            session()->flash('message', 'Status periode '.$this->selectedPeriod.' berhasil diubah menjadi '.$newStatus.'!');
+
+        if (! $period) {
+            return;
         }
+
+        // Membuka kembali periode lama selalu boleh; yang dijaga hanya penguncian.
+        if ($period->status === 'OPEN' && ! $this->periodIsFinished()) {
+            session()->flash('error', 'Periode '.period_label($this->selectedPeriod)
+                .' belum berakhir, jadi belum dapat dikunci. Kunci periode setelah bulannya lewat dan angkanya final.');
+
+            return;
+        }
+
+        $newStatus = $period->status === 'OPEN' ? 'CLOSED' : 'OPEN';
+        $period->update(['status' => $newStatus]);
+        session()->flash('message', 'Status periode '.$this->selectedPeriod.' berhasil diubah menjadi '.$newStatus.'!');
     }
 
     /**
@@ -651,6 +677,8 @@ class BscDashboard extends Component
             'nextPeriod' => $this->nextPeriodSuggestion(),
             'periodBounds' => $this->periodBounds(),
             'periodExists' => $this->periodAlreadyExists(),
+            // Tombol Kunci Periode hanya muncul bila bulannya sudah lewat.
+            'periodFinished' => $this->periodIsFinished(),
             'hoursSinceSync' => $hoursSinceSync,
             'lastSyncTime' => $lastSyncTime,
             'apexScore' => $apexScore,

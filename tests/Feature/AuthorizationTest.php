@@ -71,6 +71,60 @@ class AuthorizationTest extends TestCase
         $this->assertDatabaseMissing('periods', ['period' => '2027-01']);
     }
 
+    /**
+     * Periode hanya dapat dikunci setelah bulannya berakhir.
+     *
+     * Mengunci bulan berjalan — apalagi bulan yang belum tiba — berarti menutup
+     * buku atas angka yang belum selesai dikumpulkan, dan seluruh menu bulanan
+     * langsung ikut terkunci.
+     */
+    public function test_only_a_month_that_has_ended_can_be_locked(): void
+    {
+        $this->actingAs($this->userWithRole('Super Admin'));
+
+        $berjalan = now()->format('Y-m');
+        $mendatang = now()->addMonth()->format('Y-m');
+        $lewat = now()->subMonth()->format('Y-m');
+
+        foreach ([$berjalan, $mendatang, $lewat] as $p) {
+            Period::create(['period' => $p, 'status' => 'OPEN', 'apex_score' => 0]);
+        }
+
+        // Bulan berjalan dan bulan mendatang: tombolnya tidak ditawarkan …
+        foreach ([$berjalan, $mendatang] as $p) {
+            $uji = Livewire::test(BscDashboard::class)->set('selectedPeriod', $p);
+
+            $uji->assertDontSee('Kunci Periode')->assertSee('Belum berakhir');
+
+            // … dan tetap ditolak bila aksinya dipanggil langsung.
+            $uji->call('togglePeriodStatus');
+            $this->assertSame('OPEN', Period::where('period', $p)->value('status'), $p.' seharusnya tetap terbuka');
+        }
+
+        // Bulan yang sudah lewat: boleh dikunci, dan boleh dibuka kembali.
+        $uji = Livewire::test(BscDashboard::class)->set('selectedPeriod', $lewat);
+        $uji->assertSee('Kunci Periode')->call('togglePeriodStatus');
+        $this->assertSame('CLOSED', Period::where('period', $lewat)->value('status'));
+
+        $uji->call('togglePeriodStatus');
+        $this->assertSame('OPEN', Period::where('period', $lewat)->value('status'));
+    }
+
+    public function test_a_closed_period_can_always_be_reopened_even_if_the_month_is_running(): void
+    {
+        $this->actingAs($this->userWithRole('Super Admin'));
+
+        $berjalan = now()->format('Y-m');
+        Period::create(['period' => $berjalan, 'status' => 'CLOSED', 'apex_score' => 0]);
+
+        Livewire::test(BscDashboard::class)
+            ->set('selectedPeriod', $berjalan)
+            ->assertSee('Buka Periode')
+            ->call('togglePeriodStatus');
+
+        $this->assertSame('OPEN', Period::where('period', $berjalan)->value('status'));
+    }
+
     public function test_an_admin_fat_can_still_manage_periods(): void
     {
         $this->actingAs($this->userWithRole('Admin FAT'));
