@@ -47,5 +47,35 @@
                 panel.hidden = panel.dataset.panelTahun !== tahun;
             });
         }, true);
+
+        /*
+         * Tahun aktif digeser ke dalam pandangan saat dropdown dibuka. Tanpa ini,
+         * pengguna yang sedang berada di tahun lama membuka dropdown dan hanya
+         * melihat tahun-tahun terbaru — tahunnya sendiri tersembunyi di kanan.
+         */
+        const tampilkanTahunAktif = function () {
+            document.querySelectorAll('.nb-period-tabs').forEach(function (baris) {
+                const aktif = baris.querySelector('.nb-period-tab.is-active');
+
+                if (aktif) {
+                    // Hitung sendiri, bukan scrollIntoView(): scrollIntoView juga
+                    // menggulung halaman di belakang dropdown.
+                    baris.scrollLeft = aktif.offsetLeft - (baris.clientWidth - aktif.offsetWidth) / 2;
+                }
+            });
+        };
+
+        // "shown.bs.dropdown" adalah event jQuery milik Bootstrap 4 — tidak
+        // terdengar oleh addEventListener biasa. Pakai jQuery bila ada, dan
+        // sediakan cadangan berbasis klik supaya tetap bekerja tanpa jQuery.
+        if (window.jQuery) {
+            window.jQuery(document).on('shown.bs.dropdown', tampilkanTahunAktif);
+        } else {
+            document.addEventListener('click', function (e) {
+                if (e.target.closest && e.target.closest('[data-toggle="dropdown"]')) {
+                    setTimeout(tampilkanTahunAktif, 60);
+                }
+            });
+        }
     }
 </script>

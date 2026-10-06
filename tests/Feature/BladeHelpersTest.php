@@ -160,6 +160,20 @@ class BladeHelpersTest extends TestCase
 
         // Tiap kisi utuh 12 bulan, termasuk bulan yang periodenya belum dibuat.
         $this->assertStringContainsString('belum ada', $html);
+
+        // Tahun terbaru di kiri, makin ke kanan makin lama.
+        preg_match_all('/data-tab-tahun="(\d{4})"/', $html, $cocok);
+        $tahun = $cocok[1];
+        $urut = $tahun;
+        rsort($urut);
+        $this->assertSame($urut, $tahun, 'Tab tahun harus urut dari yang terbaru.');
+
+        // Barisnya digeser mendatar, bukan membungkus ke bawah — dengan banyak
+        // tahun, membungkus membuat dropdown memanjang seperti sebelum ada tab.
+        $gaya = file_get_contents(public_path('css/custom-app.css'));
+        $baris = substr($gaya, strpos($gaya, '.nb-period-tabs {'), 400);
+        $this->assertStringContainsString('flex-wrap: nowrap', $baris);
+        $this->assertStringContainsString('overflow-x: auto', $baris);
     }
 
     /**

@@ -1178,7 +1178,11 @@ select.form-control.is-invalid:not([multiple]):not([size]) {
 
 /* Dropdown periode aktif (navbar) */
 .nb-period-menu {
-    min-width: 320px;
+    /* Lebarnya dikunci: tanpa batas atas, menu ikut melebar mengikuti jumlah
+       tahun sehingga barisnya tidak pernah perlu digeser. */
+    width: 340px;
+    min-width: 340px;
+    max-width: calc(100vw - 24px);
 }
 
 .nb-period-scroll {
@@ -1494,13 +1498,28 @@ tr.revenue-terkunci .badge { font-weight: 600; }
 /* Pemilih periode: tab tahun di atas, kisi 12 bulan di bawahnya. */
 .nb-period-tabs {
     display: flex;
-    flex-wrap: wrap;
+    /* Satu baris yang digeser, bukan membungkus ke bawah: dengan banyak tahun,
+       membungkus membuat dropdown memanjang justru seperti sebelum ada tab. */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-behavior: smooth;
     gap: 4px;
-    padding: .55rem .6rem .35rem;
+    padding: .55rem .6rem .45rem;
     border-bottom: 1px solid rgba(0, 0, 0, .07);
     margin-bottom: .45rem;
 }
+
+/* Bilah geser tipis — cukup terlihat sebagai petunjuk bahwa masih ada tahun lain. */
+.nb-period-tabs::-webkit-scrollbar { height: 5px; }
+.nb-period-tabs::-webkit-scrollbar-track { background: transparent; }
+.nb-period-tabs::-webkit-scrollbar-thumb {
+    background: rgba(15, 111, 103, .3);
+    border-radius: 999px;
+}
+.nb-period-tabs::-webkit-scrollbar-thumb:hover { background: rgba(15, 111, 103, .55); }
 .nb-period-tab {
+    flex: none;
     border: 1px solid rgba(0, 0, 0, .1);
     background: #fff;
     border-radius: 999px;
