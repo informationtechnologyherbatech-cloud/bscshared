@@ -449,7 +449,10 @@
             @php($keliling = 2 * M_PI * 52)
             @php($komponen = [
                 ['key' => 'revenue', 'kode' => 'F1', 'label' => 'Revenue', 'icon' => 'fa-bullseye', 'score' => $revenueScore, 'note' => $revenueScore === null ? ($revenueReason ?? 'belum ada data') : null],
-                ['key' => 'ratios', 'kode' => 'F2', 'label' => 'Rasio Keuangan', 'icon' => 'fa-percent', 'score' => $hasRatioScore ? $avgRatioScore : null, 'note' => $hasRatioScore ? null : 'belum ada rasio terhitung'],
+                {{-- F2 selalu dasar kumulatif: rasio dihitung dari pos akun yang diisi
+                     YTD lalu disimpan. Pada mode "bulan terpilih saja", dasarnya ditulis
+                     di kartunya supaya skor puncak tidak terbaca sebagai skor bulan itu. --}}
+                ['key' => 'ratios', 'kode' => 'F2', 'label' => 'Rasio Keuangan', 'icon' => 'fa-percent', 'score' => $hasRatioScore ? $avgRatioScore : null, 'note' => $hasRatioScore ? (period_cumulative() ? null : 'dasar kumulatif') : 'belum ada rasio terhitung'],
             ])
             @php($bobotDipakai = collect($apexBreakdown)->pluck('weight', 'label'))
             <div class="apex-card apex-{{ $apexTone }} mb-4">
@@ -679,6 +682,19 @@
                                     <h5 class="font-weight-bold text-teal"><i class="fas fa-calculator mr-2"></i> Rincian Bobot Apex Score</h5>
                                     <p class="text-muted small">Skor puncak = {{ (float) ($apexWeights['revenue'] ?? 0) * 100 }}% × F1 (revenue) + {{ (float) ($apexWeights['ratios'] ?? 0) * 100 }}% × F2 (rasio keuangan).
                                         Tingkat tanpa data dikeluarkan dan bobotnya dibagi ke yang tersedia.</p>
+                                    {{-- Dua tingkat dengan jendela berbeda tidak boleh dibaca sebagai satu
+                                         skor bulan tanpa peringatan; pemeriksaan satu bulan ada di Pos Akun. --}}
+                                    @unless (period_cumulative())
+                                        <div class="alert alert-warning py-2 px-3 small">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                                            Jendelanya sedang berbeda: <strong>F1</strong> menilai {{ month_name($selectedPeriod) }} saja,
+                                            <strong>F2</strong> tetap kumulatif Januari s.d. {{ month_name($selectedPeriod) }} — karena rasio
+                                            dihitung dari pos akun yang diisi YTD. Skor puncak di atas karenanya
+                                            <strong>bercampur dasar</strong> dan jangan dipakai sebagai skor resmi bulan ini.
+                                            Untuk memeriksa rasio bulan {{ month_name($selectedPeriod) }} sendiri, buka
+                                            <a href="{{ route('account-balances', ['period' => $selectedPeriod]) }}">Pos Akun</a>.
+                                        </div>
+                                    @endunless
                                     <ul class="list-group list-group-flush small mb-3">
                                         <li class="list-group-item bg-transparent d-flex justify-content-between">
                                             <span>Skor Revenue — F1 ({{ (float) ($apexWeights['revenue'] ?? 0) * 100 }}%)</span>
@@ -715,11 +731,17 @@
                                     <small class="text-muted d-block">Target setahun {{ substr($selectedPeriod, 0, 4) }}: <strong>{{ rupiah($rd['annual']) }}</strong></small>
                                     <div class="d-flex justify-content-between align-items-center mt-3">
                                         <div>
-                                            <small class="text-muted d-block">Target kumulatif Jan–{{ substr($selectedPeriod, 5, 2) }}</small>
+                                            {{-- Label mengikuti cara baca yang dipilih; menyebut "kumulatif" padahal
+                                                 hanya satu bulan membuat angkanya salah dibaca. --}}
+                                            <small class="text-muted d-block">{{ period_cumulative()
+                                                ? 'Target kumulatif Jan–'.substr($selectedPeriod, 5, 2)
+                                                : 'Target '.period_label($selectedPeriod) }}</small>
                                             <h4 class="font-weight-bold text-dark">{{ rupiah($rd['target_ytd']) }}</h4>
                                         </div>
                                         <div class="text-right">
-                                            <small class="text-muted d-block">Realisasi kumulatif ({{ $rd['months_actual'] }} bulan)</small>
+                                            <small class="text-muted d-block">{{ period_cumulative()
+                                                ? 'Realisasi kumulatif ('.$rd['months_actual'].' bulan)'
+                                                : 'Realisasi '.period_label($selectedPeriod) }}</small>
                                             <h4 class="font-weight-bold text-success">{{ $rd['months_actual'] ? rupiah($rd['actual_ytd']) : '—' }}</h4>
                                         </div>
                                     </div>
@@ -728,7 +750,7 @@
                                             <div class="progress-bar {{ $revenueScore >= 100 ? 'bg-success' : ($revenueScore >= 80 ? 'bg-warning' : 'bg-danger') }}" style="width: {{ min(100, $revenueScore) }}%"></div>
                                         </div>
                                         <div class="d-flex justify-content-between small text-muted mt-1">
-                                            <span>Capaian kumulatif (F1): {{ number_format($revenueScore, 2, ',', '.') }}%</span>
+                                            <span>{{ period_cumulative() ? 'Capaian kumulatif (F1)' : 'Capaian '.period_label($selectedPeriod).' (F1)' }}: {{ number_format($revenueScore, 2, ',', '.') }}%</span>
                                             @php($selisih = $rd['actual_ytd'] - $rd['target_ytd'])
                                             <span class="{{ $selisih < 0 ? 'text-danger' : 'text-success' }}">Selisih: {{ rupiah($selisih) }}</span>
                                         </div>

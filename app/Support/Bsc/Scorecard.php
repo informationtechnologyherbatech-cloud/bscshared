@@ -60,7 +60,13 @@ class Scorecard
     public static function forPeriod(string $period): array
     {
         $tingkat = [
-            'revenue' => RevenueTarget::cumulativeAchievement($period),
+            // SELALU kumulatif — ini skor resmi entitas, dipakai ringkasan yang
+            // dibaca holding dan konsolidasi grup. Mode "bulan terpilih saja" di
+            // bilah atas hanya cara melihat milik satu pengguna; bila ikut
+            // terbawa ke sini, konsolidasi akan mencampur dua dasar perhitungan:
+            // entitas yang dibaca langsung dari database memakai bulan-saja,
+            // sedangkan yang dibaca lewat API (tanpa sesi) tetap kumulatif.
+            'revenue' => RevenueTarget::cumulativeAchievement($period, true),
             'ratios' => self::ratioScore($period),
         ];
 

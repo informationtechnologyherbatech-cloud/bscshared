@@ -1543,3 +1543,35 @@ tr.revenue-terkunci .badge { font-weight: 600; }
     background: #f5f7f8;
 }
 .nb-period-item.is-empty:hover { background: #f5f7f8; border-color: rgba(0, 0, 0, .08); }
+
+/* Pilihan cara membaca periode: kumulatif atau bulan terpilih saja. */
+.nb-period-mode { margin: 0; padding: 0 .6rem .5rem; }
+.nb-period-mode-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: .55rem;
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, .09);
+    border-radius: 8px;
+    background: #fff;
+    padding: .5rem .6rem;
+    text-align: left;
+    cursor: pointer;
+}
+.nb-period-mode-btn:hover { border-color: #0f6f67; background: #f4fbfa; }
+.nb-period-mode-btn strong { display: block; font-size: .82rem; color: #21323c; }
+.nb-period-mode-btn small { display: block; font-size: .73rem; color: #6c8089; line-height: 1.35; }
+.nb-period-check {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    border: 1.5px solid #b9c6cb;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .62rem;
+    color: #fff;
+}
+.nb-period-check.is-on { background: #0f6f67; border-color: #0f6f67; }

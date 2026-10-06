@@ -97,6 +97,30 @@ class Period extends Model
     }
 
     /**
+     * Cara membaca periode: kumulatif sejak Januari (bawaan) atau bulan terpilih
+     * saja.
+     *
+     * Kumulatif menjawab "sampai bulan ini sudah sampai mana?"; bulan saja
+     * menjawab "bulan ini sendiri sudah benar atau belum?". Keduanya dibutuhkan,
+     * jadi pilihannya disimpan di sesi seperti periode aktif — berlaku di semua
+     * halaman dan per entitas.
+     */
+    public static function isCumulative(): bool
+    {
+        return (bool) Session::get(static::cumulativeKey(), true);
+    }
+
+    public static function setCumulative(bool $kumulatif): void
+    {
+        Session::put(static::cumulativeKey(), $kumulatif);
+    }
+
+    private static function cumulativeKey(): string
+    {
+        return 'bsc.periode_kumulatif.'.(app(EntityContext::class)->id() ?? 'semua');
+    }
+
+    /**
      * Daftar periode entitas aktif, terbaru lebih dulu.
      *
      * @return array<int, string>

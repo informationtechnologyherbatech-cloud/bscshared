@@ -614,7 +614,11 @@ class BscDashboard extends Component
         // render ulang Livewire tidak menulis berulang. Timestamp sengaja tidak
         // disentuh: periods.updated_at menandai sinkronisasi data terakhir,
         // bukan kalkulasi ulang skor (dipakai penanda data basi di atas).
-        if ($periodObj && ! $isClosed && (float) $periodObj->apex_score !== $apexScore) {
+        // Mode "bulan saja" hanya cara MELIHAT, bukan cara menghitung yang resmi:
+        // skor tersimpan tetap atas dasar kumulatif, karena dipakai riwayat
+        // periode dan konsolidasi holding. Tanpa penjagaan ini, sekali seseorang
+        // mematikan centang kumulatif, angka bulan-saja ikut tertulis ke periode.
+        if ($periodObj && ! $isClosed && Period::isCumulative() && (float) $periodObj->apex_score !== $apexScore) {
             $periodObj->timestamps = false;
             $periodObj->update(['apex_score' => $apexScore]);
             $periodObj->timestamps = true;

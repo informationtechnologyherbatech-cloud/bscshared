@@ -148,6 +148,23 @@ class AsalAngkaRasioTest extends TestCase
         $this->assertSame('rata-rata awal & akhir', AccountPosts::derivation('PA06', 1_000_000.0, 400_000.0, 8)['label']);
         $this->assertSame('saldo akhir', AccountPosts::derivation('PA08', 1_000_000.0, null, 8)['label']);
         $this->assertSame('belum diisi', AccountPosts::derivation('PA14', null, null, 8)['label']);
+
+        // Dasar satu bulan — penjaga yang sama, angka yang masuk sudah angka
+        // bulan itu, jadi ceritanya bukan lagi "YTD ÷ n bulan".
+        $sebulan = AccountPosts::usedValues($isian, 1);
+
+        foreach (array_keys(AccountPosts::all()) as $kode) {
+            $asal = AccountPosts::derivation($kode, $isian[$kode]['amount'], $isian[$kode]['opening'], 1, true);
+
+            $this->assertSame(
+                $sebulan[$kode],
+                $asal['value'],
+                'Keterangan asal '.$kode.' pada dasar satu bulan tidak sama dengan nilai yang dipakai mesin rasio.'
+            );
+        }
+
+        $this->assertSame('bulan ini × 12', AccountPosts::derivation('PA01', 1_000_000.0, null, 1, true)['label']);
+        $this->assertSame('rata-rata bulan lalu & kini', AccountPosts::derivation('PA06', 1_000_000.0, 400_000.0, 1, true)['label']);
     }
 
     public function test_the_steps_always_end_at_the_number_the_engine_computed(): void

@@ -19,6 +19,7 @@ tingkat, isi dari atas ke bawah: *atur → isi → lihat hasil*.
 | 1 · Revenue | Target & Realisasi | Finance | Target: awal tahun · Realisasi: tiap bulan |
 | 2 · Rasio | Katalog Rasio | Finance | Awal tahun |
 | 2 · Rasio | Pos Akun | Finance | Tiap bulan |
+| 2 · Rasio | Pos Akun › **validasi satu bulan** | Finance | Tiap tutup buku |
 | 3 · KPI | Peta Pos Akun | Finance + CFO | Awal tahun |
 | 3 · KPI | Cascade KPI | Kepala unit | Awal tahun |
 | 3 · KPI | Uji Indikator | Finance | Setelah KPI disusun |
@@ -130,6 +131,53 @@ diedit manual), dan Tingkat 2 piramida terisi.
 > Alternatif: data CoA dari ERP dapat dikirim lewat **Integrasi & Gateway ›
 > Wadah Penerimaan Data Finance**; angkanya masuk ke Pos Akun yang sama.
 
+### c. Memvalidasi satu bulan *(Finance, setiap tutup buku)*
+
+Pertanyaan yang dijawab di sini bukan "sampai Agustus sudah sampai mana?"
+melainkan **"angka Agustus sendiri sudah betul atau belum?"**. Keduanya butuh
+cara baca yang berbeda, karena pos aliran diisi **YTD**: bulan yang buruk bisa
+tertutup bulan-bulan sebelumnya yang baik.
+
+**Langkahnya:**
+
+1. Pada pilihan **periode** di bilah atas, pilih bulan yang ditutup.
+2. **Matikan centang "Hitung kumulatif sejak Januari"**.
+3. Buka **Pos Akun**. Seluruh halaman kini bercerita tentang bulan itu saja:
+   kolom **Nilai dipakai**, tabel rasio, dan **skor F2** — semuanya dari angka
+   bulan itu sendiri.
+4. Bandingkan kolom **Bulan ini** dengan laporan bulanan Anda sendiri. Inilah
+   angka yang setara: untuk pos aliran = YTD bulan ini − YTD bulan lalu.
+5. Periksa rasio bulan itu. Margin yang wajar secara kumulatif bisa jauh
+   berbeda bila hanya bulan itu yang dinilai — justru itulah yang dicari.
+6. Setelah yakin, nyalakan kembali centang kumulatif, lalu **Kunci Periode**
+   bila bulan itu sudah final.
+
+**Kolom "Bulan ini" tetap tampil walau sedang membaca kumulatif**, karena angka
+itu berguna kapan pun.
+
+**Dua peringatan yang akan muncul — keduanya memang disengaja:**
+
+| Peringatan | Artinya | Yang dilakukan |
+|---|---|---|
+| *“… pos aliran belum dapat dinilai per bulan”* | Bulan sebelumnya belum diisi, sehingga selisihnya tidak dapat dihitung. Angkanya **dikosongkan, bukan dikira-kira** — memakai YTD apa adanya akan diam-diam kembali ke dasar kumulatif, dasar yang justru sedang diperiksa. | Isi dulu bulan sebelumnya. |
+| *“… pos aliran YTD-nya menyusut”* | YTD bulan ini lebih kecil daripada bulan lalu, sehingga angka bulan ini negatif. | Wajar bila ada pembalikan jurnal. Bila tidak, salah satu dari kedua bulan itu keliru. |
+
+**Yang perlu diketahui tentang batasnya:**
+
+- Mode ini **hanya cara melihat**. Menekan **Simpan & hitung rasio** tetap
+  menyimpan hasil atas dasar **kumulatif**, karena itulah skor resmi entitas
+  yang dibaca piramida dan konsolidasi holding. Memeriksa satu bulan tidak akan
+  pernah mengubah angka resmi.
+- Di **piramida**, F1 ikut mode tetapi **F2 tetap kumulatif** — rasio dibaca
+  dari hasil yang tersimpan. Karena itu skor puncak pada mode ini bercampur
+  dasar, dan halaman itu mengatakannya sendiri. Pemeriksaan rasio satu bulan
+  ada di **Pos Akun**, bukan di piramida.
+- Pos **neraca** sudah berupa saldo akhir tiap bulan, jadi tidak perlu
+  diselisihkan; rata-rata bulanannya memakai saldo akhir bulan lalu sebagai
+  saldo awal.
+- **Januari** tidak perlu bulan pembanding: YTD Januari memang bulan Januari.
+- **Jumlah karyawan** dipakai apa adanya pada kedua mode.
+
 ---
 
 ## Tingkat 3 · KPI & Sasaran Mutu
@@ -237,6 +285,12 @@ Revenue.
 
 **Tingkat 2 "target rasio belum diisi".** Pos akun sudah ada, tetapi target di
 Katalog Rasio kosong.
+
+**Saya memilih Agustus, tetapi angkanya terhitung sejak Januari.** Memang begitu
+bawaannya: capaian dijumlah Januari s.d. bulan terpilih. Untuk menilai Agustus
+sendiri — mis. memvalidasi tutup buku — matikan centang *Hitung kumulatif sejak
+Januari* pada pilihan periode di bilah atas. Langkah lengkapnya ada di
+**Tingkat 2 › c. Memvalidasi satu bulan**.
 
 **Rasio tidak bisa diedit.** Rasio bertanda *Otomatis* berasal dari Pos Akun.
 Ubah angkanya lewat Pos Akun atau Katalog Rasio.

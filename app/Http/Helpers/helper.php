@@ -262,6 +262,14 @@ if (! function_exists('active_entity')) {
     }
 }
 
+if (! function_exists('period_cumulative')) {
+    /** Periode dibaca kumulatif sejak Januari (bawaan) atau bulan terpilih saja. */
+    function period_cumulative(): bool
+    {
+        return Period::isCumulative();
+    }
+}
+
 if (! function_exists('asset_versioned')) {
     /**
      * URL berkas di folder public/ dengan penanda versi dari waktu ubahnya.
@@ -502,6 +510,14 @@ if (! function_exists('ratio_posts')) {
     }
 }
 
+if (! function_exists('post_name')) {
+    /** Nama pos akun entitas aktif; kode yang tidak dikenal tampil apa adanya. */
+    function post_name(string $code): string
+    {
+        return AccountPosts::nameOf($code);
+    }
+}
+
 if (! function_exists('post_kind_label')) {
     /** Label jenis pos akun (Aliran · Neraca · HRIS). */
     function post_kind_label(string $kind): string
@@ -622,13 +638,14 @@ if (! function_exists('post_derivation')) {
      *
      * @return array{label: string, arithmetic: string, value: float|null}
      */
-    function post_derivation(string $code, mixed $amount, mixed $opening, int $bulan): array
+    function post_derivation(string $code, mixed $amount, mixed $opening, int $bulan, bool $bulananSaja = false): array
     {
         return AccountPosts::derivation(
             $code,
             is_numeric($amount) ? (float) $amount : null,
             is_numeric($opening) ? (float) $opening : null,
-            $bulan
+            $bulan,
+            $bulananSaja
         );
     }
 }

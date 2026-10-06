@@ -400,11 +400,17 @@ class AccountBalances extends Component
     {
         // Pratinjau langsung dari isian yang sedang tampil, sebelum disimpan.
         $engine = app(RatioEngine::class);
-        $hasil = $engine->evaluateWith(
-            $this->inputs(),
-            RatioEngine::monthOf($this->period),
-            $engine->targetsFor(substr($this->period, 0, 4))
-        );
+        $isian = $this->inputs();
+        $kumulatif = Period::isCumulative();
+
+        // Dasar satu bulan selalu dihitung: kolom "Bulan ini" berguna bagi
+        // Finance walau sedang membaca kumulatif — itulah angka yang dapat
+        // dibandingkan dengan laporan bulanan mereka sendiri.
+        $bulanan = $engine->evaluateMonthOnly($this->period, $isian);
+
+        $hasil = $kumulatif
+            ? $engine->evaluateWith($isian, RatioEngine::monthOf($this->period), $engine->targetsFor(substr($this->period, 0, 4)))
+            : $bulanan;
 
         return view('livewire.account-balances', [
             'posts' => AccountPosts::all(),
@@ -412,7 +418,10 @@ class AccountBalances extends Component
             'kinds' => AccountPosts::kinds(),
             'sources' => AccountPosts::sources(),
             'hasil' => $hasil,
-            'bulan' => RatioEngine::monthOf($this->period),
+            'bulanan' => $bulanan,
+            'kumulatif' => $kumulatif,
+            // n pada ×12 ÷ n: satu bulan bila yang dinilai hanya bulan itu.
+            'bulan' => $kumulatif ? RatioEngine::monthOf($this->period) : 1,
             'isClosed' => $this->isClosed(),
             'hasPeriod' => Period::where('period', $this->period)->exists(),
             'entity' => app(EntityContext::class)->entity(),

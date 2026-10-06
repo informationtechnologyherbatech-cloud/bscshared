@@ -133,10 +133,14 @@ class BscWiring extends Component
 
         // ---- Kolom 1: target revenue
         $rencana = RevenuePlan::where('year', $tahun)->first();
-        $revenue = RevenueTarget::where('period', '>=', $tahun.'-01')->where('period', '<=', $this->selectedPeriod)->get(['target', 'actual']);
-        $targetYtd = (float) $revenue->sum('target');
-        $realisasiYtd = (float) $revenue->sum(fn ($r) => (float) ($r->actual ?? 0));
-        $f1 = RevenueTarget::cumulativeAchievement($this->selectedPeriod);
+        // Satu sumber angka: target, realisasi, dan F1 datang dari perhitungan
+        // yang sama, sehingga jendelanya ikut mode baca periode. Sebelumnya F1
+        // mengikuti mode tetapi angka di sebelahnya selalu Jan s.d. periode —
+        // sehingga pada mode "bulan terpilih saja" keduanya bercerita berbeda.
+        $rincianRevenue = RevenueTarget::cumulative($this->selectedPeriod);
+        $targetYtd = $rincianRevenue['target_ytd'];
+        $realisasiYtd = $rincianRevenue['actual_ytd'];
+        $f1 = $rincianRevenue['score'];
         $targetSetahun = $rencana?->approved_target ?? (float) RevenueTarget::where('period', 'like', $tahun.'-%')->sum('target');
 
         // ---- Kolom 2: perspektif — istilah & urutan mengikuti wiring versi lama:

@@ -57,6 +57,17 @@
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
                     <h3 class="card-title font-weight-bold mb-2 mb-md-0">
                         <i class="fas fa-list mr-1"></i> Daftar Rasio Keuangan
+                        {{-- Daftar ini selalu dibaca dari hasil yang TERSIMPAN, yaitu dasar
+                             kumulatif. Pada mode "bulan terpilih saja" dasarnya dikatakan di
+                             sini, supaya angkanya tidak terbaca sebagai rasio bulan itu. --}}
+                        @unless (period_cumulative())
+                            <a href="{{ route('account-balances', ['period' => $selectedPeriod]) }}"
+                               class="badge badge-warning ml-2 text-decoration-none"
+                               title="Rasio di daftar ini dihitung dari pos akun yang diisi YTD, jadi dasarnya kumulatif Januari s.d. {{ month_name($selectedPeriod) }}. Untuk rasio bulan {{ month_name($selectedPeriod) }} sendiri, buka Pos Akun.">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                dasar kumulatif — rasio {{ month_name($selectedPeriod) }} saja ada di Pos Akun
+                            </a>
+                        @endunless
                     </h3>
                     <div class="card-tools d-flex flex-wrap align-items-center">
                         <select wire:model.live="selectedCategory" class="form-control form-control-sm mr-2 mb-1 mb-md-0" style="width: 160px;">

@@ -39,6 +39,25 @@ Dua hal di pojok kanan atas menentukan **semua angka yang Anda lihat**:
 > Kalau sebuah halaman terasa "kosong padahal datanya ada", periksa dua hal ini
 > lebih dulu. Hampir selalu periodenya belum sesuai.
 
+### Kumulatif atau bulan terpilih saja
+
+Di dalam pemilih periode ada ceklis **Hitung kumulatif sejak Januari**, menyala
+secara bawaan. Keduanya menjawab pertanyaan yang berbeda:
+
+| Ceklis | Pertanyaan yang dijawab | Contoh |
+|---|---|---|
+| **Menyala** (bawaan) | Sampai bulan ini sudah sampai mana? | Realisasi Jan–Agu ÷ target Jan–Agu |
+| **Mati** | Bulan ini sendiri sudah benar atau belum? | Realisasi Agustus ÷ target Agustus |
+
+Pilihannya tersimpan dan berlaku di semua halaman sampai diubah lagi. Dua hal
+yang perlu diketahui:
+
+- Yang berubah hanya **Revenue (F1)**. **Rasio keuangan (F2) tetap** memakai
+  dasarnya sendiri, karena pos akun aliran memang diisi nilai YTD.
+- Mode ini hanya cara **melihat**. Skor yang tersimpan pada periode — yang
+  dipakai riwayat dan konsolidasi holding — selalu atas dasar kumulatif, jadi
+  mematikan ceklis tidak mengubah data apa pun.
+
 ---
 
 ### Satu pemasangan melayani satu entitas

@@ -30,9 +30,9 @@ class RevenueTarget extends Model
      * persen dan dibatasi 100 (konvensi BSC: melebihi target tidak menambah
      * nilai). Null bila belum ada target sama sekali — belum ada data, bukan nol.
      */
-    public static function cumulativeAchievement(string $period): ?float
+    public static function cumulativeAchievement(string $period, ?bool $kumulatif = null): ?float
     {
-        return static::cumulative($period)['score'];
+        return static::cumulative($period, $kumulatif)['score'];
     }
 
     /** Alasan F1 belum dapat dihitung. */
@@ -54,12 +54,17 @@ class RevenueTarget extends Model
      *
      * @return array{score: float|null, reason: string|null, target_ytd: float, actual_ytd: float, months_actual: int, months_missing: array<int, string>, annual: float|null}
      */
-    public static function cumulative(string $period): array
+    public static function cumulative(string $period, ?bool $kumulatif = null): array
     {
+        $kumulatif ??= Period::isCumulative();
         $tahun = substr($period, 0, 4);
 
+        // Mode bulan saja: jendelanya menyempit ke periode itu sendiri, sehingga
+        // capaiannya menjawab "bulan ini sudah benar atau belum".
+        $mulai = $kumulatif ? $tahun.'-01' : $period;
+
         $baris = static::query()
-            ->where('period', '>=', $tahun.'-01')
+            ->where('period', '>=', $mulai)
             ->where('period', '<=', $period)
             ->orderBy('period')
             ->get(['period', 'target', 'actual']);
@@ -86,6 +91,7 @@ class RevenueTarget extends Model
                 ? $baris->filter(fn ($b) => $b->actual === null && (float) $b->target > 0)->pluck('period')->values()->all()
                 : [],
             'annual' => $setahun ? ($setahun->revised_target ?? $setahun->approved_target) : null,
+            'cumulative' => $kumulatif,
         ];
     }
 

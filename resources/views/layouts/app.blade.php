@@ -175,9 +175,37 @@
                             @endfor
                         </div>
                     @endforeach
+                    {{--
+                        Dua pertanyaan yang berbeda: "sampai bulan ini sudah sampai mana?"
+                        (kumulatif) dan "bulan ini sendiri sudah benar atau belum?" (bulan saja).
+                        Pilihannya tersimpan di sesi, berlaku di semua halaman.
+                    --}}
+                    @php($kumulatif = period_cumulative())
+                    <form method="POST" action="{{ route('period.cumulative') }}" class="nb-period-mode">
+                        @csrf
+                        <input type="hidden" name="cumulative" value="{{ $kumulatif ? 0 : 1 }}">
+                        <button type="submit" class="nb-period-mode-btn">
+                            <span class="nb-period-check {{ $kumulatif ? 'is-on' : '' }}" aria-hidden="true">
+                                @if($kumulatif)<i class="fas fa-check"></i>@endif
+                            </span>
+                            <span>
+                                <strong>Hitung kumulatif sejak Januari</strong>
+                                <small>{{ $kumulatif
+                                    ? 'Aktif — capaian dijumlah Januari s.d. bulan terpilih.'
+                                    : 'Mati — hanya angka bulan terpilih yang dinilai.' }}</small>
+                            </span>
+                        </button>
+                    </form>
+
                     <div class="nb-period-foot">
                         <i class="fas fa-circle-info mr-1"></i>
-                        Revenue (F1) dan rasio (F2) dihitung kumulatif sejak Januari. Untuk melihat capaian setahun, pilih bulan terakhir tahun itu.
+                        @if($kumulatif)
+                            Revenue (F1) dijumlah sejak Januari. Untuk melihat capaian setahun, pilih bulan terakhir tahun itu.
+                        @else
+                            Revenue (F1) dinilai untuk <strong>{{ period_label($periodeAktif) }}</strong> saja.
+                            Rasio bulan itu sendiri diperiksa di <strong>Pos Akun</strong>; skor F2 di piramida
+                            tetap kumulatif, karena pos akun aliran memang diisi YTD.
+                        @endif
                     </div>
                 </div>
             </li>

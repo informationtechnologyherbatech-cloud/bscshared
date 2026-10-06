@@ -1,40 +1,46 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
+use App\Livewire\AccountBalances;
+use App\Livewire\AccountPostMap;
+use App\Livewire\ActionPlans;
+use App\Livewire\AppSettings;
 use App\Livewire\Auth\ChangePassword;
 use App\Livewire\Auth\Login;
 use App\Livewire\BscDashboard;
-use App\Livewire\FinancialRatios;
-use App\Livewire\DepartmentObjectives;
-use App\Livewire\ActionPlans;
-use App\Livewire\StagingLogs;
-use App\Livewire\SystemIntegration;
 use App\Livewire\BscWiring;
-use App\Livewire\ManageUsers;
-use App\Livewire\AppSettings;
-use App\Livewire\AccountBalances;
-use App\Livewire\AccountPostMap;
+use App\Livewire\ComingSoon;
+use App\Livewire\DepartmentObjectives;
 use App\Livewire\EntitySources;
+use App\Livewire\FinancialRatios;
 use App\Livewire\HoldingConsolidation;
 use App\Livewire\IndicatorTests;
 use App\Livewire\KpiCascades;
+use App\Livewire\ManageUsers;
+use App\Livewire\MethodDocumentation;
 use App\Livewire\RatioCatalog;
 use App\Livewire\RevenuePlanning;
 use App\Livewire\RevenueTargets;
+use App\Livewire\StagingLogs;
+use App\Livewire\SystemIntegration;
 use App\Livewire\WorkUnits;
+use App\Models\Entity;
+use App\Models\Period;
 use App\Support\EntityContext;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
-// Guest: Login 
+// Guest: Login
 Route::middleware('guest')->group(function () {
     Route::get('/login', Login::class)->name('login');
 });
 
-// Authenticated: Logout 
-Route::post('/logout', function (\Illuminate\Http\Request $request) {
+// Authenticated: Logout
+Route::post('/logout', function (Request $request) {
     Auth::logout();
     $request->session()->invalidate();
     $request->session()->regenerateToken();
+
     return redirect()->route('login')->with('status', 'Anda telah berhasil logout.');
 })->middleware('auth')->name('logout');
 
@@ -55,24 +61,24 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
     // 4 Wiring — view wiring
     Route::get('/wiring', BscWiring::class)->middleware('permission:view wiring')->name('bsc-wiring');
     // 5 Dampak / What-If Sandbox — view dampak (Super Admin, FAT, Kadep)
-    Route::get('/dampak', \App\Livewire\ComingSoon::class)->middleware('permission:view dampak')->name('dampak')
+    Route::get('/dampak', ComingSoon::class)->middleware('permission:view dampak')->name('dampak')
         ->defaults('title', 'Uji Dampak / What-If Sandbox')->defaults('desc', 'Sandbox simulasi KPI hipotetis — pratinjau debet-kredit tanpa menyentuh data produksi.');
     // 6 Simulasi CoA — view coa (Super Admin, FAT)
-    Route::get('/coa', \App\Livewire\ComingSoon::class)->middleware('permission:view coa')->name('coa')
+    Route::get('/coa', ComingSoon::class)->middleware('permission:view coa')->name('coa')
         ->defaults('title', 'Simulasi CoA')->defaults('desc', 'Stress-test bagan akun hipotetis — konsisten rumus rasio Menu 2.');
     // 7 Action Plan — view actionplans
     Route::get('/action-plans', ActionPlans::class)->middleware('permission:view actionplans|view dashboard')->name('action-plans');
     // 8 Konsensus IBP — view ibp
-    Route::get('/ibp', \App\Livewire\ComingSoon::class)->middleware('permission:view ibp')->name('ibp')
+    Route::get('/ibp', ComingSoon::class)->middleware('permission:view ibp')->name('ibp')
         ->defaults('title', 'Konsensus IBP')->defaults('desc', 'IBP 5 langkah: Product→Demand→Supply→Rekonsiliasi Finansial→MBR, proyeksi 12 bulan.');
     // 9 Sensitivitas — view sensitivity
-    Route::get('/sensitivity', \App\Livewire\ComingSoon::class)->middleware('permission:view sensitivity')->name('sensitivity')
+    Route::get('/sensitivity', ComingSoon::class)->middleware('permission:view sensitivity')->name('sensitivity')
         ->defaults('title', 'Sensitivitas')->defaults('desc', 'Margin keamanan rasio terhadap skenario normal/moderat/krisis.');
     // 10 Skenario — view skenario
-    Route::get('/skenario', \App\Livewire\ComingSoon::class)->middleware('permission:view skenario')->name('skenario')
+    Route::get('/skenario', ComingSoon::class)->middleware('permission:view skenario')->name('skenario')
         ->defaults('title', 'Skenario')->defaults('desc', 'Simpan/muat skenario, undo/redo 50 langkah.');
     // 11 Dokumentasi Metode — view dokumentasi: panduan pengisian, metode skoring, uji mandiri 12 pemeriksaan.
-    Route::get('/dokumentasi', \App\Livewire\MethodDocumentation::class)->middleware('permission:view dokumentasi')->name('dokumentasi');
+    Route::get('/dokumentasi', MethodDocumentation::class)->middleware('permission:view dokumentasi')->name('dokumentasi');
     // 12 Gateway & Audit — view gateway (umbrella) + specific
     Route::get('/integration', SystemIntegration::class)->middleware('permission:view integration|view gateway')->name('system-integration');
     Route::get('/staging-logs', StagingLogs::class)->middleware('permission:view staging|view gateway')->name('staging-logs');
@@ -108,20 +114,20 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
 
     // Pengalih entitas bagi pengguna level holding. Pengguna yang terikat satu
     // entitas tidak dapat berpindah; permintaannya ditolak.
-    Route::post('/entitas/aktif', function (\Illuminate\Http\Request $request, EntityContext $context) {
+    Route::post('/entitas/aktif', function (Request $request, EntityContext $context) {
         $entityId = (int) $request->input('entity_id');
 
         abort_unless($context->switchTo($request->user(), $entityId), 403, 'Anda tidak memiliki akses ke entitas tersebut.');
 
-        return redirect()->back()->with('message', 'Beralih ke entitas '.\App\Models\Entity::find($entityId)?->name.'.');
+        return redirect()->back()->with('message', 'Beralih ke entitas '.Entity::find($entityId)?->name.'.');
     })->name('entity.switch');
 
     // Periode aktif (navbar) — berlaku di semua halaman. Parameter periode/tahun di
     // URL halaman asal dibuang agar halaman mengikuti periode yang baru dipilih.
-    Route::post('/periode/aktif', function (\Illuminate\Http\Request $request) {
+    Route::post('/periode/aktif', function (Request $request) {
         $periode = (string) $request->input('period');
 
-        if (! \App\Models\Period::setActive($periode)) {
+        if (! Period::setActive($periode)) {
             return redirect()->back()->with('error', 'Periode '.$periode.' belum dibuat.');
         }
 
@@ -137,4 +143,18 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
 
         return redirect()->to($tujuan);
     })->name('period.switch');
+
+    // Cara membaca periode: kumulatif sejak Januari (bawaan) atau bulan terpilih
+    // saja. Disimpan di sesi seperti periode aktif, sehingga berlaku di semua
+    // halaman tanpa perlu dipilih ulang.
+    Route::post('/periode/kumulatif', function (Request $request) {
+        Period::setCumulative($request->boolean('cumulative'));
+
+        $asal = url()->previous();
+        if (! in_array(parse_url($asal, PHP_URL_HOST), [$request->getHost(), parse_url((string) config('app.url'), PHP_URL_HOST)], true)) {
+            $asal = route('dashboard');
+        }
+
+        return redirect()->to($asal);
+    })->name('period.cumulative');
 });

@@ -144,6 +144,64 @@
                 </div>
             @endcan
 
+            {{-- Dasar baca yang sedang aktif. Pada mode "bulan terpilih saja" seluruh
+                 pratinjau di halaman ini — nilai dipakai, rasio, dan F2 — memakai angka
+                 bulan itu sendiri, supaya Finance dapat memeriksa satu bulan tanpa
+                 tertutup bulan-bulan sebelumnya. Yang TERSIMPAN tetap dasar kumulatif. --}}
+            @unless ($kumulatif)
+                <div class="alert alert-info">
+                    <h6 class="font-weight-bold mb-1">
+                        <i class="fas fa-search-dollar mr-1"></i>
+                        Memeriksa bulan {{ month_name($period) }} saja
+                    </h6>
+                    <p class="mb-1 small">
+                        Nilai dipakai, rasio, dan F2 di halaman ini dihitung dari angka bulan
+                        {{ month_name($period) }} sendiri — bukan Januari s.d. {{ month_name($period) }}.
+                        Dipakai untuk memastikan bulan ini sudah betul.
+                    </p>
+                    <p class="mb-0 small text-muted">
+                        Yang <strong>tersimpan</strong> saat menekan Simpan tetap atas dasar kumulatif,
+                        karena itulah skor resmi entitas yang dibaca piramida dan konsolidasi holding.
+                        Untuk kembali, aktifkan kembali centang kumulatif pada pilihan periode di bilah atas.
+                    </p>
+                </div>
+
+                @if ($bulanan['needs_previous'] !== [])
+                    <div class="alert alert-warning">
+                        <h6 class="font-weight-bold mb-1">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            {{ count($bulanan['needs_previous']) }} pos aliran belum dapat dinilai per bulan
+                        </h6>
+                        <p class="mb-1 small">
+                            Pos aliran diisi nilai YTD, jadi angka bulan {{ month_name($period) }} adalah
+                            selisihnya terhadap <strong>{{ $bulanan['previous_period'] }}</strong> — dan periode
+                            itu belum diisi. Angkanya dikosongkan, bukan dikira-kira: memakai YTD apa adanya
+                            akan diam-diam kembali ke dasar kumulatif.
+                        </p>
+                        <p class="mb-0 small">
+                            Pos: @foreach ($bulanan['needs_previous'] as $kode)<code>{{ $kode }}</code> {{ post_name($kode) }}@if (! $loop->last), @endif @endforeach
+                        </p>
+                    </div>
+                @endif
+
+                @if ($bulanan['negative'] !== [])
+                    <div class="alert alert-danger">
+                        <h6 class="font-weight-bold mb-1">
+                            <i class="fas fa-exclamation-circle mr-1"></i>
+                            {{ count($bulanan['negative']) }} pos aliran YTD-nya menyusut
+                        </h6>
+                        <p class="mb-1 small">
+                            YTD {{ $period }} lebih kecil daripada YTD {{ $bulanan['previous_period'] }}, sehingga
+                            angka bulan ini negatif. Wajar bila memang ada pembalikan jurnal; bila tidak, salah
+                            satu dari kedua bulan itu keliru.
+                        </p>
+                        <p class="mb-0 small">
+                            Pos: @foreach ($bulanan['negative'] as $kode)<code>{{ $kode }}</code> {{ post_name($kode) }}@if (! $loop->last), @endif @endforeach
+                        </p>
+                    </div>
+                @endif
+            @endunless
+
             <div class="row">
                 {{-- Isian pos akun --}}
                 <div class="col-xl-7">
@@ -164,6 +222,11 @@
                                         <th>Pos akun</th>
                                         <th class="text-right" style="min-width:150px">Saldo awal tahun</th>
                                         <th class="text-right" style="min-width:150px">Nilai / saldo akhir</th>
+                                        <th class="text-right" style="min-width:150px">
+                                            Bulan ini
+                                            <i class="fas fa-question-circle text-muted"
+                                               title="Angka bulan {{ month_name($period) }} saja — untuk pos aliran = YTD bulan ini dikurangi YTD bulan lalu. Inilah angka yang dapat dibandingkan dengan laporan bulanan Finance."></i>
+                                        </th>
                                         <th class="text-right" style="min-width:190px">Nilai dipakai</th>
                                     </tr>
                                 </thead>
@@ -204,10 +267,44 @@
                                                     <div class="text-right">{{ $values[$kode]['amount'] !== '' ? number_format((float) $values[$kode]['amount'], 0, ',', '.') : '—' }}</div>
                                                 @endif
                                             </td>
+                                            {{-- Angka bulan ini sendiri. Pos aliran disimpan YTD, jadi angka
+                                                 bulannya adalah selisih terhadap bulan lalu; pos neraca sudah
+                                                 berupa saldo akhir bulan itu. --}}
+                                            <td class="text-right align-middle">
+                                                @php($bulanIni = $bulanan['inputs'][$kode]['amount'] ?? null)
+                                                @if ($neraca)
+                                                    <small class="text-muted">saldo akhir<br>(sudah per bulan)</small>
+                                                @elseif (post_is_hris_rata($pos['kind']))
+                                                    <small class="text-muted">rata-rata<br>(sudah per bulan)</small>
+                                                @elseif (in_array($kode, $bulanan['needs_previous'], true))
+                                                    <span class="badge badge-warning" title="Pos aliran disimpan sebagai nilai YTD, sehingga angka bulan ini adalah selisihnya terhadap {{ $bulanan['previous_period'] }}. Periode itu belum diisi.">
+                                                        {{ $bulanan['previous_period'] }} belum diisi
+                                                    </span>
+                                                @elseif ($bulanIni === null)
+                                                    <span class="text-muted">—</span>
+                                                @else
+                                                    <div class="font-weight-bold text-nowrap {{ $bulanIni < 0 ? 'text-danger' : '' }}">
+                                                        @if (post_is_hris($pos['kind']))
+                                                            {{ number_format($bulanIni, 0, ',', '.') }}
+                                                        @else
+                                                            {{ rupiah($bulanIni) }}
+                                                        @endif
+                                                    </div>
+                                                    @if ($bulanIni < 0)
+                                                        <small class="text-danger text-nowrap d-block" title="YTD {{ $period }} lebih kecil daripada YTD {{ $bulanan['previous_period'] }}. Wajar bila ada pembalikan jurnal; periksa bila tidak.">
+                                                            <i class="fas fa-exclamation-triangle"></i> YTD menyusut
+                                                        </small>
+                                                    @endif
+                                                @endif
+                                            </td>
                                             {{-- Nilai dipakai + asalnya. Dibuat tidak boleh patah ke baris
                                                  berikutnya: "Rp" yang terpisah dari angkanya terbaca berantakan. --}}
                                             <td class="text-right align-middle">
-                                                @php($asal = post_derivation($kode, $values[$kode]['amount'] ?? null, $values[$kode]['opening'] ?? null, $bulan))
+                                                {{-- Pada mode "bulan terpilih saja" yang dipakai rumus adalah angka
+                                                     bulan itu, jadi asal angkanya pun harus diceritakan dari situ. --}}
+                                                @php($asalAmount = $kumulatif ? ($values[$kode]['amount'] ?? null) : $bulanIni)
+                                                @php($asalOpening = $kumulatif ? ($values[$kode]['opening'] ?? null) : ($bulanan['inputs'][$kode]['opening'] ?? null))
+                                                @php($asal = post_derivation($kode, $asalAmount, $asalOpening, $bulan, ! $kumulatif))
                                                 @if (($hasil['used'][$kode] ?? null) === null)
                                                     <span class="text-muted">—</span>
                                                 @else
@@ -230,9 +327,17 @@
                         </div>
                         <div class="card-footer small text-muted">
                             <i class="fas fa-info-circle mr-1"></i>
-                            <strong>Aliran</strong> diisi nilai YTD Januari s.d. bulan {{ $bulan }}, lalu disetahunkan (× 12 ÷ {{ $bulan }}).
-                            <strong>Neraca</strong> memakai rata-rata saldo awal tahun &amp; saldo akhir (bila saldo awal kosong, dipakai saldo akhir saja).
-                            <strong>HRIS</strong>: jumlah karyawan dipakai apa adanya, jam kerja disetahunkan.
+                            @if ($kumulatif)
+                                <strong>Aliran</strong> diisi nilai YTD Januari s.d. bulan {{ $bulan }}, lalu disetahunkan (× 12 ÷ {{ $bulan }}).
+                                <strong>Neraca</strong> memakai rata-rata saldo awal tahun &amp; saldo akhir (bila saldo awal kosong, dipakai saldo akhir saja).
+                                <strong>HRIS</strong>: jumlah karyawan dipakai apa adanya, jam kerja disetahunkan.
+                            @else
+                                Yang dinilai <strong>bulan {{ month_name($period) }} saja</strong>.
+                                <strong>Aliran</strong> memakai angka bulan ini (YTD {{ $period }} − YTD {{ $bulanan['previous_period'] ?? '—' }}), lalu disetahunkan (× 12).
+                                <strong>Neraca</strong> memakai rata-rata saldo akhir bulan lalu &amp; saldo akhir bulan ini.
+                                <strong>HRIS</strong>: jumlah karyawan dipakai apa adanya.
+                                Isiannya tetap diisi YTD seperti biasa — yang berubah hanya cara membacanya.
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -242,6 +347,11 @@
                     <div class="card card-outline card-primary">
                         <div class="card-header">
                             <h3 class="card-title font-weight-bold"><i class="fas fa-calculator mr-1"></i> Skor Tingkat 2 (F2)</h3>
+                            {{-- Dasar perhitungan ditulis di samping angkanya: 72 atas dasar
+                                 kumulatif dan 72 atas dasar satu bulan bukan angka yang sama. --}}
+                            <span class="badge {{ $kumulatif ? 'badge-light border' : 'badge-info' }} ml-2">
+                                {{ $kumulatif ? 'kumulatif s.d. '.month_name($period) : month_name($period).' saja' }}
+                            </span>
                         </div>
                         <div class="card-body">
                             <div class="d-flex align-items-baseline mb-2">

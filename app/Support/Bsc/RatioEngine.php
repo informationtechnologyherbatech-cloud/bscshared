@@ -73,6 +73,63 @@ class RatioEngine
         );
     }
 
+    /** Bulan sebelumnya dalam tahun yang sama; tidak pernah menyeberang tahun. */
+    public static function previousPeriod(string $period): string
+    {
+        return substr($period, 0, 4).'-'.str_pad((string) (self::monthOf($period) - 1), 2, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Isian satu periode pada dasar SATU BULAN, beserta catatan kelengkapannya.
+     *
+     * @param  array<string, array{amount: float|null, opening: float|null}>|null  $sekarang  isian yang sedang tampil di layar; bawaan = yang tersimpan
+     */
+    public function monthBasisInputs(string $period, ?array $sekarang = null): array
+    {
+        $bulan = self::monthOf($period);
+
+        return AccountPosts::monthBasis(
+            $sekarang ?? $this->inputs($period),
+            $bulan === 1 ? [] : $this->inputs(self::previousPeriod($period)),
+            $bulan === 1
+        );
+    }
+
+    /**
+     * Evaluasi satu periode pada dasar SATU BULAN — untuk validasi bulanan oleh
+     * Finance entitas.
+     *
+     * Nilai satu bulan disetahunkan × 12 (n = 1), sehingga rasionya terbaca
+     * "seandainya bulan ini berjalan setahun" — konvensi yang sama dengan dasar
+     * kumulatif, hanya jendelanya satu bulan.
+     *
+     * HASILNYA TIDAK PERNAH DISIMPAN. financial_ratios tetap berisi hasil dasar
+     * kumulatif, karena baris itulah yang dibaca skor resmi entitas dan
+     * konsolidasi holding; bila dasar bulanan ikut tertulis ke sana, sekali
+     * seseorang memvalidasi satu bulan, skor resminya berubah.
+     */
+    public function evaluateMonthOnly(string $period, ?array $sekarang = null): array
+    {
+        $dasar = $this->monthBasisInputs($period, $sekarang);
+
+        return $this->evaluateUsed(
+            AccountPosts::usedValues($dasar['inputs'], 1),
+            $this->targetsFor(substr($period, 0, 4))
+        ) + [
+            // Isian pada dasar bulanan — kolom "Bulan ini" di layar Pos Akun.
+            'inputs' => $dasar['inputs'],
+            'needs_previous' => $dasar['needs_previous'],
+            'negative' => $dasar['negative'],
+            'previous_period' => self::monthOf($period) === 1 ? null : self::previousPeriod($period),
+        ];
+    }
+
+    /** F2 bulan terpilih saja; null bila bulannya belum dapat dinilai. */
+    public function monthOnlyScore(string $period): ?float
+    {
+        return $this->evaluateMonthOnly($period)['f2'];
+    }
+
     /**
      * Evaluasi dari isian mentah — dipisah agar dapat diuji dan dipakai untuk
      * pratinjau sebelum disimpan.

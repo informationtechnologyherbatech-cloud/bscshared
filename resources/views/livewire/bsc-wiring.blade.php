@@ -453,7 +453,8 @@
                                     <div class="node-dot-right" id="revDotRight" style="background-color: #6366f1;"></div>
                                     <small class="font-weight-bold d-block mb-1" style="color: #10b981;">Target revenue {{ substr($selectedPeriod, 0, 4) }}{{ $revenue['approved'] ? ' (disahkan)' : '' }}</small>
                                     <h2 class="font-weight-bold mb-1" style="font-size: 22px; color: #10b981; font-family: monospace;">{{ $rp($revenue['annual']) }}</h2>
-                                    <small class="text-muted d-block" style="font-family: monospace;">YTD {{ $rp($revenue['actual_ytd']) }} / {{ $rp($revenue['target_ytd']) }}</small>
+                                    {{-- Label mengikuti mode baca periode di bilah atas. --}}
+                                    <small class="text-muted d-block" style="font-family: monospace;">{{ period_cumulative() ? 'YTD' : month_short($selectedPeriod) }} {{ $rp($revenue['actual_ytd']) }} / {{ $rp($revenue['target_ytd']) }}</small>
                                     <small class="d-block font-weight-bold" style="font-family: monospace; color: {{ $warnaSkor($revenue['f1']) }};">F1 {{ $skor($revenue['f1']) }}</small>
                                     @if(! $revenue['annual'])
                                         <small class="text-muted d-block mt-1">Isi di menu Target &amp; Realisasi atau Perencanaan Target.</small>
