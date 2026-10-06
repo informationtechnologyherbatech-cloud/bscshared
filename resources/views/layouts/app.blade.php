@@ -28,7 +28,7 @@
     @endif
 
     <!-- Custom Super Apps BSC Styling -->
-    <link rel="stylesheet" href="{{ asset('css/custom-app.css') }}">
+    <link rel="stylesheet" href="{{ asset_versioned('css/custom-app.css') }}">
 
     @livewireStyles
     @include('partials.input-rupiah-script')

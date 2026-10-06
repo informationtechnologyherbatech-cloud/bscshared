@@ -262,6 +262,22 @@ if (! function_exists('active_entity')) {
     }
 }
 
+if (! function_exists('asset_versioned')) {
+    /**
+     * URL berkas di folder public/ dengan penanda versi dari waktu ubahnya.
+     *
+     * Tanpa penanda ini peramban menyimpan CSS/JS lama tanpa batas waktu:
+     * perubahan tampilan sudah terpasang di server tetapi pengguna tetap
+     * melihat yang lama sampai menekan muat-ulang paksa.
+     */
+    function asset_versioned(string $path): string
+    {
+        $berkas = public_path($path);
+
+        return asset($path).(is_file($berkas) ? '?v='.filemtime($berkas) : '');
+    }
+}
+
 if (! function_exists('entity_misconfigured')) {
     /** BSC_DEFAULT_ENTITY di .env menyebut entitas yang tidak dikenal/nonaktif. */
     function entity_misconfigured(): bool

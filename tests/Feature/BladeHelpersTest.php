@@ -162,6 +162,37 @@ class BladeHelpersTest extends TestCase
         $this->assertStringContainsString('belum ada', $html);
     }
 
+    /**
+     * Berkas gaya dimuat dengan penanda versi.
+     *
+     * Tanpa itu peramban menyimpan CSS lama tanpa batas waktu: perubahan
+     * tampilan sudah terpasang di server, tetapi pengguna tetap melihat yang
+     * lama sampai menekan muat-ulang paksa.
+     */
+    public function test_the_stylesheet_is_cache_busted(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $erdigma = Entity::where('code', 'ERDIGMA')->firstOrFail();
+        app(EntityContext::class)->use($erdigma->id);
+
+        $pengguna = User::create([
+            'name' => 'Admin', 'email' => 'gaya@contoh.test', 'password' => bcrypt('x'),
+            'is_active' => true, 'entity_id' => $erdigma->id,
+        ]);
+        $pengguna->assignRole('Super Admin');
+
+        $html = $this->actingAs($pengguna)->get(route('dashboard'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/css\/custom-app\.css\?v=\d+/', $html);
+
+        // Penandanya ikut berubah saat berkasnya berubah.
+        $versi = asset_versioned('css/custom-app.css');
+        $this->assertSame('?v='.filemtime(public_path('css/custom-app.css')), substr($versi, strpos($versi, '?')));
+
+        // Berkas yang tidak ada tidak membuat URL rusak.
+        $this->assertStringNotContainsString('?v=', asset_versioned('css/tidak-ada.css'));
+    }
+
     public function test_every_blade_template_still_compiles(): void
     {
         $diperiksa = 0;
