@@ -6,8 +6,10 @@ use App\Models\AppSetting;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
@@ -32,12 +34,7 @@ class SmokeRoutesTest extends TestCase
             'rasio' => ['financial-ratios'],
             'objective' => ['department-objectives'],
             'wiring' => ['bsc-wiring'],
-            'dampak' => ['dampak'],
-            'coa' => ['coa'],
             'action plan' => ['action-plans'],
-            'ibp' => ['ibp'],
-            'sensitivitas' => ['sensitivity'],
-            'skenario' => ['skenario'],
             'dokumentasi' => ['dokumentasi'],
             'integrasi' => ['system-integration'],
             'staging log' => ['staging-logs'],
@@ -61,6 +58,32 @@ class SmokeRoutesTest extends TestCase
         $response = $this->actingAs($this->superAdmin())->get(route($routeName));
 
         $response->assertOk();
+    }
+
+    /**
+     * Lima menu simulasi dihapus 2026-10-07 karena tidak diperlukan: Uji Dampak /
+     * What-If, Simulasi CoA, Konsensus IBP, Sensitivitas, dan Skenario. Ketiganya
+     * harus hilang sekaligus — rute, izin, dan tautan di sidebar — supaya tidak ada
+     * izin yatim yang masih tampil di layar Manajemen Pengguna.
+     */
+    public function test_the_removed_simulation_menus_leave_nothing_behind(): void
+    {
+        foreach (['dampak', 'coa', 'ibp', 'sensitivity', 'skenario'] as $rute) {
+            $this->assertFalse(Route::has($rute), 'Rute '.$rute.' seharusnya sudah dihapus.');
+        }
+
+        $pengguna = $this->superAdmin();
+
+        $this->assertSame([], Permission::whereIn('name', [
+            'view dampak', 'can_simulate', 'view coa', 'manage coa',
+            'view ibp', 'view sensitivity', 'view skenario', 'manage skenario',
+        ])->pluck('name')->all(), 'Izin menu yang dihapus tidak boleh ikut dibuat lagi.');
+
+        $this->actingAs($pengguna)->get(route('dashboard'))->assertOk()
+            ->assertDontSee('SIMULASI &amp; ANALISIS', false)
+            ->assertDontSee('Uji Dampak')
+            ->assertDontSee('Simulasi CoA')
+            ->assertDontSee('Konsensus IBP');
     }
 
     /**

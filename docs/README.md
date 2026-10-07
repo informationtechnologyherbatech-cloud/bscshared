@@ -41,7 +41,12 @@ kode saat ini. Bagian yang **belum diimplementasikan** pada basis kode:
 - Realisasi **KPI dari HRIS** belum ditarik otomatis; jalurnya unggahan CSV,
   payload manual, atau pengisian layar.
 
-Lima menu juga masih berupa placeholder (*ComingSoon*): Uji Dampak/What-If,
-Simulasi CoA, Konsensus IBP, Sensitivitas, dan Skenario.
+Lima menu yang dulu masih berupa placeholder — Uji Dampak/What-If, Simulasi CoA,
+Konsensus IBP, Sensitivitas, dan Skenario — **dihapus pada 7 Oktober 2026** atas
+permintaan pengguna: kelimanya tidak pernah dibangun dan sudah dipastikan tidak
+diperlukan. Rute, izin, tautan sidebar, serta komponen `ComingSoon` ikut dibuang;
+migrasi `2026_10_07_100000_remove_simulation_menu_permissions` membersihkan
+izinnya dari basis data yang sudah berjalan. Nomor 5, 6, 8, 9, dan 10 pada
+penomoran PRD sengaja dibiarkan kosong agar sisanya tetap cocok dengan PRD.
 
 Perbarui catatan ini setiap kali salah satu bagian benar-benar dibangun.

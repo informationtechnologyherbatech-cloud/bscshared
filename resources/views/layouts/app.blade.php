@@ -378,52 +378,6 @@
                     </li>
                     @endcan
 
-                    @canany(['view dampak','view coa','view sensitivity','view skenario'])
-                    <li class="nav-header">SIMULASI & ANALISIS</li>
-                    @endcanany
-                    @can('view dampak')
-                    <li class="nav-item">
-                        <a href="{{ route('dampak') }}" class="nav-link {{ request()->routeIs('dampak') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-flask"></i>
-                            <p>Uji Dampak / What-If</p>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view coa')
-                    <li class="nav-item">
-                        <a href="{{ route('coa') }}" class="nav-link {{ request()->routeIs('coa') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-calculator"></i>
-                            <p>Simulasi CoA</p>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view sensitivity')
-                    <li class="nav-item">
-                        <a href="{{ route('sensitivity') }}" class="nav-link {{ request()->routeIs('sensitivity') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-sliders"></i>
-                            <p>Sensitivitas</p>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view skenario')
-                    <li class="nav-item">
-                        <a href="{{ route('skenario') }}" class="nav-link {{ request()->routeIs('skenario') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-code-branch"></i>
-                            <p>Skenario</p>
-                        </a>
-                    </li>
-                    @endcan
-
-                    @can('view ibp')
-                    <li class="nav-header">PERENCANAAN</li>
-                    <li class="nav-item">
-                        <a href="{{ route('ibp') }}" class="nav-link {{ request()->routeIs('ibp') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-handshake"></i>
-                            <p>Konsensus IBP</p>
-                        </a>
-                    </li>
-                    @endcan
-
                     @can('view dokumentasi')
                     <li class="nav-header">DOKUMENTASI</li>
                     <li class="nav-item">

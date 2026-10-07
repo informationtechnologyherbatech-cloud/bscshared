@@ -8,7 +8,6 @@ use App\Livewire\Auth\ChangePassword;
 use App\Livewire\Auth\Login;
 use App\Livewire\BscDashboard;
 use App\Livewire\BscWiring;
-use App\Livewire\ComingSoon;
 use App\Livewire\DepartmentObjectives;
 use App\Livewire\EntitySources;
 use App\Livewire\FinancialRatios;
@@ -50,7 +49,9 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/ubah-password', ChangePassword::class)->name('password.change');
 });
 
-// Protected App Routes — 13 Menu PRD §4 Tabel 4 (permission enforced server-side §9)
+// Protected App Routes — menu PRD §4 Tabel 4 (permission enforced server-side §9).
+// Lima menu simulasi (Dampak/What-If, Simulasi CoA, Konsensus IBP, Sensitivitas,
+// Skenario) dihapus 2026-10-07: tidak dipakai, dan keempatnya hanya halaman kosong.
 Route::middleware(['auth', 'active', 'password.change'])->group(function () {
     // 1 Piramida — view dashboard (semua peran punya)
     Route::get('/', BscDashboard::class)->middleware('permission:view dashboard')->name('dashboard');
@@ -60,23 +61,8 @@ Route::middleware(['auth', 'active', 'password.change'])->group(function () {
     Route::get('/objectives', DepartmentObjectives::class)->middleware('permission:view objectives|view dashboard')->name('department-objectives');
     // 4 Wiring — view wiring
     Route::get('/wiring', BscWiring::class)->middleware('permission:view wiring')->name('bsc-wiring');
-    // 5 Dampak / What-If Sandbox — view dampak (Super Admin, FAT, Kadep)
-    Route::get('/dampak', ComingSoon::class)->middleware('permission:view dampak')->name('dampak')
-        ->defaults('title', 'Uji Dampak / What-If Sandbox')->defaults('desc', 'Sandbox simulasi KPI hipotetis — pratinjau debet-kredit tanpa menyentuh data produksi.');
-    // 6 Simulasi CoA — view coa (Super Admin, FAT)
-    Route::get('/coa', ComingSoon::class)->middleware('permission:view coa')->name('coa')
-        ->defaults('title', 'Simulasi CoA')->defaults('desc', 'Stress-test bagan akun hipotetis — konsisten rumus rasio Menu 2.');
     // 7 Action Plan — view actionplans
     Route::get('/action-plans', ActionPlans::class)->middleware('permission:view actionplans|view dashboard')->name('action-plans');
-    // 8 Konsensus IBP — view ibp
-    Route::get('/ibp', ComingSoon::class)->middleware('permission:view ibp')->name('ibp')
-        ->defaults('title', 'Konsensus IBP')->defaults('desc', 'IBP 5 langkah: Product→Demand→Supply→Rekonsiliasi Finansial→MBR, proyeksi 12 bulan.');
-    // 9 Sensitivitas — view sensitivity
-    Route::get('/sensitivity', ComingSoon::class)->middleware('permission:view sensitivity')->name('sensitivity')
-        ->defaults('title', 'Sensitivitas')->defaults('desc', 'Margin keamanan rasio terhadap skenario normal/moderat/krisis.');
-    // 10 Skenario — view skenario
-    Route::get('/skenario', ComingSoon::class)->middleware('permission:view skenario')->name('skenario')
-        ->defaults('title', 'Skenario')->defaults('desc', 'Simpan/muat skenario, undo/redo 50 langkah.');
     // 11 Dokumentasi Metode — view dokumentasi: panduan pengisian, metode skoring, uji mandiri 12 pemeriksaan.
     Route::get('/dokumentasi', MethodDocumentation::class)->middleware('permission:view dokumentasi')->name('dokumentasi');
     // 12 Gateway & Audit — view gateway (umbrella) + specific
