@@ -6,7 +6,7 @@
                 <div class="icon-circle"><i class="fas fa-chart-line"></i></div>
             </div>
             <h3 class="text-center mb-1">Super Apps BSC</h3>
-            <p class="text-center brand-subtitle mb-4">PT Herbatech Innopharma</p>
+            <p class="text-center brand-subtitle mb-4">PT. Abhimata Emas Juara</p>
             <div class="brand-quote">
                 <p>Satu sumber kebenaran skor kinerja — dari revenue puncak hingga action plan mitigasi, dapat ditelusuri dalam ≤3 klik.</p>
             </div>
@@ -60,7 +60,7 @@
             </form>
 
             <div class="divider-hairline my-4"></div>
-            <div class="text-center" style="font-size:12px; color:var(--c-on-variant);">&copy; 2026 PT Herbatech Innopharma · Super Apps BSC Hop 4</div>
+            <div class="text-center" style="font-size:12px; color:var(--c-on-variant);">&copy; 2026 PT. Abhimata Emas Juara · Super Apps BSC Hop 4</div>
         </div>
     </div>
 </div>

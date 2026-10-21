@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? 'Super Apps BSC' }} - PT Herbatech Innopharma</title>
+    <title>{{ $title ?? 'Super Apps BSC' }}</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -45,11 +45,31 @@
         </ul>
 
         <!-- Right navbar links -->
-        <ul class="navbar-nav ml-auto">
-            <li class="nav-item dropdown">
-                <a class="nav-link" data-toggle="dropdown" href="#">
-                    <i class="fas fa-calendar-alt mr-1"></i> Periode Aktif: <strong>2026-08</strong>
+        <ul class="navbar-nav ml-auto align-items-center">
+            @php
+                $activePeriod = request('period') ?? session('active_period') ?? ($globalPeriods[0] ?? '2026-08');
+            @endphp
+            <li class="nav-item dropdown mr-2">
+                <a class="nav-link dropdown-toggle font-weight-bold" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-calendar-alt mr-1"></i> Periode: <span class="badge badge-light text-teal px-2 py-1 ml-1">{{ $activePeriod }}</span>
                 </a>
+                <div class="dropdown-menu dropdown-menu-right shadow border-0" style="min-width: 180px;">
+                    <span class="dropdown-header font-weight-bold text-muted small"><i class="fas fa-clock mr-1"></i> Pilih Periode Aktif:</span>
+                    <div class="dropdown-divider my-1"></div>
+                    @if(isset($globalPeriods) && count($globalPeriods) > 0)
+                        @foreach($globalPeriods as $gp)
+                            <a class="dropdown-item d-flex justify-content-between align-items-center {{ $activePeriod === $gp ? 'active bg-teal font-weight-bold' : '' }}" 
+                               href="{{ request()->fullUrlWithQuery(['period' => $gp]) }}">
+                                <span><i class="fas fa-calendar-day mr-2"></i> {{ $gp }}</span>
+                                @if($activePeriod === $gp)
+                                    <i class="fas fa-check small"></i>
+                                @endif
+                            </a>
+                        @endforeach
+                    @else
+                        <a class="dropdown-item disabled" href="#">2026-08</a>
+                    @endif
+                </div>
             </li>
             @auth
             <li class="nav-item">
@@ -100,27 +120,55 @@
                             <p>Piramida BSC</p>
                         </a>
                     </li>
+                    <li class="nav-header">LEVEL 1</li>
+                    <li class="nav-item">
+                        <a href="{{ route('apex-consolidation', ['tab' => 'input']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && (request('tab') === 'input' || !request('tab')) ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-edit text-teal"></i>
+                            <p>Input & Bobot Revenue</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('apex-consolidation', ['tab' => 'dupont']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && request('tab') === 'dupont' ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-sitemap text-info"></i>
+                            <p>DuPont Value Tree</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('apex-consolidation', ['tab' => 'sensitivity']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && request('tab') === 'sensitivity' ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-sliders-h text-warning"></i>
+                            <p>Simulator Sensitivitas</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('apex-consolidation', ['tab' => 'weights']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && request('tab') === 'weights' ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-layer-group text-primary"></i>
+                            <p>Matriks Kontribusi 5 Pilar</p>
+                        </a>
+                    </li>
                     @endcan
                     @can('view ratios')
+                    <li class="nav-header">LEVEL 2</li>
                     <li class="nav-item">
                         <a href="{{ route('financial-ratios') }}" class="nav-link {{ request()->routeIs('financial-ratios') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-coins"></i>
+                            <i class="nav-icon fas fa-coins text-success"></i>
                             <p>Rasio Keuangan</p>
                         </a>
                     </li>
                     @endcan
                     @can('view objectives')
+                    <li class="nav-header">LEVEL 3</li>
                     <li class="nav-item">
                         <a href="{{ route('department-objectives') }}" class="nav-link {{ request()->routeIs('department-objectives') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-bullseye"></i>
+                            <i class="nav-icon fas fa-bullseye text-warning"></i>
                             <p>Objective Departemen</p>
                         </a>
                     </li>
                     @endcan
                     @can('view actionplans')
+                    <li class="nav-header">LEVEL 4</li>
                     <li class="nav-item">
                         <a href="{{ route('action-plans') }}" class="nav-link {{ request()->routeIs('action-plans') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-tasks"></i>
+                            <i class="nav-icon fas fa-tasks text-info"></i>
                             <p>Program Kerja (Action)</p>
                         </a>
                     </li>
@@ -128,7 +176,7 @@
                     @can('view wiring')
                     <li class="nav-item">
                         <a href="{{ route('bsc-wiring') }}" class="nav-link {{ request()->routeIs('bsc-wiring') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-project-diagram"></i>
+                            <i class="nav-icon fas fa-project-diagram text-teal"></i>
                             <p>Wiring / Peta Hubungan</p>
                         </a>
                     </li>
@@ -230,6 +278,12 @@
 
                     @canany(['manage users','manage settings','view systeminfo','manage apikey','can_manage_users'])
                     <li class="nav-header">ADMINISTRASI</li>
+                    <li class="nav-item">
+                        <a href="{{ route('master-departments') }}" class="nav-link {{ request()->routeIs('master-departments') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-building text-teal"></i>
+                            <p>Master Departemen</p>
+                        </a>
+                    </li>
                     @endcanany
                     @can('manage users')
                     <li class="nav-item">
@@ -265,7 +319,7 @@
         <div class="float-right d-none d-sm-inline">
             Version 1.0 (Basic Livewire)
         </div>
-        <strong>PT Herbatech Innopharma &copy; 2026 <a href="#">Super Apps BSC Hop 4</a>.</strong> All rights reserved.
+        <strong>PT. Abhimata Emas Juara &copy; 2026 <a href="#">Super Apps BSC Hop 4</a>.</strong> All rights reserved.
     </footer>
 </div>
 <!-- ./wrapper -->

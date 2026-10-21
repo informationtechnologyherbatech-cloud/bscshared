@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Livewire\Auth\Login;
 use App\Livewire\BscDashboard;
+use App\Livewire\ApexConsolidation;
 use App\Livewire\FinancialRatios;
 use App\Livewire\DepartmentObjectives;
 use App\Livewire\ActionPlans;
@@ -12,6 +13,9 @@ use App\Livewire\SystemIntegration;
 use App\Livewire\BscWiring;
 use App\Livewire\ManageUsers;
 use App\Livewire\AppSettings;
+use App\Livewire\MasterDepartments;
+use App\Livewire\UjiDampakSandbox;
+use App\Livewire\SimulasiCoa;
 
 // Guest: Login 
 Route::middleware('guest')->group(function () {
@@ -30,6 +34,8 @@ Route::post('/logout', function (\Illuminate\Http\Request $request) {
 Route::middleware(['auth', 'active'])->group(function () {
     // 1 Piramida — view dashboard (semua peran punya)
     Route::get('/', BscDashboard::class)->middleware('permission:view dashboard')->name('dashboard');
+    // Tingkat 1 Apex & Konsolidasi Hop 4
+    Route::get('/apex-consolidation', ApexConsolidation::class)->middleware('permission:view dashboard|view ratios')->name('apex-consolidation');
     // 2 Rasio — view ratios (read), manage ratios (write)
     Route::get('/ratios', FinancialRatios::class)->middleware('permission:view ratios|view dashboard')->name('financial-ratios');
     // 3 Objective — view objectives
@@ -37,11 +43,9 @@ Route::middleware(['auth', 'active'])->group(function () {
     // 4 Wiring — view wiring
     Route::get('/wiring', BscWiring::class)->middleware('permission:view wiring')->name('bsc-wiring');
     // 5 Dampak / What-If Sandbox — view dampak (Super Admin, FAT, Kadep)
-    Route::get('/dampak', \App\Livewire\ComingSoon::class)->middleware('permission:view dampak')->name('dampak')
-        ->defaults('title', 'Uji Dampak / What-If Sandbox')->defaults('desc', 'Sandbox simulasi KPI hipotetis — pratinjau debet-kredit tanpa menyentuh data produksi.');
+    Route::get('/dampak', UjiDampakSandbox::class)->middleware('permission:view dampak')->name('dampak');
     // 6 Simulasi CoA — view coa (Super Admin, FAT)
-    Route::get('/coa', \App\Livewire\ComingSoon::class)->middleware('permission:view coa')->name('coa')
-        ->defaults('title', 'Simulasi CoA')->defaults('desc', 'Stress-test bagan akun hipotetis — konsisten rumus rasio Menu 2.');
+    Route::get('/coa', SimulasiCoa::class)->middleware('permission:view coa')->name('coa');
     // 7 Action Plan — view actionplans
     Route::get('/action-plans', ActionPlans::class)->middleware('permission:view actionplans|view dashboard')->name('action-plans');
     // 8 Konsensus IBP — view ibp
@@ -60,6 +64,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/integration', SystemIntegration::class)->middleware('permission:view integration|view gateway')->name('system-integration');
     Route::get('/staging-logs', StagingLogs::class)->middleware('permission:view staging|view gateway')->name('staging-logs');
     // 13 Super Admin & Konfigurasi — manage users/settings/systeminfo/apikey
+    Route::get('/departments', MasterDepartments::class)->middleware('permission:manage settings|manage users|can_manage_users|view objectives')->name('master-departments');
     Route::get('/manage-users', ManageUsers::class)->middleware('permission:manage users|can_manage_users')->name('manage-users');
     Route::get('/settings', AppSettings::class)->middleware('permission:manage settings|view systeminfo|manage apikey')->name('settings');
 });

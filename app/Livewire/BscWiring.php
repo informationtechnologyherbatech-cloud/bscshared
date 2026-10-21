@@ -7,6 +7,7 @@ use Livewire\Attributes\Url;
 use App\Models\FinancialRatio;
 use App\Models\DepartmentObjective;
 use App\Models\ActionPlan;
+use App\Models\Department;
 use App\Models\Period;
 
 class BscWiring extends Component
@@ -17,10 +18,36 @@ class BscWiring extends Component
     public $revenueBaseline = 120.00; // Miliar IDR
     public $revenueActual = 115.20;   // Miliar IDR
     
-    public $activeTab = 'flow'; // 'flow' (Diagram Alur Bezier Makro) or 'cascade' (Wiring Sasaran Mutu (64 KPI))
-    public $cascadeValue = 80.000; // Value for Uji Kaskade Revenue slider (Rp 80.000 JT)
+    public $activeTab = 'flow'; // 'flow' (Diagram Alur Bezier Makro) or 'cascade' (Wiring Sasaran Mutu)
+    public $cascadeValue = 120.00; // Value for Uji Kaskade Revenue slider (Rp Miliar IDR)
     public $selectedUnit = 'all'; // Unit kerja filter
     public $hanyaBergeser = false; // Checkbox filter
+
+    public function mount()
+    {
+        $reqPeriod = request()->query('period') ?? session('active_period');
+        if ($reqPeriod) {
+            $this->selectedPeriod = $reqPeriod;
+        }
+        session(['active_period' => $this->selectedPeriod]);
+        $this->loadPeriodRevenue();
+    }
+
+    public function updatedSelectedPeriod($val)
+    {
+        session(['active_period' => $val]);
+        $this->loadPeriodRevenue();
+    }
+
+    public function loadPeriodRevenue()
+    {
+        $p = Period::where('period', $this->selectedPeriod)->first();
+        if ($p) {
+            $this->revenueBaseline = (float) ($p->target_revenue ?? 120.00);
+            $this->revenueActual = (float) ($p->actual_revenue ?? 115.20);
+            $this->cascadeValue = $this->revenueBaseline;
+        }
+    }
 
     public function switchTab($tab)
     {
@@ -30,7 +57,12 @@ class BscWiring extends Component
     public function render()
     {
         $periods = Period::pluck('period')->toArray();
-        $revenueDelta = round((($this->revenueActual - $this->revenueBaseline) / $this->revenueBaseline) * 100, 2);
+        $p = Period::where('period', $this->selectedPeriod)->first();
+        if ($p) {
+            $this->revenueBaseline = (float) ($p->target_revenue ?? 120.00);
+            $this->revenueActual = (float) ($p->actual_revenue ?? 115.20);
+        }
+        $revenueDelta = $this->revenueBaseline > 0 ? round((($this->cascadeValue - $this->revenueBaseline) / $this->revenueBaseline) * 100, 2) : 0;
 
         $ratios = FinancialRatio::where('period', $this->selectedPeriod)->get();
         $objectives = DepartmentObjective::where('period', $this->selectedPeriod)->get();
@@ -106,25 +138,20 @@ class BscWiring extends Component
             ];
         }
 
-        // Dynamic Department list calculation from DB objectives
-        $deptMap = [
-            'SCM' => 'Supply Chain',
-            'PROC' => 'Procurement',
-            'PROD' => 'Production & Engineering',
-            'RND' => 'Research & Development',
-            'MGT' => 'Quality (Manager)',
-            'QC' => 'Quality Control',
-            'QA' => 'Quality Assurance',
-            'GAL' => 'General Affair & Legal',
-            'HRD' => 'Human Capital',
-            'FIN' => 'Finance & Accounting',
-            'MKT' => 'Marketing & Sales',
-        ];
+        // Dynamic Department list from database
+        $dbDepartments = Department::where('is_active', true)->orderBy('sort_order', 'asc')->get();
 
         $departments = [];
-        foreach ($deptMap as $code => $name) {
+        $deptCards = [];
+
+        foreach ($dbDepartments as $deptModel) {
+            $code = $deptModel->code;
+            $name = $deptModel->name;
+            $deptColor = $deptModel->color ?: '#0d9488';
+            $managerTitle = $deptModel->manager_title ?: ($name . ' Manager');
+
             $deptObjs = $objectivesByDept->get($code, collect());
-            $sasaranCount = $deptObjs->count() > 0 ? $deptObjs->count() : 5;
+            $sasaranCount = $deptObjs->count();
             $bergeserCount = $deptObjs->where('status', '!=', 'Tercapai')->count();
 
             // Status dots based on real DB KPIs
@@ -136,119 +163,61 @@ class BscWiring extends Component
                     else $dots[] = '#e11d48';
                 }
             } else {
-                $dots = ['#10b981', '#0284c7', '#f59e0b'];
+                $dots = ['#94a3b8'];
             }
 
             $departments[] = [
                 'code' => $code,
                 'name' => $name,
-                'sasaran' => $sasaranCount,
+                'sasaran' => $sasaranCount > 0 ? $sasaranCount : 0,
                 'bergeser' => $bergeserCount,
                 'dots' => array_slice($dots, 0, 4),
             ];
+
+            // Build deptCards dynamically for Cascade tab
+            $cardKpis = [];
+            if ($deptObjs->count() > 0) {
+                foreach ($deptObjs as $o) {
+                    $cardKpis[] = [
+                        'code' => $o->kpi_code,
+                        'name' => $o->kpi_name,
+                        'elasticity' => $o->polarity === 'Turun' ? 'e 0,30' : 'e 1,00',
+                        'elasticity_type' => $o->status === 'Tercapai' ? 'green' : ($o->status === 'Waspada' ? 'yellow' : 'red'),
+                        'result' => number_format($o->actual, 1) . ' %',
+                        'result_highlight' => $o->achievement_pct >= 100,
+                        'left_accent' => $o->status === 'Tercapai' ? '#10b981' : ($o->status === 'Waspada' ? '#f59e0b' : '#e11d48'),
+                    ];
+                }
+            } else {
+                // If no specific KPI in DB yet, show notice placeholder
+                $cardKpis[] = [
+                    'code' => $code . '-01',
+                    'name' => 'Sasaran Mutu & Program Kerja ' . $name,
+                    'elasticity' => 'standar',
+                    'elasticity_type' => 'locked',
+                    'result' => 'Belum Diinput',
+                    'result_highlight' => false,
+                    'left_accent' => '#94a3b8',
+                ];
+            }
+
+            $deptCards[] = [
+                'title' => $managerTitle,
+                'code' => $code,
+                'sasaran_count' => $sasaranCount . ' sasaran',
+                'header_bg' => $deptColor,
+                'badge_bg' => '#ffffff',
+                'badge_color' => $deptColor,
+                'kpis' => $cardKpis,
+            ];
         }
+
         // Filter departments if unit kerja filter active or hanyaBergeser checkbox
         $filteredDepartments = collect($departments)->filter(function($d) {
             $matchUnit = $this->selectedUnit === 'all' || $d['code'] === $this->selectedUnit || $d['name'] === $this->selectedUnit;
             $matchBergeser = !$this->hanyaBergeser || $d['bergeser'] > 0;
             return $matchUnit && $matchBergeser;
         })->values()->toArray();
-
-        // Detailed Department Cards with KPI items matching reference images
-        $deptCards = [
-            [
-                'title' => 'Operation Manager',
-                'code' => 'OPS',
-                'sasaran_count' => '6 sasaran',
-                'header_bg' => '#059669',
-                'badge_bg' => '#ffffff',
-                'badge_color' => '#059669',
-                'kpis' => [
-                    [
-                        'code' => 'OPS-02',
-                        'name' => 'Kontribusi biaya operasional terhadap omset',
-                        'elasticity' => 'e 0,30',
-                        'elasticity_type' => 'green',
-                        'result' => '4,5 %',
-                        'result_highlight' => false,
-                        'left_accent' => '#64748b',
-                    ],
-                    [
-                        'code' => 'OPS-04',
-                        'name' => 'Pemastian sistem berjalan sesuai standar',
-                        'elasticity' => 'dikunci',
-                        'elasticity_type' => 'locked',
-                        'result' => '0 kasus',
-                        'result_highlight' => false,
-                        'left_accent' => '#64748b',
-                    ],
-                    [
-                        'code' => 'OPS-05',
-                        'name' => 'Implementasi RFT di operasional sistem',
-                        'elasticity' => 'dikunci',
-                        'elasticity_type' => 'locked',
-                        'result' => '0 kasus',
-                        'result_highlight' => false,
-                        'left_accent' => '#64748b',
-                    ],
-                    [
-                        'code' => 'OPS-01',
-                        'name' => 'Pemenuhan service level',
-                        'elasticity' => 'e 0,50',
-                        'elasticity_type' => 'yellow',
-                        'result' => '85 %',
-                        'result_highlight' => false,
-                        'left_accent' => '#f59e0b',
-                    ],
-                    [
-                        'code' => 'OPS-06',
-                        'name' => 'Launching produk baru',
-                        'elasticity' => 'e 1,00',
-                        'elasticity_type' => 'green',
-                        'result' => '10 produk',
-                        'result_highlight' => false,
-                        'left_accent' => '#f43f5e',
-                    ],
-                    [
-                        'code' => 'OPS-03',
-                        'name' => 'Cycle inventory turnover',
-                        'elasticity' => 'e 0,50',
-                        'elasticity_type' => 'yellow',
-                        'result' => '5 x/thn',
-                        'result_highlight' => false,
-                        'left_accent' => '#f59e0b',
-                    ],
-                ]
-            ],
-            [
-                'title' => 'Marketing & Sales Manager',
-                'code' => 'MKT',
-                'sasaran_count' => '8 sasaran',
-                'header_bg' => '#0b192c',
-                'badge_bg' => '#ffffff',
-                'badge_color' => '#0b192c',
-                'kpis' => [
-                    [
-                        'code' => 'MKT-01',
-                        'name' => 'Capaian Omzet Penjualan Produk Utama Herbal',
-                        'elasticity' => 'e 1,00',
-                        'elasticity_type' => 'green',
-                        'result' => '104,5 %',
-                        'result_highlight' => true,
-                        'left_accent' => '#f59e0b',
-                    ],
-                    [
-                        'code' => 'MKT-02',
-                        'name' => 'Penambahan Channel Distributor Baru (Cabang)',
-                        'elasticity' => 'e 0,60',
-                        'elasticity_type' => 'yellow',
-                        'result' => '12 Cabang',
-                        'result_highlight' => false,
-                        'left_accent' => '#f59e0b',
-                    ],
-                ]
-            ],
-        ];
 
         // Filter deptCards based on selectedUnit
         $filteredDeptCards = collect($deptCards)->filter(function($c) {

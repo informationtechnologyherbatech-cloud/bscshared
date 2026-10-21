@@ -380,8 +380,13 @@
                                 <div class="revenue-node-box position-relative" id="targetRevenueNode">
                                     <div class="node-dot-right bg-indigo" id="revDotRight" style="background-color: #6366f1;"></div>
                                     <small class="text-emerald font-weight-bold d-block mb-1" style="color: #10b981;">Target revenue</small>
-                                    <h2 class="font-weight-bold mb-1" style="font-size: 30px; color: #10b981; font-family: monospace;">Rp {{ number_format($cascadeValue * 1000, 0, ',', '.') }} JT</h2>
-                                    <small class="text-muted d-block" style="font-family: monospace;">k 1,000 &middot; +0.0%</small>
+                                    <h2 class="font-weight-bold mb-1" style="font-size: 28px; color: #10b981; font-family: monospace;">Rp {{ number_format($cascadeValue, 2, ',', '.') }} Miliar</h2>
+                                    <small class="text-muted d-block" style="font-family: monospace;">
+                                        Aktual: Rp {{ number_format($revenueActual, 2, ',', '.') }} M &middot; 
+                                        <span class="{{ $revenueDelta >= 0 ? 'text-success' : 'text-danger' }}">
+                                            {{ $revenueDelta >= 0 ? '+' : '' }}{{ number_format($revenueDelta, 1) }}%
+                                        </span>
+                                    </small>
                                 </div>
                             </div>
 
@@ -506,17 +511,21 @@
                         <div class="row align-items-center mb-4">
                             <div class="col-md-4 mb-3 mb-md-0">
                                 <div class="revenue-node-box d-inline-block" style="min-width: 200px;">
-                                    <small class="text-emerald font-weight-bold d-block" style="color: #10b981;">Target revenue</small>
-                                    <small class="text-muted" style="font-family: monospace;">k 1,000 &middot; +0.0%</small>
+                                    <small class="text-emerald font-weight-bold d-block" style="color: #10b981;">Target revenue (Baseline)</small>
+                                    <h4 class="font-weight-bold mb-0 text-dark" style="font-family: monospace;">Rp {{ number_format($revenueBaseline, 2, ',', '.') }} M</h4>
+                                    <small class="text-muted" style="font-family: monospace;">
+                                        Aktual: Rp {{ number_format($revenueActual, 2, ',', '.') }} M
+                                    </small>
                                 </div>
                             </div>
                             
                             <div class="col-md-8">
                                 <div class="cascade-simulator-container">
                                     <span class="font-weight-bold text-teal"><i class="fas fa-sliders-h mr-2"></i> Uji Kaskade Revenue:</span>
-                                    <input type="range" wire:model.live="cascadeValue" min="50" max="150" step="1" class="form-control-range mx-3" style="max-width: 280px;">
+                                    <input type="range" wire:model.live="cascadeValue" min="{{ max(10, $revenueBaseline * 0.5) }}" max="{{ $revenueBaseline * 1.5 }}" step="0.5" class="form-control-range mx-3" style="max-width: 280px;">
                                     <span class="badge badge-pill badge-light border text-teal px-3 py-2 font-weight-bold" style="font-size: 15px;">
-                                        Rp {{ number_format($cascadeValue * 1000, 0, ',', '.') }} JT
+                                        Rp {{ number_format($cascadeValue, 2, ',', '.') }} Miliar 
+                                        <small class="ml-1 {{ $revenueDelta >= 0 ? 'text-success' : 'text-danger' }}">({{ $revenueDelta >= 0 ? '+' : '' }}{{ number_format($revenueDelta, 1) }}%)</small>
                                     </span>
                                 </div>
                             </div>

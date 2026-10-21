@@ -12,7 +12,7 @@ use Carbon\Carbon;
 
 class BscDashboard extends Component
 {
-    #[Url]
+    #[Url(as: 'period')]
     public $selectedPeriod = '2026-08';
 
     public $periods = [];
@@ -33,12 +33,26 @@ class BscDashboard extends Component
 
     public function mount()
     {
-        $this->periods = Period::pluck('period')->toArray();
+        $this->periods = Period::orderBy('period', 'desc')->pluck('period')->toArray();
         if (empty($this->periods)) {
             $this->periods = ['2026-08'];
         }
-        if (!in_array($this->selectedPeriod, $this->periods)) {
+
+        // Prioritaskan dari query string (?period=), lalu session('active_period'), lalu default
+        $reqPeriod = request()->query('period') ?? session('active_period');
+        if ($reqPeriod && in_array($reqPeriod, $this->periods)) {
+            $this->selectedPeriod = $reqPeriod;
+        } elseif (!in_array($this->selectedPeriod, $this->periods)) {
             $this->selectedPeriod = $this->periods[0] ?? '2026-08';
+        }
+
+        session(['active_period' => $this->selectedPeriod]);
+    }
+
+    public function updatedSelectedPeriod($val)
+    {
+        if (in_array($val, $this->periods)) {
+            session(['active_period' => $val]);
         }
     }
 
@@ -215,8 +229,15 @@ class BscDashboard extends Component
         $avgActionProgress = $actionPlans->count() > 0 ? round($actionPlans->avg('progress_pct'), 2) : 0;
 
         // Apex Score = 45% Revenue (simulated 96.00%) + 55% Rasio Keuangan
-        $revenueScore = 96.00;
-        $apexScore = round((0.45 * $revenueScore) + (0.55 * $avgRatioScore), 2);
+        $targetRevenue = $periodObj && $periodObj->target_revenue ? $periodObj->target_revenue : 120.00;
+        $actualRevenue = $periodObj && $periodObj->actual_revenue ? $periodObj->actual_revenue : 115.20;
+        $weightRev = $periodObj && $periodObj->weight_revenue ? $periodObj->weight_revenue : 45.00;
+        $weightRat = $periodObj && $periodObj->weight_ratios ? $periodObj->weight_ratios : 55.00;
+
+        $revenueScore = round(($actualRevenue / $targetRevenue) * 100, 2);
+        $apexScore = round((($weightRev / 100) * $revenueScore) + (($weightRat / 100) * $avgRatioScore), 2);
+
+        
 
         // Save computed apex score to period model
         if ($periodObj && !$isClosed) {
@@ -284,6 +305,15 @@ class BscDashboard extends Component
             'filteredRatios' => $filteredRatios,
             'filteredObjectives' => $filteredObjectives,
             'filteredActionPlans' => $filteredActionPlans,
+            
+            
+            
+            
+            
+            
+            
+            
+            
         ])->layout('layouts.app', ['title' => 'Dashboard Piramida BSC']);
     }
 }
