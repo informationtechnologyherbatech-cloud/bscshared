@@ -299,7 +299,7 @@ class SimulasiCoa extends Component
             $coaAccounts = [
                 ['code' => '11100', 'name' => 'Kas & Setara Kas', 'type' => 'asset', 'group' => 'Aset Lancar', 'dept' => 'FAT', 'baseline' => 84.50, 'is_debit' => true],
                 ['code' => '11200', 'name' => 'Piutang Usaha', 'type' => 'asset', 'group' => 'Aset Lancar', 'dept' => 'FAT', 'baseline' => 31.80, 'is_debit' => true],
-                ['code' => '11300', 'name' => 'Persediaan Obat & Simplisia', 'type' => 'asset', 'group' => 'Aset Lancar', 'dept' => 'LOG', 'baseline' => 95.20, 'is_debit' => true],
+                ['code' => '11300', 'name' => 'Persediaan Biji Plastik & Kemasan', 'type' => 'asset', 'group' => 'Aset Lancar', 'dept' => 'LOG', 'baseline' => 95.20, 'is_debit' => true],
                 ['code' => '12000', 'name' => 'Aset Tetap & Mesin Pabrik', 'type' => 'asset', 'group' => 'Aset Tetap', 'dept' => 'ENG', 'baseline' => 69.47, 'is_debit' => true],
                 ['code' => '21100', 'name' => 'Utang Usaha Pemasok', 'type' => 'liability', 'group' => 'Liabilitas Lancar', 'dept' => 'FAT', 'baseline' => 18.50, 'is_debit' => false],
                 ['code' => '21200', 'name' => 'Beban Masih Harus Dibayar', 'type' => 'liability', 'group' => 'Liabilitas Lancar', 'dept' => 'FAT', 'baseline' => 7.30, 'is_debit' => false],

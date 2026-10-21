@@ -162,7 +162,7 @@
                                 </div>
                                 <input type="range" wire:model.live="cogsChange" min="-20" max="20" step="0.5" class="form-control-range">
                                 <small class="text-muted d-flex justify-content-between">
-                                    <span>-20% (Efisiensi Simplisia)</span>
+                                    <span>-20% (Efisiensi Bahan Baku)</span>
                                     <span>0% (Stabil)</span>
                                     <span>+20% (Kenaikan Harga Bahan)</span>
                                 </small>

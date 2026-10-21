@@ -45,7 +45,7 @@
                             <span class="small font-weight-bold mr-2 text-secondary">Stress Testing Cepat:</span>
                             <div class="btn-group btn-group-sm shadow-xs" role="group">
                                 <button type="button" wire:click="applyStressTest('lonjakan_bahan')" class="btn {{ $stressTestScenario === 'lonjakan_bahan' ? 'btn-danger font-weight-bold' : 'btn-outline-danger' }}">
-                                    <i class="fas fa-fire mr-1"></i> Lonjakan Simplisia (+4.3M)
+                                    <i class="fas fa-fire mr-1"></i> Lonjakan Biji Plastik (+4.3M)
                                 </button>
                                 <button type="button" wire:click="applyStressTest('pengetatan_piutang')" class="btn {{ $stressTestScenario === 'pengetatan_piutang' ? 'btn-success font-weight-bold' : 'btn-outline-success' }}">
                                     <i class="fas fa-hand-holding-usd mr-1"></i> Tarik Piutang (+8M Kas)
