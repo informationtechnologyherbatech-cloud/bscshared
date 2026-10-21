@@ -112,16 +112,16 @@ class SimulasiCoa extends Component
         $this->stressTestScenario = $scenario;
 
         if ($scenario === 'lonjakan_bahan') {
-            // Skenario lonjakan harga beban HPP COGS +4.3 M
-            $this->coaDeltas['51000010'] = 4.3;
+            // Skenario lonjakan harga beban HPP COGS +4.3 Miliar (Rp 4.300.000.000)
+            $this->coaDeltas['51000010'] = 4300000000;
         } elseif ($scenario === 'pengetatan_piutang') {
-            // Skenario penagihan piutang agresif (penurunan HPP efisiensi logistik -0.8 M)
-            $this->coaDeltas['51000010'] = -0.8;
-            $this->coaDeltas['51000020'] = -0.4;
+            // Skenario penagihan piutang & efisiensi (-Rp 800.000.000 dan -Rp 400.000.000)
+            $this->coaDeltas['51000010'] = -800000000;
+            $this->coaDeltas['51000020'] = -400000000;
         } elseif ($scenario === 'ekspansi_mesin') {
-            // Skenario pembelian & instalasi mesin pabrik (beban utilitas & pemeliharaan mesin +1.5 M)
-            $this->coaDeltas['51000040'] = 0.8;
-            $this->coaDeltas['51000010'] = 0.7;
+            // Skenario pemeliharaan & utilitas mesin (+Rp 800.000.000 dan +Rp 700.000.000)
+            $this->coaDeltas['51000040'] = 800000000;
+            $this->coaDeltas['51000010'] = 700000000;
         }
     }
 
@@ -301,27 +301,31 @@ class SimulasiCoa extends Component
             ];
         }
 
-        // Hitung Saldo Tiap Akun setelah Simulasi
+        // Hitung Saldo Tiap Akun setelah Simulasi (Input Delta dalam Nilai Rupiah Penuh)
         $evaluatedAccounts = [];
         $totalDebitSim = 0;
         $totalCreditSim = 0;
 
         foreach ($coaAccounts as $acc) {
             $code = $acc['code'];
-            $delta = (float) ($this->coaDeltas[$code] ?? 0.0);
-            $simVal = max(0, $acc['baseline'] + $delta);
+            // Delta sekarang diinput dalam Rupiah riil penuh (misal: 4300000000)
+            $deltaRaw = (float) ($this->coaDeltas[$code] ?? 0.0);
+            $deltaMiliar = round($deltaRaw / 1000000000, 4);
+
             $rawBase = (float) ($acc['baseline_raw'] ?? ($acc['baseline'] * 1000000000));
-            $simValRaw = max(0, $rawBase + ($delta * 1000000000));
+            $simValRaw = max(0, $rawBase + $deltaRaw);
+            $simValMiliar = round($simValRaw / 1000000000, 2);
 
             if ($acc['is_debit']) {
-                $totalDebitSim += $simVal;
+                $totalDebitSim += $simValMiliar;
             } else {
-                $totalCreditSim += $simVal;
+                $totalCreditSim += $simValMiliar;
             }
 
             $evaluatedAccounts[] = array_merge($acc, [
-                'delta' => $delta,
-                'simulated' => round($simVal, 2),
+                'delta' => $deltaRaw,
+                'delta_miliar' => $deltaMiliar,
+                'simulated' => $simValMiliar,
                 'simulated_raw' => round($simValRaw, 2),
             ]);
         }
@@ -395,8 +399,8 @@ class SimulasiCoa extends Component
         $ap = max($cogs * 0.30, 1);
 
         // Jika user melakukan penyesuaian delta pada CoA, terapkan transmisi delta ke komponen
-        $deltaCOGS = $cogsItems->sum('delta');
-        $deltaOPEX = $opexItems->sum('delta');
+        $deltaCOGS = $cogsItems->sum('delta_miliar');
+        $deltaOPEX = $opexItems->sum('delta_miliar');
         if ($deltaCOGS != 0 || $deltaOPEX != 0) {
             $grossProfit = max(0, $revenue - $simCOGS);
             $ebit = max(0, $grossProfit - $simOPEX);

@@ -167,8 +167,11 @@
                                                 @endif
                                             </div>
                                         </th>
-                                        <th class="text-center" style="width: 14%;">Penyesuaian (&Delta; M)</th>
-                                        <th class="text-right" style="width: 18%;">Saldo Hasil (Rp)</th>
+                                        <th class="text-center" style="width: 17%;">
+                                            Penyesuaian (&Delta; Rp)
+                                            <div class="text-muted" style="font-size: 10px; font-weight: normal;">[Ketik Angka Riil]</div>
+                                        </th>
+                                        <th class="text-right" style="width: 17%;">Saldo Hasil (Rp)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -212,13 +215,19 @@
                                                 </small>
                                             </td>
                                             <td class="text-center">
-                                                <div class="input-group input-group-sm mx-auto" style="max-width: 110px;">
+                                                <div class="input-group input-group-sm mx-auto" style="min-width: 140px;">
                                                     <input type="number" 
                                                            wire:model.live.debounce.300ms="coaDeltas.{{ $acc['code'] }}" 
-                                                           step="0.1" 
-                                                           placeholder="0.0"
-                                                           class="form-control form-control-sm text-center font-weight-bold {{ isset($coaDeltas[$acc['code']]) && $coaDeltas[$acc['code']] != 0 ? 'border-teal bg-light text-teal' : '' }}">
+                                                           step="1000000" 
+                                                           placeholder="0"
+                                                           class="form-control form-control-sm text-right font-weight-bold {{ isset($coaDeltas[$acc['code']]) && $coaDeltas[$acc['code']] != 0 ? 'border-teal bg-light text-teal' : '' }}">
                                                 </div>
+                                                @if(isset($coaDeltas[$acc['code']]) && $coaDeltas[$acc['code']] != 0)
+                                                    <small class="d-block font-weight-bold mt-1 text-teal" style="font-size: 10px;">
+                                                        {{ ($coaDeltas[$acc['code']] > 0 ? '+' : '') . 'Rp ' . number_format($coaDeltas[$acc['code']], 0, ',', '.') }}
+                                                        ({{ number_format($acc['delta_miliar'], 2, ',', '.') }} M)
+                                                    </small>
+                                                @endif
                                             </td>
                                             <td class="text-right font-weight-bold {{ $acc['delta'] != 0 ? 'text-teal' : 'text-dark' }}">
                                                 <div class="text-nowrap">
