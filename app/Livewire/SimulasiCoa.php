@@ -114,6 +114,14 @@ class SimulasiCoa extends Component
         if ($scenario === 'lonjakan_bahan') {
             // Skenario lonjakan harga beban HPP COGS +4.3 M
             $this->coaDeltas['51000010'] = 4.3;
+        } elseif ($scenario === 'pengetatan_piutang') {
+            // Skenario penagihan piutang agresif (penurunan HPP efisiensi logistik -0.8 M)
+            $this->coaDeltas['51000010'] = -0.8;
+            $this->coaDeltas['51000020'] = -0.4;
+        } elseif ($scenario === 'ekspansi_mesin') {
+            // Skenario pembelian & instalasi mesin pabrik (beban utilitas & pemeliharaan mesin +1.5 M)
+            $this->coaDeltas['51000040'] = 0.8;
+            $this->coaDeltas['51000010'] = 0.7;
         }
     }
 
@@ -399,7 +407,7 @@ class SimulasiCoa extends Component
             $ap = max(0.1, $simCOGS * 0.30);
         }
 
-        // 15 Rasio Keuangan Lengkap Persis Screenshot Aplikasi Finance
+        // 15 Rasio Keuangan Lengkap Dihitung Dinamis Sesuai Formula Menu 2 & Dampak Delta CoA
         $ratiosConfig = [
             // LIKUIDITAS
             [
@@ -407,7 +415,7 @@ class SimulasiCoa extends Component
                 'category' => 'Likuiditas',
                 'unit' => 'x',
                 'target' => 2.0,
-                'val' => 2.63,
+                'val' => $shortTermLiabilities > 0 ? round($currentAssets / $shortTermLiabilities, 2) : 2.63,
                 'is_lower_better' => false,
             ],
             [
@@ -415,7 +423,7 @@ class SimulasiCoa extends Component
                 'category' => 'Likuiditas',
                 'unit' => 'x',
                 'target' => 1.5,
-                'val' => 1.81,
+                'val' => $shortTermLiabilities > 0 ? round($cashAndAr / $shortTermLiabilities, 2) : 1.81,
                 'is_lower_better' => false,
             ],
             // SOLVABILITAS
@@ -424,7 +432,7 @@ class SimulasiCoa extends Component
                 'category' => 'Solvabilitas',
                 'unit' => 'x',
                 'target' => 1.0,
-                'val' => 0.37,
+                'val' => $totalEquity > 0 ? round($totalLiabilities / $totalEquity, 2) : 0.37,
                 'is_lower_better' => true,
             ],
             [
@@ -432,7 +440,7 @@ class SimulasiCoa extends Component
                 'category' => 'Solvabilitas',
                 'unit' => 'x',
                 'target' => 0.5,
-                'val' => 0.27,
+                'val' => $totalAssets > 0 ? round($totalLiabilities / $totalAssets, 2) : 0.27,
                 'is_lower_better' => true,
             ],
             // AKTIVITAS
@@ -441,7 +449,7 @@ class SimulasiCoa extends Component
                 'category' => 'Aktivitas',
                 'unit' => 'x',
                 'target' => 2.5,
-                'val' => 2.86,
+                'val' => $inventory > 0 ? round($simCOGS / $inventory, 2) : 2.86,
                 'is_lower_better' => false,
             ],
             [
@@ -449,7 +457,7 @@ class SimulasiCoa extends Component
                 'category' => 'Aktivitas',
                 'unit' => 'x',
                 'target' => 3.5,
-                'val' => 3.57,
+                'val' => $ar > 0 ? round($revenue / $ar, 2) : 3.57,
                 'is_lower_better' => false,
             ],
             [
@@ -457,7 +465,7 @@ class SimulasiCoa extends Component
                 'category' => 'Aktivitas',
                 'unit' => 'Hari',
                 'target' => 90.0,
-                'val' => 100.80,
+                'val' => $revenue > 0 ? round(($ar / $revenue) * 360, 2) : 100.80,
                 'is_lower_better' => true,
             ],
             [
@@ -465,7 +473,7 @@ class SimulasiCoa extends Component
                 'category' => 'Aktivitas',
                 'unit' => 'Hari',
                 'target' => 120.0,
-                'val' => 126.00,
+                'val' => $simCOGS > 0 ? round(($inventory / $simCOGS) * 360, 2) : 126.00,
                 'is_lower_better' => true,
             ],
             [
@@ -473,7 +481,7 @@ class SimulasiCoa extends Component
                 'category' => 'Aktivitas',
                 'unit' => 'Hari',
                 'target' => 90.0,
-                'val' => 108.00,
+                'val' => $simCOGS > 0 ? round(($ap / $simCOGS) * 360, 2) : 108.00,
                 'is_dpo' => true,
             ],
             [
@@ -481,7 +489,7 @@ class SimulasiCoa extends Component
                 'category' => 'Aktivitas',
                 'unit' => 'x',
                 'target' => 1.0,
-                'val' => 0.33,
+                'val' => $totalAssets > 0 ? round($revenue / $totalAssets, 2) : 0.33,
                 'is_lower_better' => false,
             ],
             // PROFITABILITAS
@@ -490,7 +498,7 @@ class SimulasiCoa extends Component
                 'category' => 'Profitabilitas',
                 'unit' => '%',
                 'target' => 30.0,
-                'val' => 30.41,
+                'val' => $revenue > 0 ? round(($grossProfit / $revenue) * 100, 2) : 30.41,
                 'is_lower_better' => false,
             ],
             [
@@ -498,7 +506,7 @@ class SimulasiCoa extends Component
                 'category' => 'Profitabilitas',
                 'unit' => '%',
                 'target' => 70.0,
-                'val' => 88.39,
+                'val' => $revenue > 0 ? round(($ebit / $revenue) * 100, 2) : 88.39,
                 'is_lower_better' => false,
             ],
             [
@@ -506,7 +514,7 @@ class SimulasiCoa extends Component
                 'category' => 'Profitabilitas',
                 'unit' => '%',
                 'target' => 15.0,
-                'val' => 18.80,
+                'val' => $revenue > 0 ? round(($netIncome / $revenue) * 100, 2) : 18.80,
                 'is_lower_better' => false,
             ],
             [
@@ -514,7 +522,7 @@ class SimulasiCoa extends Component
                 'category' => 'Profitabilitas',
                 'unit' => '%',
                 'target' => 10.0,
-                'val' => 29.25,
+                'val' => $totalAssets > 0 ? round(($netIncome / $totalAssets) * 100, 2) : 29.25,
                 'is_lower_better' => false,
             ],
             [
@@ -522,7 +530,7 @@ class SimulasiCoa extends Component
                 'category' => 'Profitabilitas',
                 'unit' => '%',
                 'target' => 15.0,
-                'val' => 8.54,
+                'val' => $totalEquity > 0 ? round(($netIncome / $totalEquity) * 100, 2) : 8.54,
                 'is_lower_better' => false,
             ],
         ];
