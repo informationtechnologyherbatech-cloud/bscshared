@@ -216,9 +216,9 @@
                                             </td>
                                             <td class="text-center">
                                                 <div class="input-group input-group-sm mx-auto" style="min-width: 140px;">
-                                                    <input type="number" 
-                                                           wire:model.live.debounce.300ms="coaDeltas.{{ $acc['code'] }}" 
-                                                           step="1000000" 
+                                                    <input type="text" 
+                                                           value="{{ isset($coaDeltas[$acc['code']]) && $coaDeltas[$acc['code']] != 0 ? number_format($coaDeltas[$acc['code']], 0, ',', '.') : '' }}"
+                                                           oninput="formatIndoNumber(this, '{{ $acc['code'] }}')"
                                                            placeholder="0"
                                                            class="form-control form-control-sm text-right font-weight-bold {{ isset($coaDeltas[$acc['code']]) && $coaDeltas[$acc['code']] != 0 ? 'border-teal bg-light text-teal' : '' }}">
                                                 </div>
@@ -400,4 +400,29 @@
             </div>
         </div>
     @endif
+
+    <script>
+        let formatTimer = {};
+        function formatIndoNumber(el, code) {
+            let val = el.value;
+            // Izinkan tanda minus di depan jika user ingin mengurangi beban
+            let isNegative = val.startsWith('-');
+            let rawNum = val.replace(/\D/g, '');
+            
+            if (rawNum === '') {
+                el.value = isNegative ? '-' : '';
+            } else {
+                let formatted = new Intl.NumberFormat('id-ID').format(rawNum);
+                el.value = (isNegative ? '-' : '') + formatted;
+            }
+
+            // Debounce pengiriman ke Livewire agar performa ketikan sangat mulus
+            clearTimeout(formatTimer[code]);
+            formatTimer[code] = setTimeout(() => {
+                let finalVal = rawNum === '' ? 0 : parseInt(rawNum, 10);
+                if (isNegative) finalVal = -finalVal;
+                @this.set('coaDeltas.' + code, finalVal);
+            }, 400);
+        }
+    </script>
 </div>

@@ -100,6 +100,17 @@ class SimulasiCoa extends Component
         $this->resetCoa();
     }
 
+    public function updatedCoaDeltas($value, $key)
+    {
+        if (is_string($value)) {
+            // Bersihkan format Indonesia (titik sebagai pemisah ribuan)
+            $clean = str_replace(['Rp', ' ', '.'], '', $value);
+            // Ubah koma jadi titik desimal jika ada
+            $clean = str_replace(',', '.', $clean);
+            $this->coaDeltas[$key] = is_numeric($clean) ? (float) $clean : 0;
+        }
+    }
+
     public function resetCoa()
     {
         $this->coaDeltas = [];
@@ -382,7 +393,8 @@ class SimulasiCoa extends Component
         $cogs = $simCOGS > 0 ? $simCOGS : 1.62;
         $opex = $simOPEX > 0 ? $simOPEX : 0.05;
         $totalExpenses = $cogs + $opex;
-        $revenue = $simSales > 0 ? $simSales : 3.47;
+        // Gunakan revenue yang konsisten dengan viewMode yang aktif (Bulanan MTD, YTD, atau Budget)
+        $revenue = $chosenRev > 0 ? $chosenRev : ($simSales > 0 ? $simSales : 3.47);
         $grossProfit = max(0, $revenue - $cogs);
         $ebit = max(0, $revenue - $opex);
         $netIncome = $revenue - $totalExpenses;
