@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Keamanan: Blokir akses langsung ke file sensitif dan folder sistem
+    RewriteRule ^(\.env|\.git|composer\.(json|lock)|package(-lock)?\.json|artisan|storage/.*\.log) - [F,L,NC]
+
+    # Teruskan request yang mengarah ke public/ agar tidak terjadi loop
+    RewriteCond %{REQUEST_URI} !^/public/
+
+    # Arahkan semua request root ke folder public Laravel
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
