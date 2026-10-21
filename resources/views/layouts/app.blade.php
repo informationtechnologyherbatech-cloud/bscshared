@@ -200,6 +200,12 @@
                             <p>Simulasi CoA</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ route('peta-pos-akun') }}" class="nav-link {{ request()->routeIs('peta-pos-akun') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-sitemap text-teal"></i>
+                            <p>Peta Pos Akun</p>
+                        </a>
+                    </li>
                     @endcan
                     @can('view sensitivity')
                     <li class="nav-item">

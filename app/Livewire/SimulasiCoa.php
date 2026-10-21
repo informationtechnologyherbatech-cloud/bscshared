@@ -306,7 +306,7 @@ class SimulasiCoa extends Component
                 ['code' => '22000', 'name' => 'Liabilitas Jangka Panjang', 'type' => 'liability', 'group' => 'Liabilitas Jangka Panjang', 'dept' => 'FAT', 'baseline' => 4.60, 'is_debit' => false],
                 ['code' => '31000', 'name' => 'Modal Saham Disetor', 'type' => 'equity', 'group' => 'Ekuitas', 'dept' => 'FAT', 'baseline' => 168.00, 'is_debit' => false],
                 ['code' => '32000', 'name' => 'Saldo Laba Ditahan', 'type' => 'equity', 'group' => 'Ekuitas', 'dept' => 'FAT', 'baseline' => 85.40, 'is_debit' => false],
-                ['code' => '41000', 'name' => 'Pendapatan Penjualan Herbal', 'type' => 'income', 'group' => 'Pendapatan', 'dept' => 'MKT', 'baseline' => $baseRev, 'is_debit' => false],
+                ['code' => '41000', 'name' => 'Pendapatan Penjualan Botol Plastik', 'type' => 'income', 'group' => 'Pendapatan', 'dept' => 'MKT', 'baseline' => $baseRev, 'is_debit' => false],
                 ['code' => '51000', 'name' => 'Beban Pokok Penjualan (HPP)', 'type' => 'expense', 'group' => 'Beban Pokok Penjualan', 'dept' => 'PROD', 'baseline' => round($baseRev * 0.2488, 2), 'is_debit' => true],
                 ['code' => '61000', 'name' => 'Beban Operasional (OPEX)', 'type' => 'expense', 'group' => 'Beban Operasional', 'dept' => 'ALL', 'baseline' => round($baseRev * 0.0116, 2), 'is_debit' => true],
             ];
