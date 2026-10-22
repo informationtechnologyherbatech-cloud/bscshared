@@ -1,4 +1,4 @@
-<div class="content-wrapper p-3 p-md-4" style="background-color: #f8fafc;">
+<div class="px-2 py-3 px-md-3 py-md-3">
     <!-- FLASH MESSAGE -->
     @if (session()->has('message'))
         <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-3 rounded-lg" role="alert">
@@ -956,14 +956,15 @@ QR  = (Kas + Piutang) ÷ Kewajiban lancar              = Rp {{ number_format($me
     }
 
     .badge-kpi {
-        font-size: 10px;
+        font-size: 9.5px;
         font-weight: 700;
         letter-spacing: 0.5px;
         text-transform: uppercase;
-        padding: 3px 8px;
+        padding: 2.5px 7px;
         border-radius: 20px;
         display: inline-flex;
         align-items: center;
+        white-space: nowrap;
     }
     .badge-kpi-emerald { background-color: rgba(255, 255, 255, 0.2); color: #ecfdf5; }
     .badge-kpi-sky { background-color: rgba(255, 255, 255, 0.2); color: #f0f9ff; }
@@ -971,18 +972,20 @@ QR  = (Kas + Piutang) ÷ Kewajiban lancar              = Rp {{ number_format($me
     .badge-kpi-indigo { background-color: rgba(255, 255, 255, 0.15); color: #e0e7ff; }
 
     .metric-value {
-        font-size: 2.1rem;
+        font-size: clamp(1.6rem, 2vw, 2.1rem);
         font-weight: 800;
         line-height: 1.1;
         letter-spacing: -0.03em;
+        white-space: nowrap;
     }
     .metric-value-sm {
-        font-size: 1.55rem;
+        font-size: clamp(1.25rem, 1.5vw, 1.55rem);
         font-weight: 800;
         line-height: 1.1;
+        white-space: nowrap;
     }
     .metric-unit {
-        font-size: 1.1rem;
+        font-size: 0.95rem;
         font-weight: 600;
         opacity: 0.9;
     }
