@@ -424,129 +424,145 @@ class SimulasiCoa extends Component
         }
 
         // 15 Rasio Keuangan Lengkap Dihitung Dinamis Sesuai Formula Menu 2 & Dampak Delta CoA
+        // Nama rasio diselaraskan persis dengan tabel financial_ratios (Menu 2)
         $ratiosConfig = [
             // LIKUIDITAS
             [
                 'name' => 'CURRENT RATIO',
                 'category' => 'Likuiditas',
-                'unit' => 'x',
-                'target' => 2.0,
-                'val' => $shortTermLiabilities > 0 ? round($currentAssets / $shortTermLiabilities, 2) : 2.63,
+                'unit' => 'X',
+                'target' => 1.50,
+                'benchmark' => '1.5-2.5 X',
+                'val' => $shortTermLiabilities > 0 ? round($currentAssets / $shortTermLiabilities, 2) : 2.37,
                 'is_lower_better' => false,
             ],
             [
                 'name' => 'QUICK RATIO',
                 'category' => 'Likuiditas',
-                'unit' => 'x',
-                'target' => 1.5,
-                'val' => $shortTermLiabilities > 0 ? round($cashAndAr / $shortTermLiabilities, 2) : 1.81,
+                'unit' => 'X',
+                'target' => 1.00,
+                'benchmark' => '≥ 1 X',
+                'val' => $shortTermLiabilities > 0 ? round($cashAndAr / $shortTermLiabilities, 2) : 1.63,
                 'is_lower_better' => false,
             ],
             // SOLVABILITAS
             [
-                'name' => 'DEBT TO EQUITY RATIO (DER)',
+                'name' => 'DEBT TO EQUITY RATIO',
                 'category' => 'Solvabilitas',
-                'unit' => 'x',
-                'target' => 1.0,
-                'val' => $totalEquity > 0 ? round($totalLiabilities / $totalEquity, 2) : 0.37,
+                'unit' => 'X',
+                'target' => 1.50,
+                'benchmark' => '< 1.5 X',
+                'val' => $totalEquity > 0 ? round($totalLiabilities / $totalEquity, 2) : 0.41,
                 'is_lower_better' => true,
             ],
             [
-                'name' => 'DEBT TO TOTAL ASSET RATIO (DAR)',
+                'name' => 'DEBT TO TOTAL ASSET RATIO',
                 'category' => 'Solvabilitas',
-                'unit' => 'x',
-                'target' => 0.5,
-                'val' => $totalAssets > 0 ? round($totalLiabilities / $totalAssets, 2) : 0.27,
-                'is_lower_better' => true,
+                'unit' => '%',
+                'target' => 30.00,
+                'benchmark' => '30-50 %',
+                'val' => $totalAssets > 0 ? round(($totalLiabilities / $totalAssets) * 100, 2) : 29.26,
+                'is_lower_better' => false,
             ],
             // AKTIVITAS
             [
-                'name' => 'INVENTORY TURN OVER (ITO)',
+                'name' => 'INVENTORY TURN OVER',
                 'category' => 'Aktivitas',
-                'unit' => 'x',
-                'target' => 2.5,
+                'unit' => 'X',
+                'target' => 8.00,
+                'benchmark' => '≥ 8 X',
                 'val' => $inventory > 0 ? round($simCOGS / $inventory, 2) : 2.86,
                 'is_lower_better' => false,
             ],
             [
-                'name' => 'AR TURN OVER (Perputaran Piutang)',
+                'name' => 'AR TURN OVER',
                 'category' => 'Aktivitas',
-                'unit' => 'x',
-                'target' => 3.5,
+                'unit' => 'X',
+                'target' => 6.00,
+                'benchmark' => '≥ 6 X',
                 'val' => $ar > 0 ? round($revenue / $ar, 2) : 3.57,
                 'is_lower_better' => false,
             ],
             [
-                'name' => 'DAYS SALES OUTSTANDING (DSO)',
+                'name' => 'DAYS SALES OUTSANDING',
                 'category' => 'Aktivitas',
-                'unit' => 'Hari',
-                'target' => 90.0,
+                'unit' => 'hari',
+                'target' => 30.00,
+                'benchmark' => '30-45 hari',
                 'val' => $revenue > 0 ? round(($ar / $revenue) * 360, 2) : 100.80,
                 'is_lower_better' => true,
             ],
             [
-                'name' => 'DAYS INVENTORY OUTSTANDING (DIO)',
+                'name' => 'DAYS INVENTORY OUTSTANDING',
                 'category' => 'Aktivitas',
-                'unit' => 'Hari',
-                'target' => 120.0,
+                'unit' => 'hari',
+                'target' => 30.00,
+                'benchmark' => '30-45 hari',
                 'val' => $simCOGS > 0 ? round(($inventory / $simCOGS) * 360, 2) : 126.00,
                 'is_lower_better' => true,
             ],
             [
-                'name' => 'DAYS PAYABLE OUTSTANDING (DPO)',
+                'name' => 'DAYS PAYABLE OUTSTANDING',
                 'category' => 'Aktivitas',
-                'unit' => 'Hari',
-                'target' => 90.0,
+                'unit' => 'hari',
+                'target' => 30.00,
+                'benchmark' => '30-60 hari',
                 'val' => $simCOGS > 0 ? round(($ap / $simCOGS) * 360, 2) : 108.00,
                 'is_dpo' => true,
             ],
             [
-                'name' => 'TOTAL ASSET TURN OVER (TATO)',
+                'name' => 'ASSET TURN OVER',
                 'category' => 'Aktivitas',
-                'unit' => 'x',
-                'target' => 1.0,
-                'val' => $totalAssets > 0 ? round($revenue / $totalAssets, 2) : 0.33,
+                'unit' => 'X',
+                'target' => 0.80,
+                'benchmark' => '≥ 0.8 X',
+                'val' => $totalAssets > 0 ? round($revenue / $totalAssets, 2) : 0.32,
                 'is_lower_better' => false,
             ],
             // PROFITABILITAS
             [
-                'name' => 'GROSS PROFIT MARGIN (GPM)',
+                'name' => 'GROSS PROFIT MARGIN',
                 'category' => 'Profitabilitas',
                 'unit' => '%',
-                'target' => 30.0,
-                'val' => $revenue > 0 ? round(($grossProfit / $revenue) * 100, 2) : 30.41,
+                'target' => 28.00,
+                'benchmark' => '> 28%',
+                'val' => $revenue > 0 ? round(($grossProfit / $revenue) * 100, 2) : 22.53,
                 'is_lower_better' => false,
             ],
             [
-                'name' => 'EBIT / OPERATING MARGIN',
+                'name' => 'EBIT',
                 'category' => 'Profitabilitas',
                 'unit' => '%',
-                'target' => 70.0,
-                'val' => $revenue > 0 ? round(($ebit / $revenue) * 100, 2) : 88.39,
+                'target' => 8.00,
+                'benchmark' => '8-15%',
+                'val' => $revenue > 0 ? round(($ebit / $revenue) * 100, 2) : 87.58,
                 'is_lower_better' => false,
             ],
             [
-                'name' => 'NET PROFIT MARGIN (NPM)',
+                'name' => 'NET PROFIT MARGIN',
                 'category' => 'Profitabilitas',
                 'unit' => '%',
-                'target' => 15.0,
-                'val' => $revenue > 0 ? round(($netIncome / $revenue) * 100, 2) : 18.80,
+                'target' => 5.00,
+                'benchmark' => '5-10%',
+                'val' => $revenue > 0 ? round(($netIncome / $revenue) * 100, 2) : 10.11,
                 'is_lower_better' => false,
             ],
             [
-                'name' => 'RETURN ON ASSET (ROA)',
+                'name' => 'RETURN ON ASSET',
                 'category' => 'Profitabilitas',
                 'unit' => '%',
-                'target' => 10.0,
-                'val' => $totalAssets > 0 ? round(($netIncome / $totalAssets) * 100, 2) : 29.25,
+                'target' => 8.00,
+                'benchmark' => '≥ 8%',
+                'val' => $totalAssets > 0 ? round(($ebit / $totalAssets) * 100, 2) : 28.16,
                 'is_lower_better' => false,
             ],
             [
-                'name' => 'RETURN ON EQUITY (ROE)',
+                'name' => 'RETURN ON EQUITY',
                 'category' => 'Profitabilitas',
                 'unit' => '%',
-                'target' => 15.0,
-                'val' => $totalEquity > 0 ? round(($netIncome / $totalEquity) * 100, 2) : 8.54,
+                'target' => 10.00,
+                'benchmark' => '> 10%',
+                'val' => $totalEquity > 0 ? round(($netIncome / $totalEquity) * 100, 2) : 4.60,
                 'is_lower_better' => false,
             ],
         ];
@@ -557,34 +573,56 @@ class SimulasiCoa extends Component
             $name = $rc['name'];
             $v = $rc['val'];
             $t = $rc['target'];
+            $benchDisplay = $rc['benchmark'] ?? '';
+            $status = 'Waspada';
 
-            // Jika ada nilai target tersimpan di database financial_ratios, gunakan target tersebut
+            // Jika ada nilai tersimpan di database financial_ratios untuk rasio ini
+            // Cari kecocokan exact name atau prefix name
+            $matchedPersisted = null;
             if (isset($persistedRatios[$name])) {
-                $t = (float) $persistedRatios[$name]->target;
-                // Jika tidak ada perubahan delta, gunakan actual yang persis tersimpan di database
-                if ($deltaCOGS == 0 && $deltaOPEX == 0) {
-                    $v = (float) $persistedRatios[$name]->actual;
+                $matchedPersisted = $persistedRatios[$name];
+            } else {
+                foreach ($persistedRatios as $pName => $pObj) {
+                    if (str_starts_with($pName, $name) || str_starts_with($name, $pName)) {
+                        $matchedPersisted = $pObj;
+                        break;
+                    }
                 }
             }
 
-            // Hitung Capaian (%) & Status Identik FinancialRatios.php
-            if (isset($rc['is_dpo']) && $rc['is_dpo']) {
-                $ach = ($v >= 60 && $v <= 110) ? 100.0 : ($v > 0 ? min(100.0, round(($v / $t) * 100, 2)) : 85.0);
-            } elseif ($rc['is_lower_better'] ?? false) {
-                $ach = $v <= $t ? 100.0 : ($v > 0 ? round(($t / $v) * 100, 2) : 100.0);
-            } else {
-                $ach = $t > 0 ? min(100.0, round(($v / $t) * 100, 2)) : 100.0;
+            if ($matchedPersisted) {
+                $t = (float) $matchedPersisted->target;
+                if (!empty($matchedPersisted->benchmark)) {
+                    $benchDisplay = $matchedPersisted->benchmark;
+                }
+                // Jika tidak ada perubahan delta simulasi pada CoA, gunakan nilai aktual & status persis dari database /ratios
+                if ($deltaCOGS == 0 && $deltaOPEX == 0) {
+                    $v = (float) $matchedPersisted->actual;
+                    $status = $matchedPersisted->status ?? 'Tercapai';
+                    $ach = (float) ($matchedPersisted->achievement_pct ?? 100.0);
+                }
             }
 
-            $status = $ach >= 100 ? 'Tercapai' : ($ach >= 80 ? 'Waspada' : 'Di Bawah Target');
+            // Jika ada delta yang dimainkan user, hitung ulang achievement & status dinamis
+            if ($deltaCOGS != 0 || $deltaOPEX != 0 || !isset($ach)) {
+                if (isset($rc['is_dpo']) && $rc['is_dpo']) {
+                    $ach = ($v >= 30 && $v <= 60) ? 100.0 : ($v > 60 && $v <= 110 ? 85.0 : 50.0);
+                } elseif ($rc['is_lower_better'] ?? false) {
+                    $ach = $v <= $t ? 100.0 : ($v > 0 ? round(($t / $v) * 100, 2) : 100.0);
+                } else {
+                    $ach = $t > 0 ? min(100.0, round(($v / $t) * 100, 2)) : 100.0;
+                }
+                $status = $ach >= 100 ? 'Tercapai' : ($ach >= 80 ? 'Waspada' : 'Di Bawah Target');
+            }
 
-            // Format display benchmark identik FinancialRatio model & Aplikasi Finance
-            if (isset($rc['is_dpo']) && $rc['is_dpo']) {
-                $benchDisplay = '60 - 90 Hari';
-            } elseif ($rc['is_lower_better'] ?? false) {
-                $benchDisplay = '≤ ' . number_format($t, 2) . ' ' . $rc['unit'];
-            } else {
-                $benchDisplay = '≥ ' . number_format($t, 2) . ' ' . $rc['unit'];
+            if (empty($benchDisplay)) {
+                if (isset($rc['is_dpo']) && $rc['is_dpo']) {
+                    $benchDisplay = '30 - 60 Hari';
+                } elseif ($rc['is_lower_better'] ?? false) {
+                    $benchDisplay = '≤ ' . number_format($t, 2) . ' ' . $rc['unit'];
+                } else {
+                    $benchDisplay = '≥ ' . number_format($t, 2) . ' ' . $rc['unit'];
+                }
             }
 
             $ratios[$name] = [
