@@ -23,6 +23,13 @@ class UjiIndikatorDepartemen extends Component
     #[Url(as: 'sort')]
     public $sortBy = 'default'; // 'default', 'gap_desc', 'gap_asc', 'kpi_code'
 
+    // Filter Kategori Pos Anggaran Card
+    #[Url(as: 'pos_type')]
+    public $posTypeFilter = 'ALL'; // 'ALL', 'LINKED', 'COGS', 'Expense', 'Asset', 'Liability', 'Revenue'
+
+    // Pencarian spesifik Pos Anggaran Card
+    public $searchPosCard = '';
+
     // Simulasi penyesuaian nilai realisasi KPI (key = string kpi_id, value = simulated_actual)
     public $simulatedActuals = [];
 
@@ -223,6 +230,44 @@ class UjiIndikatorDepartemen extends Component
         }
     }
 
+    /**
+     * Ambil 130 Pos Anggaran Odoo dari tabel budget_categories
+     */
+    public function get130BudgetPositions()
+    {
+        try {
+            $bcRows = DB::connection('mysql_finance')
+                ->table('budget_categories')
+                ->leftJoin('departments', 'budget_categories.department_id', '=', 'departments.id')
+                ->select(
+                    'budget_categories.code as code',
+                    'budget_categories.name as name',
+                    'departments.name as dept_name',
+                    'departments.code as dept_code'
+                )
+                ->orderBy('budget_categories.code')
+                ->get();
+
+            $list = [];
+            foreach ($bcRows as $bc) {
+                $code = $bc->code;
+                $prefix = substr($code, 0, 1);
+                $type = ($prefix === '5') ? 'COGS' : 'Expense';
+                $list[$code] = [
+                    'code' => $code,
+                    'name' => $bc->name,
+                    'type' => $type,
+                    'dept_name' => $bc->dept_name ?: '-',
+                    'dept_code' => $bc->dept_code ?: '-',
+                ];
+            }
+
+            return $list;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
     public function get12CorePos()
     {
         return [
@@ -270,6 +315,9 @@ class UjiIndikatorDepartemen extends Component
         $posMap = collect($corePos)->keyBy('code');
         $allAccountsMap = $this->getAllOdooAccountsAndCOA();
 
+        // 130 Pos Anggaran Odoo dari budget_categories
+        $budget130List = $this->get130BudgetPositions();
+
         $query = DepartmentObjective::where('period', $this->selectedPeriod);
         if ($this->selectedDept) {
             $query->where('dept_code', $this->selectedDept);
@@ -288,20 +336,42 @@ class UjiIndikatorDepartemen extends Component
 
         $allObjectives = $query->orderBy('dept_code')->orderBy('kpi_code')->get();
 
-        // Olah data simulasi per KPI
-        $kpiSimulations = [];
-        $posSimulations = [];
-        foreach ($corePos as $cp) {
-            $posSimulations[$cp['code']] = [
-                'pos' => $cp,
+        // Siapkan struktur proyeksi 130 Pos Anggaran Odoo
+        $pos130Simulations = [];
+        foreach ($budget130List as $bCode => $bMeta) {
+            $pos130Simulations[$bCode] = [
+                'code' => $bCode,
+                'name' => $bMeta['name'],
+                'type' => $bMeta['type'],
+                'dept_name' => $bMeta['dept_name'],
+                'dept_code' => $bMeta['dept_code'],
                 'kpis' => [],
                 'tercapai_count' => 0,
                 'waspada_count' => 0,
                 'dibawah_count' => 0,
-                'overall_health' => 'Terkendali',
+                'overall_health' => 'Netral',
             ];
         }
 
+        // Juga inisialisasi 12 Pos Inti (PA01-PA12)
+        foreach ($corePos as $cp) {
+            if (!isset($pos130Simulations[$cp['code']])) {
+                $pos130Simulations[$cp['code']] = [
+                    'code' => $cp['code'],
+                    'name' => $cp['name'],
+                    'type' => 'Core PA',
+                    'dept_name' => 'Pabrik Botol',
+                    'dept_code' => 'MFG',
+                    'kpis' => [],
+                    'tercapai_count' => 0,
+                    'waspada_count' => 0,
+                    'dibawah_count' => 0,
+                    'overall_health' => 'Netral',
+                ];
+            }
+        }
+
+        $kpiSimulations = [];
         $totalSimTercapai = 0;
         $totalSimWaspada = 0;
         $totalSimDiBawah = 0;
@@ -388,56 +458,49 @@ class UjiIndikatorDepartemen extends Component
                 $kpiSimulations[] = $kpiData;
             }
 
-            // Petakan ke 12 pos (mendukung kode PA01-PA12 maupun akun Odoo COA yang terhubung)
-            $matchedCorePos = [];
+            // Petakan ke 130 Pos Anggaran Odoo & Pos Inti
+            $matchedPosList = [];
             foreach ($budgetCodes as $c) {
-                if (isset($posSimulations[$c])) {
-                    $matchedCorePos[$c] = true;
+                if (isset($pos130Simulations[$c])) {
+                    $matchedPosList[$c] = true;
                 }
             }
 
-            // Pemetaan akun Odoo ke pos inti
+            // Tambahkan juga akun COA yang terhubung
             $allTokens = array_merge($budgetCodes, $odooCodes);
             foreach ($allTokens as $t) {
-                if (str_starts_with($t, '4')) $matchedCorePos['PA01'] = true;
-                if (str_starts_with($t, '51000') || str_starts_with($t, '11300010')) $matchedCorePos['PA02'] = true;
-                if (str_contains(strtolower($t), '61100310')) $matchedCorePos['PA03'] = true;
-                if (str_contains(strtolower($t), '61100110')) $matchedCorePos['PA04'] = true;
-                if (str_contains(strtolower($t), '51008010') || str_contains(strtolower($t), '61100230')) $matchedCorePos['PA05'] = true;
-                if (str_starts_with($t, '113')) $matchedCorePos['PA06'] = true;
-                if (str_starts_with($t, '112')) $matchedCorePos['PA07'] = true;
-                if (str_starts_with($t, '211')) $matchedCorePos['PA08'] = true;
-                if (str_starts_with($t, '111')) $matchedCorePos['PA09'] = true;
-                if (str_contains(strtolower($t), '61100510')) $matchedCorePos['PA10'] = true;
-                if (str_starts_with($t, '12')) $matchedCorePos['PA11'] = true;
-                if (in_array(substr($t, 0, 1), ['6', '8', '9']) && !isset($matchedCorePos['PA03']) && !isset($matchedCorePos['PA04']) && !isset($matchedCorePos['PA05']) && !isset($matchedCorePos['PA10'])) {
-                    $matchedCorePos['PA12'] = true;
+                if (isset($pos130Simulations[$t])) {
+                    $matchedPosList[$t] = true;
+                }
+                // Mapping ke 12 pos inti bila ada token akun
+                if (str_starts_with($t, '4')) $matchedPosList['PA01'] = true;
+                if (str_starts_with($t, '51000') || str_starts_with($t, '11300010')) $matchedPosList['PA02'] = true;
+                if (str_contains(strtolower($t), '61100310')) $matchedPosList['PA03'] = true;
+                if (str_contains(strtolower($t), '61100110')) $matchedPosList['PA04'] = true;
+                if (str_contains(strtolower($t), '51008010') || str_contains(strtolower($t), '61100230')) $matchedPosList['PA05'] = true;
+                if (str_starts_with($t, '113')) $matchedPosList['PA06'] = true;
+                if (str_starts_with($t, '112')) $matchedPosList['PA07'] = true;
+                if (str_starts_with($t, '211')) $matchedPosList['PA08'] = true;
+                if (str_starts_with($t, '111')) $matchedPosList['PA09'] = true;
+                if (str_contains(strtolower($t), '61100510')) $matchedPosList['PA10'] = true;
+                if (str_starts_with($t, '12')) $matchedPosList['PA11'] = true;
+                if (in_array(substr($t, 0, 1), ['6', '8', '9']) && !isset($matchedPosList['PA03']) && !isset($matchedPosList['PA04']) && !isset($matchedPosList['PA05']) && !isset($matchedPosList['PA10'])) {
+                    $matchedPosList['PA12'] = true;
                 }
             }
 
-            foreach (array_keys($matchedCorePos) as $c) {
-                if (isset($posSimulations[$c])) {
-                    $posSimulations[$c]['kpis'][] = $kpiData;
-                    if ($simStatus === 'Tercapai') $posSimulations[$c]['tercapai_count']++;
-                    elseif ($simStatus === 'Waspada') $posSimulations[$c]['waspada_count']++;
-                    else $posSimulations[$c]['dibawah_count']++;
+            foreach (array_keys($matchedPosList) as $c) {
+                if (isset($pos130Simulations[$c])) {
+                    $pos130Simulations[$c]['kpis'][] = $kpiData;
+                    if ($simStatus === 'Tercapai') $pos130Simulations[$c]['tercapai_count']++;
+                    elseif ($simStatus === 'Waspada') $pos130Simulations[$c]['waspada_count']++;
+                    else $pos130Simulations[$c]['dibawah_count']++;
                 }
             }
         }
 
-        // Sorting
-        if ($this->sortBy === 'gap_desc') {
-            // Urutkan capaian terkecil (GAP paling besar) di posisi teratas
-            usort($kpiSimulations, fn($a, $b) => $a['sim_ach'] <=> $b['sim_ach']);
-        } elseif ($this->sortBy === 'gap_asc') {
-            // Capaian tertinggi di atas
-            usort($kpiSimulations, fn($a, $b) => $b['sim_ach'] <=> $a['sim_ach']);
-        } elseif ($this->sortBy === 'kpi_code') {
-            usort($kpiSimulations, fn($a, $b) => strcmp($a['kpi_code'], $b['kpi_code']));
-        }
-
-        // Tentukan kesehatan driver pos
-        foreach ($posSimulations as $c => &$pData) {
+        // Hitung kesehatan masing-masing pos
+        foreach ($pos130Simulations as $c => &$pData) {
             if ($pData['dibawah_count'] > 0) {
                 $pData['overall_health'] = 'Kritis (Gap Tinggi)';
             } elseif ($pData['waspada_count'] > 0) {
@@ -450,6 +513,41 @@ class UjiIndikatorDepartemen extends Component
         }
         unset($pData);
 
+        // Filter tampilan 130 Pos Anggaran Cards
+        $filteredPosCards = collect($pos130Simulations);
+        if ($this->posTypeFilter === 'LINKED') {
+            $filteredPosCards = $filteredPosCards->filter(fn($p) => count($p['kpis']) > 0);
+        } elseif ($this->posTypeFilter === 'COGS') {
+            $filteredPosCards = $filteredPosCards->filter(fn($p) => $p['type'] === 'COGS' || str_starts_with($p['code'], '5') || $p['code'] === 'PA02');
+        } elseif ($this->posTypeFilter === 'Expense') {
+            $filteredPosCards = $filteredPosCards->filter(fn($p) => $p['type'] === 'Expense' || in_array(substr($p['code'], 0, 1), ['6', '8', '9']) || in_array($p['code'], ['PA03', 'PA04', 'PA05', 'PA10', 'PA12']));
+        } elseif ($this->posTypeFilter === 'Asset') {
+            $filteredPosCards = $filteredPosCards->filter(fn($p) => str_starts_with($p['code'], '1') || in_array($p['code'], ['PA06', 'PA07', 'PA09', 'PA11']));
+        } elseif ($this->posTypeFilter === 'Liability') {
+            $filteredPosCards = $filteredPosCards->filter(fn($p) => str_starts_with($p['code'], '2') || $p['code'] === 'PA08');
+        } elseif ($this->posTypeFilter === 'Revenue') {
+            $filteredPosCards = $filteredPosCards->filter(fn($p) => str_starts_with($p['code'], '4') || $p['code'] === 'PA01');
+        }
+
+        if (!empty(trim($this->searchPosCard))) {
+            $sq = strtolower(trim($this->searchPosCard));
+            $filteredPosCards = $filteredPosCards->filter(function($p) use ($sq) {
+                return str_contains(strtolower($p['code']), $sq)
+                    || str_contains(strtolower($p['name']), $sq)
+                    || str_contains(strtolower($p['dept_name']), $sq)
+                    || str_contains(strtolower($p['overall_health']), $sq);
+            });
+        }
+
+        // Sorting KPI table
+        if ($this->sortBy === 'gap_desc') {
+            usort($kpiSimulations, fn($a, $b) => $a['sim_ach'] <=> $b['sim_ach']);
+        } elseif ($this->sortBy === 'gap_asc') {
+            usort($kpiSimulations, fn($a, $b) => $b['sim_ach'] <=> $a['sim_ach']);
+        } elseif ($this->sortBy === 'kpi_code') {
+            usort($kpiSimulations, fn($a, $b) => strcmp($a['kpi_code'], $b['kpi_code']));
+        }
+
         return view('livewire.uji-indikator-departemen', [
             'periods' => $periods,
             'departments' => $departments,
@@ -457,7 +555,8 @@ class UjiIndikatorDepartemen extends Component
             'posMap' => $posMap,
             'allAccountsMap' => $allAccountsMap,
             'kpiSimulations' => $kpiSimulations,
-            'posSimulations' => $posSimulations,
+            'pos130Cards' => $filteredPosCards,
+            'totalPos130' => count($pos130Simulations),
             'totalKpi' => count($allObjectives),
             'totalSimTercapai' => $totalSimTercapai,
             'totalSimWaspada' => $totalSimWaspada,

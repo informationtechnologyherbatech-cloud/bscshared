@@ -113,20 +113,45 @@
                 </div>
             </div>
 
-            <!-- PROYEKSI STATUS KESEHATAN 12 POS FINANSIAL INTI -->
+            <!-- PROYEKSI STATUS KESEHATAN 130 POS ANGGARAN ODOO & AKUN FINANSIAL -->
             <div class="card border-0 shadow-sm mb-3">
-                <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
-                    <strong class="text-dark">
-                        <i class="fas fa-sitemap text-teal mr-2"></i> Proyeksi Dampak ke Pos Finansial Inti Pabrik Botol Plastik
-                    </strong>
-                    <span class="badge badge-teal font-weight-normal px-2 py-1">Tingkat 3 &rarr; Tingkat 2 CoA</span>
+                <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center flex-wrap" style="gap: 10px;">
+                    <div>
+                        <strong class="text-dark">
+                            <i class="fas fa-sitemap text-teal mr-2"></i> Proyeksi Dampak ke 130 Pos Anggaran Odoo & Akun Finansial Pabrik Botol Plastik
+                        </strong>
+                        <span class="badge badge-teal font-weight-normal px-2 py-0.5 ml-1">130 Pos &bull; Tingkat 3 &rarr; Tingkat 2 CoA</span>
+                    </div>
+                    <div class="d-flex align-items-center flex-wrap" style="gap: 6px;">
+                        <!-- Search Box Pos Card -->
+                        <div class="input-group input-group-sm" style="width: 170px;">
+                            <input type="text" wire:model.live.debounce.300ms="searchPosCard" class="form-control" placeholder="Cari pos/kode/dept...">
+                            @if($searchPosCard)
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" wire:click="$set('searchPosCard', '')">&times;</button>
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- Button Group Kategori Pos -->
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" wire:click="$set('posTypeFilter', 'ALL')" class="btn {{ $posTypeFilter === 'ALL' ? 'btn-teal font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}" style="font-size: 11px;">Semua</button>
+                            <button type="button" wire:click="$set('posTypeFilter', 'LINKED')" class="btn {{ $posTypeFilter === 'LINKED' ? 'btn-teal font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}" style="font-size: 11px;">
+                                <i class="fas fa-link mr-1"></i>Terhubung KPI
+                            </button>
+                            <button type="button" wire:click="$set('posTypeFilter', 'COGS')" class="btn {{ $posTypeFilter === 'COGS' ? 'btn-teal font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}" style="font-size: 11px;">COGS / HPP</button>
+                            <button type="button" wire:click="$set('posTypeFilter', 'Expense')" class="btn {{ $posTypeFilter === 'Expense' ? 'btn-teal font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}" style="font-size: 11px;">Expense</button>
+                            <button type="button" wire:click="$set('posTypeFilter', 'Asset')" class="btn {{ $posTypeFilter === 'Asset' ? 'btn-teal font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}" style="font-size: 11px;">Asset</button>
+                            <button type="button" wire:click="$set('posTypeFilter', 'Liability')" class="btn {{ $posTypeFilter === 'Liability' ? 'btn-teal font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}" style="font-size: 11px;">Liability</button>
+                            <button type="button" wire:click="$set('posTypeFilter', 'Revenue')" class="btn {{ $posTypeFilter === 'Revenue' ? 'btn-teal font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}" style="font-size: 11px;">Revenue</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body p-2">
+                <div class="card-body p-2" style="max-height: 380px; overflow-y: auto;">
                     <div class="row">
-                        @foreach($corePos as $cp)
+                        @forelse($pos130Cards as $cp)
                             @php
-                                $pData = $posSimulations[$cp['code']] ?? null;
-                                $hStatus = $pData ? $pData['overall_health'] : 'Netral';
+                                $hStatus = $cp['overall_health'];
                                 $borderCls = 'border-secondary';
                                 $badgeCls = 'badge-secondary';
                                 if ($hStatus === 'Kritis (Gap Tinggi)') {
@@ -141,32 +166,52 @@
                                 }
                             @endphp
                             <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
-                                <div class="p-2 rounded border bg-white h-100 {{ $borderCls }}" style="border-width: 1.5px !important; font-size: 12px;">
+                                <div class="p-2 rounded border bg-white h-100 {{ $borderCls }} shadow-xs" style="border-width: 1.5px !important; font-size: 11.5px;">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="badge badge-teal">{{ $cp['code'] }}</span>
-                                        <span class="badge {{ $badgeCls }} font-weight-bold" style="font-size: 10px;">
+                                        <div class="d-flex align-items-center" style="gap: 4px;">
+                                            <span class="badge badge-teal font-weight-bold" style="font-size: 11px;">{{ $cp['code'] }}</span>
+                                            <span class="badge {{ $cp['type'] === 'COGS' ? 'badge-warning text-dark' : ($cp['type'] === 'Expense' ? 'badge-light border' : 'badge-info') }} py-0 px-1" style="font-size: 9px;">
+                                                {{ $cp['type'] }}
+                                            </span>
+                                        </div>
+                                        <span class="badge {{ $badgeCls }} font-weight-bold" style="font-size: 9.5px;">
                                             {{ $hStatus }}
                                         </span>
                                     </div>
-                                    <div class="font-weight-bold text-dark text-truncate" title="{{ $cp['name'] }}">
+                                    <div class="font-weight-bold text-dark text-truncate" title="{{ $cp['name'] }}" style="line-height: 1.25;">
                                         {{ $cp['name'] }}
                                     </div>
-                                    <div class="text-muted small" style="font-size: 11px;">
-                                        Rasio: <strong>{{ $cp['ratio'] }}</strong>
+                                    <div class="text-muted small d-flex justify-content-between align-items-center mt-1" style="font-size: 10.5px;">
+                                        <span>Dept: <strong>{{ $cp['dept_name'] }}</strong></span>
+                                        <span class="badge badge-light border">{{ $cp['dept_code'] }}</span>
                                     </div>
-                                    <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;">
-                                        <span>Terhubung: <strong>{{ count($pData['kpis'] ?? []) }}</strong> KPI</span>
-                                        @if(($pData['dibawah_count'] ?? 0) > 0)
-                                            <span class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i>{{ $pData['dibawah_count'] }} GAP</span>
-                                        @elseif(($pData['waspada_count'] ?? 0) > 0)
-                                            <span class="text-warning font-weight-bold">{{ $pData['waspada_count'] }} Waspada</span>
-                                        @else
+                                    <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 10.5px;">
+                                        <span>Terhubung: <strong>{{ count($cp['kpis']) }}</strong> KPI</span>
+                                        @if(($cp['dibawah_count'] ?? 0) > 0)
+                                            <span class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i>{{ $cp['dibawah_count'] }} GAP</span>
+                                        @elseif(($cp['waspada_count'] ?? 0) > 0)
+                                            <span class="text-warning font-weight-bold">{{ $cp['waspada_count'] }} Waspada</span>
+                                        @elseif(count($cp['kpis']) > 0)
                                             <span class="text-success font-weight-bold"><i class="fas fa-check mr-1"></i>Aman</span>
+                                        @else
+                                            <span class="text-muted">-</span>
                                         @endif
                                     </div>
                                 </div>
                             </div>
-                        @endforeach
+                        @empty
+                            <div class="col-12 text-center py-4 text-muted small">
+                                <i class="fas fa-filter mr-1 text-secondary"></i> Tidak ada pos anggaran yang cocok dengan filter atau kata kunci "{{ $searchPosCard }}".
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+                <div class="card-footer bg-light py-1.5 px-3 text-muted small d-flex justify-content-between align-items-center">
+                    <div>
+                        Menampilkan <strong>{{ count($pos130Cards) }}</strong> dari <strong>{{ $totalPos130 }}</strong> Pos Anggaran Odoo & Akun Finansial.
+                    </div>
+                    <div>
+                        <span class="text-muted font-italic">*Klik tombol filter atau ketik di search box untuk mencari pos spesifik.</span>
                     </div>
                 </div>
             </div>
