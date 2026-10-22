@@ -180,13 +180,17 @@
 
                                     @forelse($grouped as $dCode => $deptKpis)
                                         @php
-                                            $deptObj = collect($departments)->firstWhere('code', $dCode);
-                                            $deptName = $deptObj ? $deptObj->name : $dCode;
+                                            $deptName = \App\Livewire\DepartmentObjectives::getDepartmentNameByCode($dCode, $departments);
+                                            $displayCode = $dCode;
+                                            $matchedDept = collect($departments)->firstWhere('name', $deptName);
+                                            if ($matchedDept && $matchedDept->code) {
+                                                $displayCode = $matchedDept->code;
+                                            }
                                         @endphp
                                         <tr class="bg-light">
                                             <td colspan="{{ (auth()->user()?->can('manage objectives') || auth()->user()?->can('can_write_kpi')) ? 9 : 8 }}" class="py-2 px-3 font-weight-bold text-dark border-top border-bottom">
                                                 <i class="fas fa-building text-warning mr-1"></i>
-                                                <strong>{{ $deptName }} ({{ $dCode }})</strong>
+                                                <strong>{{ $deptName }} ({{ $displayCode }})</strong>
                                                 <span class="badge badge-secondary ml-2 font-weight-normal" style="font-size: 11px;">
                                                      {{ $deptKpis->count() }} Sasaran Mutu
                                                 </span>
@@ -259,15 +263,33 @@
                                                          </div>
                                                      @endif
 
-                                                     <!-- 3. Catatan Tambahan Kustom (Jika Diisi di Form) -->
-                                                     @if(!empty($obj->impact_note))
-                                                         <div class="p-1 px-2 rounded bg-light border text-dark font-italic small mt-1" style="font-size: 11px; line-height: 1.2;">
-                                                             <i class="fas fa-pencil-alt text-warning mr-1"></i><strong>Catatan:</strong> {{ $obj->impact_note }}
-                                                         </div>
-                                                     @elseif(empty($autoImpacts) && empty($obj->odoo_account_code))
-                                                         <span class="text-muted small font-italic">- Tautkan ke pos anggaran / akun Odoo untuk melihat dampak -</span>
-                                                     @endif
-                                                 </td>
+                                                    <!-- 3. Catatan Tambahan Dampak (Kustom atau Otomatis) -->
+                                                    @php
+                                                        $autoNote = \App\Livewire\DepartmentObjectives::getAutoImpactNote(
+                                                            $obj->kpi_name,
+                                                            $obj->kpi_code,
+                                                            $obj->dept_code,
+                                                            $obj->status,
+                                                            $obj->polarity,
+                                                            $codes,
+                                                            $obj->odoo_account_code
+                                                        );
+                                                    @endphp
+                                                    @if(!empty($obj->impact_note))
+                                                        <div class="p-1 px-2 rounded bg-light border text-dark font-italic small mt-1 shadow-xs" style="font-size: 11px; line-height: 1.25;">
+                                                            <i class="fas fa-pencil-alt text-warning mr-1"></i><strong>Catatan:</strong> {{ $obj->impact_note }}
+                                                        </div>
+                                                    @elseif(!empty($autoNote))
+                                                        <div class="p-1 px-2 rounded bg-light border text-dark small mt-1 shadow-xs" style="font-size: 11px; line-height: 1.25; border-left: 3px solid #ffc107 !important;">
+                                                            <span class="text-secondary font-weight-bold" style="font-size: 10px;">
+                                                                <i class="fas fa-magic text-warning mr-1"></i>Catatan Tambahan Dampak:
+                                                            </span>
+                                                            <span class="text-dark font-italic">{{ $autoNote }}</span>
+                                                        </div>
+                                                    @elseif(empty($autoImpacts) && empty($obj->odoo_account_code))
+                                                        <span class="text-muted small font-italic">- Tautkan ke pos anggaran / akun Odoo untuk melihat dampak -</span>
+                                                    @endif
+                                                </td>
                                                 <td class="text-center">
                                                     @if($obj->polarity === 'Naik')
                                                         <span class="badge badge-success px-2 py-1" title="Semakin tinggi semakin baik">
@@ -392,22 +414,41 @@
                                         </button>
                                     </div>
 
-                                    <!-- Search Box Akun -->
-                                    <div class="input-group input-group-sm" style="width: 280px;">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
-                                        </div>
-                                        <input type="text" 
-                                               wire:model.live.debounce.300ms="posSearch" 
-                                               class="form-control border-left-0" 
-                                               placeholder="Cari kode akun, nama COA, rasio...">
-                                        @if($posSearch)
-                                            <div class="input-group-append">
-                                                <button class="btn btn-outline-secondary bg-white" type="button" wire:click="$set('posSearch', '')">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
+                                    <!-- Filter KPI & Search Box Akun -->
+                                    <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                                        <!-- Filter Berdasarkan Sasaran Mutu (KPI) -->
+                                        <select wire:model.live="posKpiFilter" class="form-control form-control-sm border" style="width: 220px;">
+                                            <option value="">Semua Sasaran Mutu (KPI)</option>
+                                            <option value="HAS_KPI">🟢 Memiliki Tautan KPI ({{ $allPosAccounts->filter(fn($x) => count($x['linked_kpis']) > 0)->count() }})</option>
+                                            <option value="NO_KPI">⚪ Belum Ditautkan KPI ({{ $allPosAccounts->filter(fn($x) => count($x['linked_kpis']) === 0)->count() }})</option>
+                                            @if($allObjectives->count() > 0)
+                                                <optgroup label="[ SASARAN MUTU PER DEPARTEMEN ]">
+                                                    @foreach($allObjectives as $kpi)
+                                                        <option value="{{ $kpi->kpi_code }}">
+                                                            [{{ $kpi->dept_code }}] {{ $kpi->kpi_code }} - {{ \Illuminate\Support\Str::limit($kpi->kpi_name, 35) }}
+                                                        </option>
+                                                    @endforeach
+                                                </optgroup>
+                                            @endif
+                                        </select>
+
+                                        <!-- Search Box Akun -->
+                                        <div class="input-group input-group-sm" style="width: 240px;">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                                             </div>
-                                        @endif
+                                            <input type="text" 
+                                                   wire:model.live.debounce.300ms="posSearch" 
+                                                   class="form-control border-left-0" 
+                                                   placeholder="Cari kode, nama COA, KPI...">
+                                            @if($posSearch)
+                                                <div class="input-group-append">
+                                                    <button class="btn btn-outline-secondary bg-white" type="button" wire:click="$set('posSearch', '')">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -421,6 +462,13 @@
                                     @elseif($posAccountTypeFilter)
                                         <span class="badge badge-info ml-1">Kategori: {{ $posAccountTypeFilter }}</span>
                                     @endif
+                                    @if($posKpiFilter === 'HAS_KPI')
+                                        <span class="badge badge-success ml-1">Status: Memiliki Tautan KPI</span>
+                                    @elseif($posKpiFilter === 'NO_KPI')
+                                        <span class="badge badge-light border text-muted ml-1">Status: Belum Ditautkan KPI</span>
+                                    @elseif($posKpiFilter)
+                                        <span class="badge badge-primary ml-1">KPI: {{ $posKpiFilter }}</span>
+                                    @endif
                                     @if($posSearch)
                                         <span class="badge badge-warning text-dark ml-1">Pencarian: "{{ $posSearch }}"</span>
                                     @endif
@@ -432,9 +480,9 @@
                                     <thead class="bg-light position-sticky" style="top: 0; z-index: 10;">
                                         <tr>
                                             <th style="width: 24%;">Kode & Nama Akun Odoo ERP</th>
-                                            <th style="width: 14%;">Tipe / Kategori</th>
-                                            <th style="width: 18%;">Rasio Finansial Terkait</th>
-                                            <th style="width: 24%;">Sasaran Mutu Terhubung (KPI)</th>
+                                            <th style="width: 13%;">Tipe / Kategori</th>
+                                            <th style="width: 20%;">Rasio Finansial Terkait</th>
+                                            <th style="width: 23%;">Sasaran Mutu Terhubung (KPI)</th>
                                             <th style="width: 10%;">PIC Dept</th>
                                             <th class="text-center" style="width: 10%;">Status Driver</th>
                                         </tr>
@@ -445,47 +493,7 @@
                                                 $code = $acc['code'];
                                                 $isBudget = $acc['is_budget_pos'] ?? false;
                                                 $type = $acc['type'] ?? 'COA';
-
-                                                // Cari KPI sasaran mutu yang menautkan kode akun Odoo ini atau pos_anggaran
-                                                $linkedKpis = $allObjectives->filter(function($item) use ($code, $type) {
-                                                    $raw = trim(($item->pos_anggaran ?? '') . ',' . ($item->odoo_account_code ?? ''));
-                                                    if (!$raw || $raw === ',') return false;
-                                                    $tokens = array_filter(array_map('trim', explode(',', str_replace(['[', ']', '"'], '', $raw))));
-                                                    
-                                                    // Pencocokan langsung kode akun
-                                                    if (in_array($code, $tokens)) return true;
-
-                                                    // Jika akun adalah HPP atau Bahan Baku, cocokkan juga kode mapping PA02
-                                                    if (in_array('PA02', $tokens) && (str_starts_with($code, '51000') || str_starts_with($code, '11300010') || str_contains(strtolower($code), '51000010'))) {
-                                                        return true;
-                                                    }
-                                                    // Jika akun adalah Listrik, cocokkan PA03
-                                                    if (in_array('PA03', $tokens) && (str_contains(strtolower($code), '61100310') || str_contains(strtolower($acc['name'] ?? ''), 'listrik'))) {
-                                                        return true;
-                                                    }
-                                                    // Jika akun Tenaga Kerja, cocokkan PA04
-                                                    if (in_array('PA04', $tokens) && (str_contains(strtolower($acc['name'] ?? ''), 'gaji') || str_contains(strtolower($acc['name'] ?? ''), 'tenaga kerja'))) {
-                                                        return true;
-                                                    }
-                                                    // Jika akun Maintenance, cocokkan PA05
-                                                    if (in_array('PA05', $tokens) && (str_contains(strtolower($acc['name'] ?? ''), 'pemeliharaan') || str_contains(strtolower($acc['name'] ?? ''), 'perawatan'))) {
-                                                        return true;
-                                                    }
-                                                    // Jika akun Persediaan, cocokkan PA06
-                                                    if (in_array('PA06', $tokens) && str_starts_with($code, '113')) {
-                                                        return true;
-                                                    }
-                                                    // Jika akun Piutang, cocokkan PA07
-                                                    if (in_array('PA07', $tokens) && str_starts_with($code, '112')) {
-                                                        return true;
-                                                    }
-                                                    // Jika akun Kas/Bank, cocokkan PA09
-                                                    if (in_array('PA09', $tokens) && str_starts_with($code, '111')) {
-                                                        return true;
-                                                    }
-
-                                                    return false;
-                                                });
+                                                $linkedKpis = collect($acc['linked_kpis'] ?? []);
 
                                                 // Warna badge tipe
                                                 $badgeTypeClass = match($type) {
@@ -528,11 +536,31 @@
                                                     @endif
                                                 </td>
 
-                                                <!-- Rasio Terkait -->
-                                                <td>
-                                                    <span class="badge badge-light border text-dark font-weight-bold" style="font-size: 11.5px;">
-                                                        {{ $acc['ratio'] }}
-                                                    </span>
+                                                <!-- Rasio Terkait (Pilihan 15 Rasio Keuangan) -->
+                                                <td style="min-width: 190px;">
+                                                    <select class="form-control form-control-sm border text-dark font-weight-bold" 
+                                                            style="font-size: 11.5px; height: 30px; padding: 2px 6px; background-color: {{ !empty($acc['ratio']) && $acc['ratio'] !== '-' ? '#f0fdf4' : '#fff' }}; border-color: {{ !empty($acc['ratio']) && $acc['ratio'] !== '-' ? '#86efac' : '#ced4da' }};"
+                                                            wire:change="updatePosRatioMapping('{{ $code }}', $event.target.value)">
+                                                        <option value="-">-- Pilih Rasio Keuangan --</option>
+                                                        @php
+                                                            $currentGroup = null;
+                                                        @endphp
+                                                        @foreach($financialRatiosList as $fr)
+                                                            @if($currentGroup !== $fr->category)
+                                                                @if($currentGroup !== null)
+                                                                    </optgroup>
+                                                                @endif
+                                                                @php $currentGroup = $fr->category; @endphp
+                                                                <optgroup label="[ {{ strtoupper($fr->category) }} ]">
+                                                            @endif
+                                                            <option value="{{ $fr->ratio_name }}" {{ ($acc['ratio'] ?? '') === $fr->ratio_name ? 'selected' : '' }}>
+                                                                {{ $fr->ratio_name }}
+                                                            </option>
+                                                        @endforeach
+                                                        @if($currentGroup !== null)
+                                                            </optgroup>
+                                                        @endif
+                                                    </select>
                                                 </td>
 
                                                 <!-- Sasaran Mutu Terhubung (KPI) -->
@@ -631,7 +659,7 @@
                                                     </td>
                                                     <td>
                                                         <span class="badge badge-light border text-dark font-weight-bold">
-                                                            {{ $prob->dept_code }}
+                                                            {{ \App\Livewire\DepartmentObjectives::getDepartmentNameByCode($prob->dept_code, $departments) }} ({{ $prob->dept_code }})
                                                         </span>
                                                     </td>
                                                     <td class="text-center font-weight-bold text-muted">
@@ -830,14 +858,19 @@
                                 </div>
 
                                 <div class="col-md-12 form-group mb-0">
-                                    <label class="font-weight-bold text-dark small mb-1 d-flex justify-content-between align-items-center">
-                                        <span><i class="fas fa-magic text-warning mr-1"></i> Catatan Tambahan Dampak (Opsional):</span>
-                                        <span class="text-muted font-weight-normal" style="font-size: 11px;">
-                                            <i class="fas fa-check-circle text-success mr-1"></i>Dampak utama otomatis dihasilkan dari Pos Finansial
-                                        </span>
-                                    </label>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="font-weight-bold text-dark small mb-0">
+                                            <i class="fas fa-magic text-warning mr-1"></i> Catatan Tambahan Dampak:
+                                        </label>
+                                        <button type="button" wire:click="generateAutoImpactNoteForm" class="btn btn-xs btn-outline-warning text-dark font-weight-bold px-2 py-0" style="font-size: 11px;" title="Buat catatan dampak otomatis berdasarkan parameter KPI">
+                                            <i class="fas fa-bolt text-warning mr-1"></i> Generate Otomatis
+                                        </button>
+                                    </div>
                                     <textarea wire:model="impact_note" rows="2" class="form-control form-control-sm" 
-                                              placeholder="Tuliskan catatan dampak operasional khusus jika ada (opsional). Boleh dikosongkan."></textarea>
+                                              placeholder="Tuliskan catatan dampak operasional khusus, atau klik 'Generate Otomatis' untuk mengisi dampak berdasarkan parameter KPI."></textarea>
+                                    <small class="text-muted font-italic" style="font-size: 10.5px;">
+                                        *Jika dikosongkan, sistem tetap akan menampilkan catatan tambahan dampak otomatis yang relevan di tabel Sasaran Mutu.
+                                    </small>
                                 </div>
                             </div>
                         </div>

@@ -5,6 +5,8 @@ namespace App\Livewire;
 use Livewire\Component;
 use Livewire\Attributes\Url;
 use App\Models\DepartmentObjective;
+use App\Models\FinancialRatio;
+use App\Models\Department;
 use App\Models\Period;
 use Illuminate\Support\Facades\DB;
 
@@ -27,6 +29,27 @@ class DepartmentObjectives extends Component
     // Filter Pos Akun (Tab 2: 130 Pos Anggaran & COA)
     public $posAccountTypeFilter = '';
     public $posSearch = '';
+    public $posKpiFilter = ''; // Filter Sasaran Mutu (KPI): '', 'HAS_KPI', 'NO_KPI', atau spesifik kpi_code
+
+    public function updatePosRatioMapping($accountCode, $ratioName)
+    {
+        $key = 'pos_ratio_mapping_' . $this->selectedPeriod;
+        $setting = DB::table('app_settings')->where('key', $key)->first();
+        $mappings = $setting && $setting->value ? json_decode($setting->value, true) : [];
+
+        if (empty($ratioName) || $ratioName === '-') {
+            unset($mappings[$accountCode]);
+        } else {
+            $mappings[$accountCode] = $ratioName;
+        }
+
+        DB::table('app_settings')->updateOrInsert(
+            ['key' => $key],
+            ['value' => json_encode($mappings), 'updated_at' => now()]
+        );
+
+        session()->flash('message', "Rasio keuangan untuk pos akun [$accountCode] berhasil diperbarui!");
+    }
 
     // CRUD Modal State
     public $showModal = false;
@@ -98,6 +121,70 @@ class DepartmentObjectives extends Component
             ->orderBy('sort_order', 'asc')
             ->orderBy('name', 'asc')
             ->get();
+    }
+
+    /**
+     * Helper resolve nama departemen dari master departemen (mendukung alias seperti FIN -> FAT, HRGA -> HR, PROD -> PRD)
+     */
+    public static function getDepartmentNameByCode($dCode, $deptList = null)
+    {
+        if (empty($dCode)) {
+            return '-';
+        }
+
+        $codeUpper = strtoupper(trim($dCode));
+
+        // Alias umum jika kode di KPI berbeda singkatan dengan master departemen
+        $aliases = [
+            'FIN' => 'FAT',
+            'FINANCE' => 'FAT',
+            'ACCOUNTING' => 'FAT',
+            'TAX' => 'FAT',
+            'PROD' => 'PRD',
+            'PRODUCTION' => 'PRD',
+            'HR' => 'HRGA',
+            'GA' => 'HRGA',
+            'HRD' => 'HRGA',
+            'HRD & GA' => 'HRGA',
+            'HR & GA' => 'HRGA',
+            'MAINTENANCE' => 'ENG',
+            'ME' => 'ENG',
+            'MNT' => 'ENG',
+            'LOG' => 'PPIC',
+            'WAREHOUSE' => 'PPIC',
+            'WHS' => 'PPIC',
+            'GUDANG' => 'PPIC',
+            'PURCHASING' => 'PROC',
+        ];
+
+        $targetCodes = [$codeUpper];
+        if (isset($aliases[$codeUpper])) {
+            $targetCodes[] = $aliases[$codeUpper];
+        }
+
+        $list = $deptList ?: Department::all();
+
+        // 1. Cari exact match code
+        foreach ($targetCodes as $tc) {
+            $matched = collect($list)->first(function($d) use ($tc) {
+                return strtoupper(trim($d->code)) === $tc;
+            });
+            if ($matched) {
+                return $matched->name;
+            }
+        }
+
+        // 2. Cari berdasarkan kecocokan nama atau awalan
+        $matchedByName = collect($list)->first(function($d) use ($codeUpper) {
+            $dNameUpper = strtoupper(trim($d->name));
+            return str_contains($dNameUpper, $codeUpper) || str_contains($codeUpper, strtoupper(trim($d->code)));
+        });
+
+        if ($matchedByName) {
+            return $matchedByName->name;
+        }
+
+        return $dCode;
     }
 
     /**
@@ -210,6 +297,145 @@ class DepartmentObjectives extends Component
         }
 
         return $lines;
+    }
+
+    /**
+     * Helper menghasilkan Catatan Tambahan Dampak Finansial & Operasional Otomatis
+     * Digunakan sebagai catatan dampak otomatis jika impact_note belum diisi secara spesifik.
+     */
+    public static function getAutoImpactNote($kpiName, $kpiCode, $deptCode, $status, $polarity, $posCodes = [], $odooAccount = null)
+    {
+        $nameLower = strtolower($kpiName . ' ' . $kpiCode);
+        $isOk = ($status === 'Tercapai');
+        $dept = strtoupper(trim($deptCode ?? ''));
+
+        // 1. Berdasarkan Kata Kunci Spesifik KPI (Manufaktur & Operasional Pabrik)
+        if (str_contains($nameLower, 'scrap') || str_contains($nameLower, 'reject') || str_contains($nameLower, 'rusak')) {
+            if ($isOk) {
+                return 'Pengendalian scrap efektif menekan HPP resin botol; meminimalkan biaya leleh ulang dan pemborosan biji plastik (PET/HDPE).';
+            }
+            return 'Peningkatan scrap/reject menaikkan HPP per botol, memboroskan bahan baku resin dan memicu biaya leleh ulang (rework) berlebih.';
+        }
+
+        if (str_contains($nameLower, 'oee') || str_contains($nameLower, 'efektivitas mesin') || str_contains($nameLower, 'overall equipment')) {
+            if ($isOk) {
+                return 'OEE tercapai menjaga utilisasi kapasitas mesin cetak injeksi/blow moulding optimal serta memaksimalkan output per shift.';
+            }
+            return 'Penurunan OEE mengakibatkan bottleneck kapasitas produksi, hilangnya throughput botol per jam, dan risiko lembur operator.';
+        }
+
+        if (str_contains($nameLower, 'downtime') || str_contains($nameLower, 'breakdown') || str_contains($nameLower, 'rusak mesin')) {
+            if ($isOk) {
+                return 'Pencegahan downtime menjaga kelancaran jalur produksi dan mencegah lonjakan biaya perbaikan darurat sparepart moulding.';
+            }
+            return 'Breakdown mesin yang tinggi memicu idle capacity, keterlambatan jadwal delivery pelanggan, serta lonjakan biaya perbaikan.';
+        }
+
+        if (str_contains($nameLower, 'listrik') || str_contains($nameLower, 'kwh') || str_contains($nameLower, 'energi') || str_contains($nameLower, 'daya')) {
+            if ($isOk) {
+                return 'Konsumsi daya heater dan kompresor blow moulding terkendali di bawah pagu anggaran utilitas pabrik.';
+            }
+            return 'Beban listrik pabrik melonjak melebihi alokasi OPEX energi, menekan marjin laba kotor produksi botol.';
+        }
+
+        if (str_contains($nameLower, 'otif') || str_contains($nameLower, 'tepat waktu') || str_contains($nameLower, 'delivery') || str_contains($nameLower, 'kirim') || str_contains($nameLower, 'lead time')) {
+            if ($isOk) {
+                return 'Pemenuhan pesanan tepat waktu (OTIF) mempertahankan kepuasan distributor dan efisiensi rute logistik armada.';
+            }
+            return 'Keterlambatan pengiriman berisiko klaim penalti delivery, pembengkakan biaya ekspedisi kilat, serta potensi pembatalan PO.';
+        }
+
+        if (str_contains($nameLower, 'absensi') || str_contains($nameLower, 'kehadiran') || str_contains($nameLower, 'lembur') || str_contains($nameLower, 'turnover')) {
+            if ($isOk) {
+                return 'Disiplin kehadiran operator menjaga stabilitas line produksi tanpa memerlukan alokasi upah lembur tak terencana.';
+            }
+            return 'Tingginya absensi/ketidakhadiran memicu bottleneck lini sortir botol dan lonjakan biaya lembur pengganti.';
+        }
+
+        if (str_contains($nameLower, 'stok') || str_contains($nameLower, 'inventory') || str_contains($nameLower, 'persediaan') || str_contains($nameLower, 'gudang') || str_contains($nameLower, 'ito')) {
+            if ($isOk) {
+                return 'Perputaran persediaan (ITO) lancar, mencegah penumpukan modal kerja dan risiko kerusakan fisik botol di gudang.';
+            }
+            return 'Persediaan melambat meningkatkan carrying cost gudang serta risiko dead stock botol atau kerusakan kemasan.';
+        }
+
+        if (str_contains($nameLower, 'piutang') || str_contains($nameLower, 'dso') || str_contains($nameLower, 'penagihan') || str_contains($nameLower, 'ar')) {
+            if ($isOk) {
+                return 'Siklus DSO yang sehat mempercepat arus kas operasional masuk dari distributor botol.';
+            }
+            return 'Penumpukan piutang tertunda menahan likuiditas kas operasional pabrik dan meningkatkan risiko piutang tak tertagih.';
+        }
+
+        if (str_contains($nameLower, 'sales') || str_contains($nameLower, 'penjualan') || str_contains($nameLower, 'omset') || str_contains($nameLower, 'omzet')) {
+            if ($isOk) {
+                return 'Pencapaian target penjualan mendorong revenue pertumbuhan dan utilisasi penuh kapasitas terpasang pabrik.';
+            }
+            return 'Realisasi penjualan di bawah target berpotensi menekan laba kotor dan meninggalkan kapasitas mesin yang menganggur.';
+        }
+
+        // 2. Berdasarkan Pos Anggaran Terkait (PA01 - PA12)
+        $posArr = (array) $posCodes;
+        if (in_array('PA02', $posArr)) {
+            return $isOk 
+                ? 'Efisiensi yield bahan baku resin (PET/HDPE) langsung memperkuat Gross Profit Margin (GPM) produk botol.'
+                : 'Pemborosan atau scrap resin langsung meningkatkan Harga Pokok Penjualan (HPP) dan menekan marjin laba botol.';
+        }
+        if (in_array('PA03', $posArr)) {
+            return $isOk
+                ? 'Efisiensi pemakaian daya heater & chiller menjaga OPEX utilitas pabrik tetap berada dalam batas pagu bulanan.'
+                : 'Beban pemakaian daya mesin melebihi pagu operasional yang dianggarkan, menekan margin kontribusi produksi.';
+        }
+        if (in_array('PA05', $posArr)) {
+            return $isOk
+                ? 'Preventive maintenance teratur memperpanjang usia moulding cetakan dan menjaga kehandalan mesin cetak (TATO).'
+                : 'Biaya sparepart dan perbaikan darurat mould meningkat, memperbesar beban operasional pemeliharaan.';
+        }
+        if (in_array('PA04', $posArr)) {
+            return $isOk
+                ? 'Alokasi jam kerja operator efisien dan rasio output per man-hour tercapai sesuai standar kapasitas.'
+                : 'Rasio biaya tenaga kerja langsung per unit botol meningkat akibat kebutuhan lembur pengerjaan ulang.';
+        }
+        if (in_array('PA01', $posArr)) {
+            return $isOk
+                ? 'Volume order dan kapasitas terpasang terpenuhi, mengamankan target omset penjualan botol.'
+                : 'Under-utilized mesin blow/injeksi akibat defisit order penjualan yang menekan pencapaian target omset.';
+        }
+        if (in_array('PA10', $posArr)) {
+            return $isOk
+                ? 'Efisiensi ritase logistik armada botol menjaga biaya distribusi per unit tetap kompetitif.'
+                : 'Pembengkakan biaya ekspedisi dan pengiriman darurat akibat deviasi jadwal pengiriman.';
+        }
+
+        // 3. Fallback Berdasarkan Departemen
+        if (str_contains($dept, 'PRD') || str_contains($dept, 'PROD')) {
+            return $isOk
+                ? 'Output produksi tercapai sesuai target kapasitas dan standar kualitas botol plastik tanpa pemborosan.'
+                : 'Deviasi capaian produksi berisiko mengganggu jadwal pengiriman ke pelanggan dan meningkatkan HPP per botol.';
+        }
+        if (str_contains($dept, 'MNT') || str_contains($dept, 'TEK') || str_contains($dept, 'ENG')) {
+            return $isOk
+                ? 'Kesiapan fasilitas mesin dan utilitas pabrik terjaga dalam kondisi prima untuk menunjang target shift.'
+                : 'Gangguan teknis mesin berdampak langsung pada penurunan produktivitas lini dan biaya reparasi.';
+        }
+        if (str_contains($dept, 'QC') || str_contains($dept, 'QA')) {
+            return $isOk
+                ? 'Kepatuhan standar mutu botol plastik terjaga, mencegah komplain kualitas dan retur barang dari pelanggan.'
+                : 'Potensi lolosnya produk non-standar berisiko memicu klaim garansi, retur distributor, dan reputasi merek.';
+        }
+        if (str_contains($dept, 'LOG') || str_contains($dept, 'WHS') || str_contains($dept, 'GUDANG')) {
+            return $isOk
+                ? 'Akurasi stok bahan & barang jadi terjaga dengan perputaran logistik yang tertib.'
+                : 'Selisih stok atau keterlambatan penyiapan barang menahan alur distribusi ke pelanggan.';
+        }
+        if (str_contains($dept, 'SLS') || str_contains($dept, 'MKT')) {
+            return $isOk
+                ? 'Pertumbuhan volume penjualan menopang pencapaian target pendapatan dan cash flow perusahaan.'
+                : 'Capaian omset di bawah target mengurangi kontribusi margin operasional pabrik.';
+        }
+
+        return $isOk
+            ? 'Pencapaian sasaran mutu departemen berkontribusi positif pada efisiensi operasional dan kinerja BSC.'
+            : 'Deviasi sasaran mutu memerlukan tindakan korektif agar tidak berdampak pada efisiensi operasional dan anggaran.';
     }
 
     private function calculateAchievement($target, $actual, $polarity)
@@ -350,7 +576,7 @@ class DepartmentObjectives extends Component
                         'name' => $bc->name,
                         'type' => $type,
                         'is_budget_pos' => true,
-                        'ratio' => $this->determineRatioByAccount($code, $type, $bc->name),
+                        'ratio' => '-',
                         'dept_name' => $bc->dept_name,
                         'dept_code' => $bc->dept_code,
                     ]);
@@ -370,7 +596,7 @@ class DepartmentObjectives extends Component
                     'name' => $c->name,
                     'type' => $c->type,
                     'is_budget_pos' => $isBudget,
-                    'ratio' => $this->determineRatioByAccount($code, $c->type, $c->name),
+                    'ratio' => '-',
                     'dept_name' => $deptName,
                     'dept_code' => $deptCode,
                 ]);
@@ -387,7 +613,7 @@ class DepartmentObjectives extends Component
                         'name' => $bc->name,
                         'type' => $type,
                         'is_budget_pos' => true,
-                        'ratio' => $this->determineRatioByAccount($code, $type, $bc->name),
+                        'ratio' => '-',
                         'dept_name' => $bc->dept_name,
                         'dept_code' => $bc->dept_code,
                     ]);
@@ -404,7 +630,7 @@ class DepartmentObjectives extends Component
                     'name' => $cp['name'],
                     'type' => 'Pos Finansial',
                     'is_budget_pos' => true,
-                    'ratio' => $cp['ratio'],
+                    'ratio' => '-',
                     'dept_name' => 'Operasional',
                     'dept_code' => 'ALL',
                 ];
@@ -515,6 +741,29 @@ class DepartmentObjectives extends Component
         $this->showModal = true;
     }
 
+    public function generateAutoImpactNoteForm()
+    {
+        $target = (float) ($this->target ?: 0);
+        $actual = (float) ($this->actual ?: 0);
+        $ach = $this->calculateAchievement($target, $actual, $this->polarity);
+        $status = $this->determineStatus($ach);
+
+        $cleanOdoo = array_values(array_filter(array_unique((array) $this->selected_odoo_accounts)));
+        $odooString = count($cleanOdoo) > 0 ? implode(',', $cleanOdoo) : null;
+
+        $note = self::getAutoImpactNote(
+            $this->kpi_name,
+            $this->kpi_code,
+            $this->dept_code,
+            $status,
+            $this->polarity,
+            $this->selected_pos_codes,
+            $odooString
+        );
+
+        $this->impact_note = $note;
+    }
+
     public function saveObjective()
     {
         $this->validate();
@@ -617,7 +866,72 @@ class DepartmentObjectives extends Component
         // Ambil 130 Pos Anggaran Odoo ditambah seluruh Chart of Accounts (COA) Odoo ERP untuk Tab 2
         $allPosAccounts = $this->getAllOdooAccountsAndCOA();
 
-        // Filter untuk Tab 2 (Kategori Akun & Keyword Pencarian Pos)
+        // Ambil 15 Rasio Keuangan Resmi dari financial_ratios
+        $financialRatiosList = FinancialRatio::where('period', $this->selectedPeriod)
+            ->orderBy('category')
+            ->orderBy('id')
+            ->get();
+
+        if ($financialRatiosList->isEmpty()) {
+            // Fallback jika belum di-generate untuk periode aktif
+            $financialRatiosList = FinancialRatio::orderBy('category')->orderBy('id')->get()->unique('ratio_name');
+        }
+
+        // Ambil mapping tersimpan rasio untuk masing-masing pos akun
+        $ratioMapKey = 'pos_ratio_mapping_' . $this->selectedPeriod;
+        $ratioMapSetting = DB::table('app_settings')->where('key', $ratioMapKey)->first();
+        $posRatioMappings = $ratioMapSetting && $ratioMapSetting->value ? json_decode($ratioMapSetting->value, true) : [];
+
+        // Gabungkan rasio tersimpan dan kaitkan dengan Sasaran Mutu (KPI)
+        $allPosAccounts = $allPosAccounts->map(function($item) use ($posRatioMappings, $allPeriodObjs) {
+            $code = $item['code'];
+            $item['ratio'] = $posRatioMappings[$code] ?? '-';
+
+            // Cari KPI sasaran mutu yang menautkan kode akun Odoo ini atau pos_anggaran
+            $item['linked_kpis'] = $allPeriodObjs->filter(function($obj) use ($code) {
+                $raw = trim(($obj->pos_anggaran ?? '') . ',' . ($obj->odoo_account_code ?? ''));
+                if (!$raw || $raw === ',') return false;
+                $tokens = array_filter(array_map('trim', explode(',', str_replace(['[', ']', '"'], '', $raw))));
+
+                // Pencocokan langsung kode akun
+                if (in_array($code, $tokens)) return true;
+
+                // Pencocokan pos finansial inti (PA01-PA12)
+                if (in_array('PA02', $tokens) && (str_starts_with($code, '51000') || str_starts_with($code, '11300010'))) {
+                    return true;
+                }
+                if (in_array('PA03', $tokens) && str_contains(strtolower($code), '61100310')) {
+                    return true;
+                }
+                if (in_array('PA04', $tokens) && str_contains(strtolower($code), '61100110')) {
+                    return true;
+                }
+                if (in_array('PA05', $tokens) && (str_contains(strtolower($code), '51008010') || str_contains(strtolower($code), '61100230'))) {
+                    return true;
+                }
+                if (in_array('PA06', $tokens) && str_starts_with($code, '113')) {
+                    return true;
+                }
+                if (in_array('PA07', $tokens) && str_starts_with($code, '112')) {
+                    return true;
+                }
+                if (in_array('PA08', $tokens) && str_starts_with($code, '211')) {
+                    return true;
+                }
+                if (in_array('PA09', $tokens) && str_starts_with($code, '111')) {
+                    return true;
+                }
+                if (in_array('PA10', $tokens) && str_contains(strtolower($code), '61100510')) {
+                    return true;
+                }
+
+                return false;
+            })->values();
+
+            return $item;
+        });
+
+        // Filter untuk Tab 2 (Kategori Akun, Keyword Pencarian Pos, dan Sasaran Mutu KPI)
         $filteredPosAccounts = $allPosAccounts;
         if ($this->posAccountTypeFilter) {
             if ($this->posAccountTypeFilter === 'BUDGET_130') {
@@ -626,13 +940,40 @@ class DepartmentObjectives extends Component
                 $filteredPosAccounts = $filteredPosAccounts->where('type', $this->posAccountTypeFilter);
             }
         }
+
+        // Filter berdasarkan Sasaran Mutu (KPI)
+        if ($this->posKpiFilter) {
+            if ($this->posKpiFilter === 'HAS_KPI') {
+                $filteredPosAccounts = $filteredPosAccounts->filter(function($item) {
+                    return count($item['linked_kpis']) > 0;
+                });
+            } elseif ($this->posKpiFilter === 'NO_KPI') {
+                $filteredPosAccounts = $filteredPosAccounts->filter(function($item) {
+                    return count($item['linked_kpis']) === 0;
+                });
+            } else {
+                // Filter spesifik kode KPI (misal PRD-01)
+                $targetKpi = strtolower($this->posKpiFilter);
+                $filteredPosAccounts = $filteredPosAccounts->filter(function($item) use ($targetKpi) {
+                    return collect($item['linked_kpis'])->contains(function($k) use ($targetKpi) {
+                        return strtolower($k->kpi_code) === $targetKpi;
+                    });
+                });
+            }
+        }
+
         if (!empty(trim($this->posSearch))) {
             $pKw = strtolower(trim($this->posSearch));
             $filteredPosAccounts = $filteredPosAccounts->filter(function($item) use ($pKw) {
+                $kpiMatch = collect($item['linked_kpis'])->contains(function($k) use ($pKw) {
+                    return str_contains(strtolower($k->kpi_code), $pKw) || str_contains(strtolower($k->kpi_name), $pKw);
+                });
+
                 return str_contains(strtolower($item['code']), $pKw)
                     || str_contains(strtolower($item['name']), $pKw)
                     || str_contains(strtolower($item['dept_name'] ?? ''), $pKw)
-                    || str_contains(strtolower($item['ratio'] ?? ''), $pKw);
+                    || str_contains(strtolower($item['ratio'] ?? ''), $pKw)
+                    || $kpiMatch;
             });
         }
 
@@ -643,6 +984,8 @@ class DepartmentObjectives extends Component
         return view('livewire.department-objectives', [
             'periods' => $periods,
             'departments' => $departments,
+            'financialRatiosList' => $financialRatiosList,
+            'posRatioMappings' => $posRatioMappings,
             'objectives' => $filteredObjectives,
             'allObjectives' => $allPeriodObjs,
             'corePos' => $corePos,
@@ -661,6 +1004,7 @@ class DepartmentObjectives extends Component
             'search' => $this->search,
             'posAccountTypeFilter' => $this->posAccountTypeFilter,
             'posSearch' => $this->posSearch,
+            'posKpiFilter' => $this->posKpiFilter,
             'activeTab' => $this->activeTab,
             'showModal' => $this->showModal,
             'isEditMode' => $this->isEditMode,
