@@ -17,6 +17,7 @@ use App\Livewire\MasterDepartments;
 use App\Livewire\UjiDampakSandbox;
 use App\Livewire\SimulasiCoa;
 use App\Livewire\PetaPosAkun;
+use App\Livewire\UjiIndikatorDepartemen;
 
 // Guest: Login 
 Route::middleware('guest')->group(function () {
@@ -49,6 +50,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/coa', SimulasiCoa::class)->middleware('permission:view coa')->name('coa');
     // Peta Pos Akun & Alokasi Anggaran Departemen
     Route::get('/peta-pos-akun', PetaPosAkun::class)->middleware('permission:view coa|view dashboard')->name('peta-pos-akun');
+    // Uji Indikator Departemen Level 3
+    Route::get('/uji-indikator', UjiIndikatorDepartemen::class)->middleware('permission:view objectives|view dashboard')->name('uji-indikator');
     // 7 Action Plan — view actionplans
     Route::get('/action-plans', ActionPlans::class)->middleware('permission:view actionplans|view dashboard')->name('action-plans');
     // 8 Konsensus IBP — view ibp

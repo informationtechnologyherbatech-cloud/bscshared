@@ -16,6 +16,7 @@ class DepartmentObjective extends Model
         'kpi_name',
         'source_type',
         'odoo_account_code',
+        'impact_note',
         'polarity',
         'unit',
         'target',

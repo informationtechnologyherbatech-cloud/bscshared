@@ -155,8 +155,9 @@
                         </a>
                     </li>
                     @endcan
-                    @can('view objectives')
+                    @canany(['view objectives', 'view coa'])
                     <li class="nav-header">LEVEL 3</li>
+                    @can('view objectives')
                     <li class="nav-item">
                         <a href="{{ route('department-objectives') }}" class="nav-link {{ request()->routeIs('department-objectives') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-bullseye text-warning"></i>
@@ -164,6 +165,19 @@
                         </a>
                     </li>
                     @endcan
+                    <li class="nav-item">
+                        <a href="{{ route('peta-pos-akun') }}" class="nav-link {{ request()->routeIs('peta-pos-akun') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-th text-teal"></i>
+                            <p>Peta Pos Akun</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('uji-indikator') }}" class="nav-link {{ request()->routeIs('uji-indikator') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-flask text-warning"></i>
+                            <p>Uji Indikator</p>
+                        </a>
+                    </li>
+                    @endcanany
                     @can('view actionplans')
                     <li class="nav-header">LEVEL 4</li>
                     <li class="nav-item">
@@ -198,12 +212,6 @@
                         <a href="{{ route('coa') }}" class="nav-link {{ request()->routeIs('coa') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-calculator"></i>
                             <p>Simulasi CoA</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('peta-pos-akun') }}" class="nav-link {{ request()->routeIs('peta-pos-akun') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-sitemap text-teal"></i>
-                            <p>Peta Pos Akun</p>
                         </a>
                     </li>
                     @endcan

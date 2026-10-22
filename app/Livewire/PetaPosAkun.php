@@ -5,6 +5,7 @@ namespace App\Livewire;
 use Livewire\Component;
 use Livewire\Attributes\Url;
 use App\Models\Period;
+use App\Models\DepartmentObjective;
 use Illuminate\Support\Facades\DB;
 
 class PetaPosAkun extends Component
@@ -12,10 +13,84 @@ class PetaPosAkun extends Component
     #[Url(as: 'period')]
     public $selectedPeriod = '2026-08';
 
-    public $search = '';
-    public $selectedDept = 'all';
-    public $selectedType = 'all'; // all, cogs, opex, other
-    public $activeTab = 'matrix'; // matrix, tree, summary
+    // Data Matriks: matrix[dept_code][pa_code] = 'K' | 'L' | '-'
+    public $matrix = [];
+
+    // 12 Pos Finansial Inti Pabrik Manufaktur Botol Plastik
+    public $posAkunList = [
+        [
+            'code' => 'PA01',
+            'name' => 'PENJUALAN BOTOL',
+            'full_name' => 'Pendapatan Penjualan Botol Plastik (Jar, Galon, Botol PET/HDPE)',
+            'ratio_link' => 'Revenue & Growth'
+        ],
+        [
+            'code' => 'PA02',
+            'name' => 'BAHAN BAKU RESIN',
+            'full_name' => 'Beban Pokok Biji Plastik PET/HDPE, Masterbatch, & Bahan Crusher',
+            'ratio_link' => 'GPM & COGS'
+        ],
+        [
+            'code' => 'PA03',
+            'name' => 'LISTRIK & ENERGI',
+            'full_name' => 'Biaya Listrik Pabrik & Utilitas Mesin Blow/Injection Moulding',
+            'ratio_link' => 'GPM & Operasional'
+        ],
+        [
+            'code' => 'PA04',
+            'name' => 'TENAGA KERJA',
+            'full_name' => 'Biaya Gaji & Tunjangan Operator Mesin, Sortir, dan Packing',
+            'ratio_link' => 'COGS & Produktivitas'
+        ],
+        [
+            'code' => 'PA05',
+            'name' => 'MAINTENANCE MOULD',
+            'full_name' => 'Biaya Perawatan Mesin Pabrik, Oli Hidrolik, Sparepart, & Moulding',
+            'ratio_link' => 'TATO & Efisiensi Aset'
+        ],
+        [
+            'code' => 'PA06',
+            'name' => 'PERSEDIAAN BOTOL',
+            'full_name' => 'Persediaan Bahan Baku Biji Plastik & Stok Botol Jadi di Gudang',
+            'ratio_link' => 'ITO & DIO'
+        ],
+        [
+            'code' => 'PA07',
+            'name' => 'PIUTANG USAHA',
+            'full_name' => 'Piutang Penjualan Pelanggan, Distributor, dan Maklon Botol',
+            'ratio_link' => 'DSO & AR Turnover'
+        ],
+        [
+            'code' => 'PA08',
+            'name' => 'UTANG SUPPLIER',
+            'full_name' => 'Utang Usaha Supplier Biji Plastik & Vendor Bahan Kemas',
+            'ratio_link' => 'DPO & Cash Flow'
+        ],
+        [
+            'code' => 'PA09',
+            'name' => 'KAS & REKENING',
+            'full_name' => 'Kas Operasional & Rekening Giro Bank untuk Likuiditas',
+            'ratio_link' => 'Current & Quick Ratio'
+        ],
+        [
+            'code' => 'PA10',
+            'name' => 'BIAYA PENGIRIMAN',
+            'full_name' => 'Beban Ekspedisi & Armada Truk Pengiriman Botol ke Customer',
+            'ratio_link' => 'OPEX & Logistik'
+        ],
+        [
+            'code' => 'PA11',
+            'name' => 'MESIN & BANGUNAN',
+            'full_name' => 'Aset Tetap Pabrik, Mesin Injection/Blow, & Bangunan Pabrik',
+            'ratio_link' => 'ROA & TATO'
+        ],
+        [
+            'code' => 'PA12',
+            'name' => 'BEBAN UMUM (GA)',
+            'full_name' => 'Beban Administrasi, Legalitas, IT, Keamanan, & Umum',
+            'ratio_link' => 'NPM & EBIT Margin'
+        ],
+    ];
 
     public function mount()
     {
@@ -24,187 +99,160 @@ class PetaPosAkun extends Component
             $this->selectedPeriod = $reqPeriod;
         }
         session(['active_period' => $this->selectedPeriod]);
+
+        $this->loadMatrix();
     }
 
     public function updatedSelectedPeriod($val)
     {
         session(['active_period' => $val]);
+        $this->loadMatrix();
+    }
+
+    /**
+     * Muat matriks dari tabel app_settings (JSON) atau inisialisasi default
+     */
+    public function loadMatrix()
+    {
+        $key = 'peta_pos_matrix_12_' . $this->selectedPeriod;
+        $saved = DB::table('app_settings')->where('key', $key)->value('value');
+
+        if ($saved) {
+            $this->matrix = json_decode($saved, true) ?: [];
+        } else {
+            $this->matrix = $this->getDefaultMatrix();
+        }
+    }
+
+    /**
+     * Matriks Baku Hubungan 10 Departemen Odoo x 12 Pos Finansial Pabrik Botol Plastik
+     */
+    private function getDefaultMatrix()
+    {
+        return [
+            'PRD' => [ // PRODUKSI (Pabrik Moulding/Blow)
+                'PA01' => '-', 'PA02' => 'K', 'PA03' => 'K', 'PA04' => 'K', 'PA05' => 'K',
+                'PA06' => 'K', 'PA07' => '-', 'PA08' => '-', 'PA09' => '-', 'PA10' => '-',
+                'PA11' => 'K', 'PA12' => '-'
+            ],
+            'ENG' => [ // ENGINEERING & MAINTENANCE
+                'PA01' => '-', 'PA02' => 'L', 'PA03' => 'K', 'PA04' => 'L', 'PA05' => 'K',
+                'PA06' => 'L', 'PA07' => '-', 'PA08' => '-', 'PA09' => '-', 'PA10' => '-',
+                'PA11' => 'K', 'PA12' => '-'
+            ],
+            'PCH&IT' => [ // PURCHASING & IT
+                'PA01' => '-', 'PA02' => 'K', 'PA03' => 'L', 'PA04' => '-', 'PA05' => 'K',
+                'PA06' => 'K', 'PA07' => '-', 'PA08' => 'K', 'PA09' => 'L', 'PA10' => 'L',
+                'PA11' => 'L', 'PA12' => 'K'
+            ],
+            'WH' => [ // PPIC & WAREHOUSE
+                'PA01' => 'L', 'PA02' => 'L', 'PA03' => '-', 'PA04' => 'L', 'PA05' => '-',
+                'PA06' => 'K', 'PA07' => '-', 'PA08' => '-', 'PA09' => '-', 'PA10' => 'K',
+                'PA11' => 'L', 'PA12' => '-'
+            ],
+            'QA & QC' => [ // QA & QC
+                'PA01' => 'L', 'PA02' => 'K', 'PA03' => 'L', 'PA04' => 'L', 'PA05' => 'L',
+                'PA06' => 'K', 'PA07' => '-', 'PA08' => '-', 'PA09' => '-', 'PA10' => 'L',
+                'PA11' => 'L', 'PA12' => '-'
+            ],
+            'SM' => [ // SALES & MARKETING
+                'PA01' => 'K', 'PA02' => 'L', 'PA03' => '-', 'PA04' => '-', 'PA05' => '-',
+                'PA06' => 'L', 'PA07' => 'K', 'PA08' => '-', 'PA09' => 'K', 'PA10' => 'K',
+                'PA11' => '-', 'PA12' => 'L'
+            ],
+            'ACCTAX' => [ // ACCOUNTING & TAX
+                'PA01' => 'L', 'PA02' => 'K', 'PA03' => 'K', 'PA04' => 'K', 'PA05' => 'K',
+                'PA06' => 'K', 'PA07' => 'K', 'PA08' => 'K', 'PA09' => 'K', 'PA10' => 'L',
+                'PA11' => 'K', 'PA12' => 'K'
+            ],
+            'FIN' => [ // FINANCE
+                'PA01' => 'L', 'PA02' => 'L', 'PA03' => 'L', 'PA04' => 'L', 'PA05' => 'L',
+                'PA06' => '-', 'PA07' => 'K', 'PA08' => 'K', 'PA09' => 'K', 'PA10' => 'L',
+                'PA11' => 'L', 'PA12' => 'L'
+            ],
+            'HRGA' => [ // HRD & GA
+                'PA01' => '-', 'PA02' => '-', 'PA03' => 'L', 'PA04' => 'K', 'PA05' => '-',
+                'PA06' => '-', 'PA07' => '-', 'PA08' => '-', 'PA09' => 'L', 'PA10' => 'L',
+                'PA11' => '-', 'PA12' => 'K'
+            ],
+            'MR' => [ // MANAGEMENT REPRESENTATIVE
+                'PA01' => 'L', 'PA02' => 'L', 'PA03' => 'L', 'PA04' => 'L', 'PA05' => 'L',
+                'PA06' => 'L', 'PA07' => '-', 'PA08' => '-', 'PA09' => '-', 'PA10' => '-',
+                'PA11' => 'L', 'PA12' => 'L'
+            ],
+        ];
+    }
+
+    /**
+     * Ubah status sel matriks (Kuat, Lemah, Netral)
+     */
+    public function updateCell($deptCode, $paCode, $val)
+    {
+        $this->matrix[$deptCode][$paCode] = $val;
+
+        // Simpan ke database app_settings secara instan
+        $key = 'peta_pos_matrix_12_' . $this->selectedPeriod;
+        DB::table('app_settings')->updateOrInsert(
+            ['key' => $key],
+            ['value' => json_encode($this->matrix), 'updated_at' => now()]
+        );
+    }
+
+    /**
+     * Reset matriks ke konfigurasi awal
+     */
+    public function resetMatrix()
+    {
+        $this->matrix = $this->getDefaultMatrix();
+        $key = 'peta_pos_matrix_12_' . $this->selectedPeriod;
+        DB::table('app_settings')->updateOrInsert(
+            ['key' => $key],
+            ['value' => json_encode($this->matrix), 'updated_at' => now()]
+        );
     }
 
     public function render()
     {
         $periods = Period::pluck('period')->toArray();
-        $periodObj = Period::where('period', $this->selectedPeriod)->first();
-        $baseRev = (float) ($periodObj ? $periodObj->actual_revenue : 115.20); // dalam Miliar
-        $baseTargetRev = (float) ($periodObj ? $periodObj->target_revenue : 120.00);
 
-        // Parse periode
-        $pParts = explode('-', $this->selectedPeriod);
-        $pYear = (int) ($pParts[0] ?? date('Y'));
-        $pMonth = isset($pParts[1]) ? (int) $pParts[1] : (int) date('m');
-
-        // Ambil data realisasi bulanan dan YTD dari tabel expenses di mysql_finance
-        $actualExpensesMonthly = [];
-        $actualExpensesYtd = [];
-        $hasFinanceDb = false;
+        // 1. Ambil 10 Departemen Asli dari database Odoo ERP (mysql_finance)
         $departments = [];
-        $budgetItems = [];
-
         try {
-            // Test koneksi & ambil departemen
             $deptRows = DB::connection('mysql_finance')
                 ->table('departments')
                 ->select('id', 'name', 'code')
-                ->orderBy('name', 'asc')
+                ->orderBy('id', 'asc')
                 ->get();
             $departments = $deptRows->toArray();
-
-            // Realisasi Bulanan MTD
-            $mRows = DB::connection('mysql_finance')
-                ->table('expenses')
-                ->join('budget_categories', 'budget_categories.id', '=', 'expenses.budget_category_id')
-                ->whereYear('expenses.date', $pYear)
-                ->whereMonth('expenses.date', $pMonth)
-                ->select('budget_categories.code', DB::raw('SUM(expenses.amount) as total_amt'), DB::raw('COUNT(expenses.id) as trx_count'))
-                ->groupBy('budget_categories.code')
-                ->get();
-            foreach ($mRows as $r) {
-                $actualExpensesMonthly[$r->code] = [
-                    'amount' => (float) $r->total_amt,
-                    'count' => (int) $r->trx_count,
-                ];
-            }
-
-            // Realisasi Akumulasi YTD
-            $yRows = DB::connection('mysql_finance')
-                ->table('expenses')
-                ->join('budget_categories', 'budget_categories.id', '=', 'expenses.budget_category_id')
-                ->whereYear('expenses.date', $pYear)
-                ->whereMonth('expenses.date', '<=', $pMonth)
-                ->select('budget_categories.code', DB::raw('SUM(expenses.amount) as total_amt'))
-                ->groupBy('budget_categories.code')
-                ->get();
-            foreach ($yRows as $r) {
-                $actualExpensesYtd[$r->code] = (float) $r->total_amt;
-            }
-
-            // Ambil seluruh pos anggaran beserta relasi departemen
-            $catRows = DB::connection('mysql_finance')
-                ->table('budget_categories as bc')
-                ->leftJoin('departments as d', 'bc.department_id', '=', 'd.id')
-                ->select(
-                    'bc.id',
-                    'bc.code',
-                    'bc.name',
-                    'bc.budget_ratio_percent',
-                    'bc.description',
-                    'd.name as dept_name',
-                    'd.code as dept_code'
-                )
-                ->where('bc.is_active', 1)
-                ->orderBy('bc.code', 'asc')
-                ->get();
-
-            foreach ($catRows as $c) {
-                $ratio = (float) $c->budget_ratio_percent;
-                $annualBudgetRaw = round(($baseRev * 1000000000) * ($ratio / 100), 0);
-                $monthlyBudgetRaw = round($annualBudgetRaw / 12, 0);
-
-                $monthlyActual = $actualExpensesMonthly[$c->code]['amount'] ?? 0;
-                $monthlyTrx = $actualExpensesMonthly[$c->code]['count'] ?? 0;
-                $ytdActual = $actualExpensesYtd[$c->code] ?? 0;
-
-                // Tipe akun
-                $type = 'other';
-                $groupName = 'Beban Operasional (OPEX)';
-                if (str_starts_with($c->code, '5')) {
-                    $type = 'cogs';
-                    $groupName = 'Beban Pokok Penjualan (HPP)';
-                } elseif (str_starts_with($c->code, '6')) {
-                    $type = 'opex';
-                    $groupName = 'Beban Operasional (OPEX)';
-                } elseif (str_starts_with($c->code, '4')) {
-                    $type = 'income';
-                    $groupName = 'Pendapatan';
-                }
-
-                $budgetItems[] = [
-                    'id' => $c->id,
-                    'code' => $c->code,
-                    'name' => $c->name,
-                    'dept' => $c->dept_name ?? 'UMUM',
-                    'dept_code' => $c->dept_code ?? 'GEN',
-                    'type' => $type,
-                    'group' => $groupName,
-                    'ratio' => $ratio,
-                    'annual_budget' => $annualBudgetRaw,
-                    'monthly_budget' => $monthlyBudgetRaw,
-                    'monthly_actual' => $monthlyActual,
-                    'monthly_trx' => $monthlyTrx,
-                    'ytd_actual' => $ytdActual,
-                    'serapan_monthly' => $monthlyBudgetRaw > 0 ? round(($monthlyActual / $monthlyBudgetRaw) * 100, 1) : 0,
-                    'serapan_annual' => $annualBudgetRaw > 0 ? round(($ytdActual / $annualBudgetRaw) * 100, 1) : 0,
-                ];
-            }
-
-            $hasFinanceDb = true;
         } catch (\Exception $e) {
-            $hasFinanceDb = false;
+            $departments = DB::table('departments')->where('is_active', 1)->orderBy('sort_order')->get()->toArray();
         }
 
-        // Filter data berdasarkan search, dept, dan type
-        $itemsCollection = collect($budgetItems);
+        $totalDepts = count($departments);
+        $totalPos = count($this->posAkunList);
 
-        if ($this->selectedDept !== 'all') {
-            $itemsCollection = $itemsCollection->where('dept', $this->selectedDept);
+        // Hitung akumulasi Kuat (K) dan Lemah (L)
+        $countK = 0;
+        $countL = 0;
+        foreach ($this->matrix as $dCode => $row) {
+            foreach ($row as $paCode => $val) {
+                if ($val === 'K') $countK++;
+                if ($val === 'L') $countL++;
+            }
         }
 
-        if ($this->selectedType !== 'all') {
-            $itemsCollection = $itemsCollection->where('type', $this->selectedType);
-        }
-
-        if ($this->search) {
-            $s = strtolower(trim($this->search));
-            $itemsCollection = $itemsCollection->filter(function($i) use ($s) {
-                return str_contains(strtolower($i['code']), $s) ||
-                       str_contains(strtolower($i['name']), $s) ||
-                       str_contains(strtolower($i['dept']), $s);
-            });
-        }
-
-        $filteredItems = $itemsCollection->values()->toArray();
-
-        // Agregasi Departemen untuk Tab Ringkasan Departemen
-        $deptSummary = collect($budgetItems)->groupBy('dept')->map(function($items, $deptName) {
-            $totalRatio = $items->sum('ratio');
-            $totalAnnualBudget = $items->sum('annual_budget');
-            $totalMonthlyBudget = $items->sum('monthly_budget');
-            $totalMonthlyActual = $items->sum('monthly_actual');
-            $totalYtdActual = $items->sum('ytd_actual');
-            $totalAccounts = $items->count();
-
-            return [
-                'dept' => $deptName,
-                'total_accounts' => $totalAccounts,
-                'total_ratio' => $totalRatio,
-                'annual_budget' => $totalAnnualBudget,
-                'monthly_budget' => $totalMonthlyBudget,
-                'monthly_actual' => $totalMonthlyActual,
-                'ytd_actual' => $totalYtdActual,
-                'serapan' => $totalMonthlyBudget > 0 ? round(($totalMonthlyActual / $totalMonthlyBudget) * 100, 1) : 0,
-            ];
-        })->sortByDesc('total_ratio')->values()->toArray();
+        // Ambil sasaran mutu terkait per departemen untuk popover / tooltip
+        $deptObjectives = DepartmentObjective::where('period', $this->selectedPeriod)->get()->groupBy('dept_code');
 
         return view('livewire.peta-pos-akun', [
             'periods' => $periods,
             'departments' => $departments,
-            'items' => $filteredItems,
-            'deptSummary' => $deptSummary,
-            'hasFinanceDb' => $hasFinanceDb,
-            'totalAccounts' => count($budgetItems),
-            'totalRatioAll' => collect($budgetItems)->sum('ratio'),
-            'totalMonthlyBudget' => collect($budgetItems)->sum('monthly_budget'),
-            'totalMonthlyActual' => collect($budgetItems)->sum('monthly_actual'),
-        ])->layout('layouts.app', ['title' => 'Peta Pos Akun Anggaran & Departemen']);
+            'posAkunList' => $this->posAkunList,
+            'totalDepts' => $totalDepts,
+            'totalPos' => $totalPos,
+            'countK' => $countK,
+            'countL' => $countL,
+            'deptObjectives' => $deptObjectives,
+        ])->layout('layouts.app', ['title' => 'Peta Pos Akun — Matriks Hubungan Pos Akun & Unit Kerja']);
     }
 }

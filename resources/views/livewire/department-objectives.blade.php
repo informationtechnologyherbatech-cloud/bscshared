@@ -1,36 +1,42 @@
 <div>
     <!-- Content Header -->
-    <div class="content-header">
+    <div class="content-header pb-2">
         <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1 class="m-0 text-dark">
-                        <i class="fas fa-bullseye text-warning mr-2"></i> Objective Departemen (Level 3)
+            <div class="row align-items-center">
+                <div class="col-sm-7">
+                    <h1 class="m-0 text-dark font-weight-bold" style="font-size: 22px;">
+                        <i class="fas fa-bullseye text-warning mr-2"></i> Objective & Sasaran Mutu Departemen (Level 3)
                     </h1>
+                    <p class="text-muted small mb-0 mt-1">
+                        Penerjemahan sasaran strategis BSC ke KPI operasional 10 departemen manufaktur botol plastik dan keterkaitannya dengan pos akun finansial.
+                    </p>
                 </div>
-                <div class="col-sm-6 text-right">
-                    <div class="form-inline float-right">
-                        <label for="periodSel" class="mr-2 font-weight-bold">Periode:</label>
-                        <select wire:model.live="selectedPeriod" id="periodSel" class="form-control form-control-sm border-warning mr-2">
+                <div class="col-sm-5 text-sm-right mt-2 mt-sm-0">
+                    <a href="{{ route('uji-indikator') }}" class="btn btn-sm btn-outline-warning text-dark font-weight-bold mr-2" title="Simulasi What-If Uji Indikator">
+                        <i class="fas fa-flask mr-1"></i> Uji Indikator
+                    </a>
+                    @if(auth()->user()?->can('manage objectives') || auth()->user()?->can('can_write_kpi'))
+                        <button type="button" wire:click="openCreateModal" class="btn btn-sm btn-warning font-weight-bold text-dark mr-2">
+                            <i class="fas fa-plus-circle mr-1"></i> Tambah KPI
+                        </button>
+                    @endif
+                    <div class="d-inline-flex align-items-center bg-white px-3 py-1 rounded shadow-xs border">
+                        <label class="small font-weight-bold mr-2 mb-0 text-muted">Periode:</label>
+                        <select wire:model.live="selectedPeriod" class="form-control form-control-sm border-0 font-weight-bold text-warning" style="width: auto; background: transparent;">
                             @foreach($periods as $p)
                                 <option value="{{ $p }}">{{ $p }}</option>
                             @endforeach
                         </select>
-                        <span class="badge {{ $isClosed ? 'badge-secondary' : 'badge-success' }} p-2">
-                            <i class="fas {{ $isClosed ? 'fa-lock' : 'fa-lock-open' }} mr-1"></i> {{ $isClosed ? 'CLOSED (Terkunci)' : 'OPEN' }}
-                        </span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
-
             @if(session()->has('message'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <div class="alert alert-success alert-dismissible fade show py-2" role="alert">
                     <i class="fas fa-check-circle mr-1"></i> {{ session('message') }}
                     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
@@ -39,7 +45,7 @@
             @endif
 
             @if(session()->has('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div class="alert alert-danger alert-dismissible fade show py-2" role="alert">
                     <i class="fas fa-exclamation-triangle mr-1"></i> {{ session('error') }}
                     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
@@ -47,527 +53,552 @@
                 </div>
             @endif
 
-            @if($isClosed)
-                <div class="alert alert-secondary py-2 border-dark" role="alert">
-                    <i class="fas fa-lock mr-2"></i> <strong>Periode {{ $selectedPeriod }} DITUTUP (CLOSED):</strong> Nilai target dan aktual Sasaran Mutu terkunci untuk pengubahan langsung.
-                </div>
-            @endif
-
-            <!-- 1. TOP SUMMARY METRICS (Statistik KPI Keseluruhan) -->
+            <!-- 1. METRIC STATUS CARDS -->
             <div class="row mb-3">
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="info-box bg-white shadow-sm border mb-0">
-                        <span class="info-box-icon bg-info elevation-1"><i class="fas fa-tasks"></i></span>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box shadow-xs bg-white border p-2 mb-2">
+                        <span class="info-box-icon bg-info text-white rounded"><i class="fas fa-tasks"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text text-muted">Total Sasaran Mutu</span>
-                            <span class="info-box-number text-dark" style="font-size: 20px;">{{ $totalKpi }} KPI</span>
-                            <span class="progress-description text-muted small">Rata-rata Capaian: {{ $avgAchievement }}%</span>
+                            <span class="info-box-text text-muted small font-weight-bold">TOTAL SASARAN MUTU</span>
+                            <span class="info-box-number text-dark font-weight-bold" style="font-size: 20px;">{{ $totalKpi }} KPI</span>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="info-box bg-white shadow-sm border mb-0">
-                        <span class="info-box-icon bg-success elevation-1"><i class="fas fa-check-circle"></i></span>
+
+                <div class="col-lg-3 col-6">
+                    <div class="info-box shadow-xs bg-white border p-2 mb-2">
+                        <span class="info-box-icon bg-success text-white rounded"><i class="fas fa-check-circle"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text text-muted">Tercapai (&ge;100%)</span>
-                            <span class="info-box-number text-success" style="font-size: 20px;">{{ $achievedKpi }} KPI</span>
-                            <span class="progress-description text-muted small">Target Terpenuhi</span>
+                            <span class="info-box-text text-muted small font-weight-bold">TERCAPAI (&ge; 100%)</span>
+                            <span class="info-box-number text-success font-weight-bold" style="font-size: 20px;">{{ $tercapai }} KPI</span>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="info-box bg-white shadow-sm border mb-0">
-                        <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-exclamation-triangle"></i></span>
+
+                <div class="col-lg-3 col-6">
+                    <div class="info-box shadow-xs bg-white border p-2 mb-2">
+                        <span class="info-box-icon bg-warning text-dark rounded"><i class="fas fa-exclamation-circle"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text text-muted">Waspada (80-99%)</span>
-                            <span class="info-box-number text-warning" style="font-size: 20px;">{{ $warningKpi }} KPI</span>
-                            <span class="progress-description text-muted small">Mendekati Batas</span>
+                            <span class="info-box-text text-muted small font-weight-bold">WASPADA (80% - 99%)</span>
+                            <span class="info-box-number text-warning font-weight-bold" style="font-size: 20px;">{{ $waspada }} KPI</span>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="info-box bg-white shadow-sm border mb-0">
-                        <span class="info-box-icon bg-danger elevation-1"><i class="fas fa-times-circle"></i></span>
+
+                <div class="col-lg-3 col-6">
+                    <div class="info-box shadow-xs bg-white border p-2 mb-2">
+                        <span class="info-box-icon bg-danger text-white rounded"><i class="fas fa-times-circle"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text text-muted">Off-Target (&lt;80%)</span>
-                            <span class="info-box-number text-danger" style="font-size: 20px;">{{ $dangerKpi }} KPI</span>
-                            <span class="progress-description text-muted small">Perlu Tindakan Perbaikan</span>
+                            <span class="info-box-text text-muted small font-weight-bold">DI BAWAH TARGET (&lt; 80%)</span>
+                            <span class="info-box-number text-danger font-weight-bold" style="font-size: 20px;">{{ $diBawah }} KPI</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. PILIHAN MODE TAMPILAN & CONTROL BAR -->
-            <div class="card bg-white shadow-sm border mb-3">
-                <div class="card-body p-2 d-flex flex-wrap align-items-center justify-content-between">
-                    <!-- Mode Switcher Buttons -->
-                    <div class="d-flex align-items-center flex-wrap mb-2 mb-md-0">
-                        <div class="btn-group btn-group-sm shadow-xs" role="group">
-                            <button type="button" 
-                                    wire:click="setViewMode('table')" 
-                                    class="btn {{ $viewMode === 'table' ? 'btn-warning font-weight-bold text-dark' : 'btn-outline-secondary' }}">
-                                <i class="fas fa-table mr-1"></i> Tabel Grup
-                            </button>
-                            <button type="button" 
-                                    wire:click="setViewMode('tabs')" 
-                                    class="btn {{ $viewMode === 'tabs' ? 'btn-warning font-weight-bold text-dark' : 'btn-outline-secondary' }}">
-                                <i class="fas fa-folder mr-1"></i> Tab Departemen
-                            </button>
-                        </div>
-                    </div>
+            <!-- 2. MAIN CARD DENGAN TABS LEVEL 3 -->
+            <div class="card card-outline card-warning shadow-xs mb-4">
+                <div class="card-header bg-white p-3 border-bottom d-flex flex-wrap align-items-center justify-content-between">
+                    <!-- Nav Tabs -->
+                    <ul class="nav nav-pills card-header-pills">
+                        <li class="nav-item">
+                            <a class="nav-link py-1 px-3 {{ $activeTab === 'kpi' ? 'active bg-warning text-dark font-weight-bold' : 'text-dark' }}" 
+                               wire:click.prevent="$set('activeTab', 'kpi')" href="#">
+                                <i class="fas fa-list-check mr-1"></i> Sasaran Mutu Operasional
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link py-1 px-3 {{ $activeTab === 'pos_link' ? 'active bg-warning text-dark font-weight-bold' : 'text-dark' }}" 
+                               wire:click.prevent="$set('activeTab', 'pos_link')" href="#">
+                                <i class="fas fa-th mr-1"></i> Keterkaitan 12 Pos Finansial
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link py-1 px-3 {{ $activeTab === 'action' ? 'active bg-warning text-dark font-weight-bold' : 'text-dark' }}" 
+                               wire:click.prevent="$set('activeTab', 'action')" href="#">
+                                <i class="fas fa-tasks mr-1"></i> Trigger Program Kerja (Level 4)
+                                @if($diBawah > 0)
+                                    <span class="badge badge-danger ml-1">{{ $diBawah }} Gap</span>
+                                @endif
+                            </a>
+                        </li>
+                    </ul>
 
-                    <!-- Filter Status & Tambah Button -->
-                    <!-- Filter Status & Tambah Button -->
-                    <div class="d-flex align-items-center flex-wrap">
-                        <select wire:model.live="selectedStatus" class="form-control form-control-sm mr-2" style="width: 170px;">
+                    <!-- Controls Search & Filter -->
+                    <div class="d-flex align-items-center flex-wrap mt-2 mt-md-0" style="gap: 8px;">
+                        <div class="input-group input-group-sm" style="width: 200px;">
+                            <input type="text" wire:model.live.debounce.300ms="search" class="form-control" placeholder="Cari KPI / departemen...">
+                            <div class="input-group-append">
+                                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                            </div>
+                        </div>
+
+                        <select wire:model.live="selectedDept" class="form-control form-control-sm" style="width: 190px;">
+                            <option value="">Semua Departemen</option>
+                            @foreach($departments as $d)
+                                <option value="{{ $d->code }}">{{ $d->name }} ({{ $d->code }})</option>
+                            @endforeach
+                        </select>
+
+                        <select wire:model.live="selectedStatus" class="form-control form-control-sm" style="width: 150px;">
                             <option value="">Semua Status</option>
-                            <option value="bermasalah">⚠️ Hanya Bermasalah</option>
+                            <option value="bermasalah">⚠️ Butuh Perhatian</option>
                             <option value="Tercapai">Tercapai (&ge;100%)</option>
                             <option value="Waspada">Waspada (80-99%)</option>
                             <option value="Di Bawah Target">Di Bawah Target (&lt;80%)</option>
                         </select>
-                        @if(auth()->user()?->can('manage objectives') || auth()->user()?->can('can_write_kpi'))
-                            <button wire:click="openCreateModal" class="btn btn-sm btn-warning font-weight-bold text-dark {{ $isClosed ? 'disabled' : '' }}" {{ $isClosed ? 'disabled' : '' }}>
-                                <i class="fas fa-plus-circle mr-1"></i> Tambah KPI
-                            </button>
-                        @endif
                     </div>
                 </div>
-            </div>
 
-            <!-- ========================================================================= -->
-            <!-- TAMPILAN TABEL DIKELOMPOKKAN PER DEPARTEMEN (HEADER KUNING)                -->
-            <!-- ========================================================================= -->
-            @if($viewMode === 'table')
-                <div class="card card-outline card-warning shadow-sm">
-                    <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
-                        <h3 class="card-title font-weight-bold">
-                            <i class="fas fa-table mr-1 text-warning"></i> Sasaran Mutu Dikelompokkan per Departemen
-                        </h3>
-                        <div class="card-tools">
-                            <select wire:model.live="selectedDept" class="form-control form-control-sm" style="width: 200px;">
-                                <option value="">Semua Departemen</option>
-                                @foreach($departments as $d)
-                                    <option value="{{ $d }}">{{ $deptMap[$d]->name ?? $d }} ({{ $d }})</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="card-body p-0 table-responsive">
-                        <table class="table table-hover table-bordered m-0 align-middle">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th style="width: 12%;">Kode KPI</th>
-                                    <th style="width: 34%;">Sasaran Mutu (Nama KPI)</th>
-                                    <th class="text-center" style="width: 10%;">Polaritas</th>
-                                    <th class="text-center" style="width: 12%;">Target</th>
-                                    <th class="text-center" style="width: 12%;">Actual</th>
-                                    <th class="text-center" style="width: 10%;">Capaian</th>
-                                    <th class="text-center" style="width: 10%;">Status</th>
-                                    <th class="text-center" style="width: 10%;">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @php
-                                    $groupedByDept = $objectives->groupBy('dept_code');
-                                @endphp
-
-                                @forelse($groupedByDept as $dCode => $deptObjs)
-                                    <!-- Header Kategori Baris Kuning (#ffff00) Sesuai Standar -->
-                                    <tr style="background-color: #ffff00;">
-                                        <td colspan="8" class="py-2 px-3 font-weight-bold text-dark text-uppercase border-top border-bottom border-dark" style="font-size: 14px; letter-spacing: 0.5px;">
-                                            <i class="fas fa-building mr-1"></i>
-                                            <strong>{{ $deptMap[$dCode]->name ?? $dCode }} ({{ $dCode }})</strong>
-                                            <span class="badge badge-dark ml-2 font-weight-normal" style="font-size: 11px;">
-                                                {{ $deptObjs->count() }} Sasaran Mutu
-                                            </span>
-                                        </td>
+                <div class="card-body p-0">
+                    <!-- ========================================== -->
+                    <!-- TAB 1: SASARAN MUTU OPERASIONAL (KPI)      -->
+                    <!-- ========================================== -->
+                    @if($activeTab === 'kpi')
+                        <div class="table-responsive" style="max-height: 620px; overflow-y: auto;">
+                            <table class="table table-sm table-hover table-bordered m-0 align-middle" style="font-size: 13px;">
+                                <thead class="bg-light position-sticky" style="top: 0; z-index: 2;">
+                                    <tr>
+                                        <th style="width: 9%;">Kode KPI</th>
+                                        <th style="width: 25%;">Sasaran Mutu (Nama KPI)</th>
+                                        <th style="width: 12%;">Unit Kerja</th>
+                                        <th style="width: 20%;">Dampak Finansial & Operasional</th>
+                                        <th class="text-center" style="width: 6%;">Arah</th>
+                                        <th class="text-right" style="width: 8%;">Target</th>
+                                        <th class="text-right" style="width: 8%;">Realisasi</th>
+                                        <th class="text-center" style="width: 12%;">Status</th>
+                                        @if(auth()->user()?->can('manage objectives') || auth()->user()?->can('can_write_kpi'))
+                                            <th class="text-center" style="width: 7%;">Aksi</th>
+                                        @endif
                                     </tr>
+                                </thead>
+                                <tbody>
+                                    @php
+                                        $grouped = $objectives->groupBy('dept_code');
+                                    @endphp
 
-                                    @foreach($deptObjs as $obj)
-                                        <tr>
-                                            <td class="pl-4"><code>{{ $obj->kpi_code }}</code></td>
-                                            <td class="font-weight-normal text-dark">
-                                                <div class="font-weight-bold">{{ $obj->kpi_name }}</div>
-                                                @if($obj->odoo_account_code && isset($odooAccountMap[$obj->odoo_account_code]))
-                                                    <div class="mt-1">
-                                                        <span class="badge badge-light border text-dark font-weight-normal" style="font-size: 11px;" title="KPI ini berdampak pada pos anggaran Odoo">
-                                                            <i class="fas fa-coins text-warning mr-1"></i> Dampak: <strong>{{ $odooAccountMap[$obj->odoo_account_code]->name }}</strong> ({{ $obj->odoo_account_code }})
+                                    @forelse($grouped as $dCode => $deptKpis)
+                                        @php
+                                            $deptObj = collect($departments)->firstWhere('code', $dCode);
+                                            $deptName = $deptObj ? $deptObj->name : $dCode;
+                                        @endphp
+                                        <tr class="bg-light">
+                                            <td colspan="{{ (auth()->user()?->can('manage objectives') || auth()->user()?->can('can_write_kpi')) ? 9 : 8 }}" class="py-2 px-3 font-weight-bold text-dark border-top border-bottom">
+                                                <i class="fas fa-building text-warning mr-1"></i>
+                                                <strong>{{ $deptName }} ({{ $dCode }})</strong>
+                                                <span class="badge badge-secondary ml-2 font-weight-normal" style="font-size: 11px;">
+                                                     {{ $deptKpis->count() }} Sasaran Mutu
+                                                </span>
+                                            </td>
+                                        </tr>
+
+                                        @foreach($deptKpis as $obj)
+                                            <tr>
+                                                 <td class="font-weight-bold">
+                                                     <code>{{ $obj->kpi_code }}</code>
+                                                 </td>
+                                                 <td>
+                                                     <div class="font-weight-bold text-dark">{{ $obj->kpi_name }}</div>
+                                                 </td>
+                                                 <td>
+                                                     <span class="badge badge-light border text-dark font-weight-bold px-2 py-1">
+                                                         {{ $deptName }}
+                                                     </span>
+                                                 </td>
+                                                 <td>
+                                                     @php
+                                                         $rawPos = trim($obj->odoo_account_code ?? '');
+                                                         $codes = [];
+                                                         if ($rawPos) {
+                                                             if (str_starts_with($rawPos, '[') && str_ends_with($rawPos, ']')) {
+                                                                 $decoded = json_decode($rawPos, true);
+                                                                 $codes = is_array($decoded) ? $decoded : [];
+                                                             } else {
+                                                                 $codes = array_values(array_filter(array_map('trim', explode(',', $rawPos))));
+                                                             }
+                                                         }
+                                                         $autoImpacts = $this->getAutoImpactSummary($codes, $obj->status, $obj->polarity);
+                                                     @endphp
+
+                                                     <!-- 1. Dampak Otomatis (Dari Pos Finansial Terpilih & Status Capaian) -->
+                                                     @if(!empty($autoImpacts))
+                                                         <div class="mb-1">
+                                                             @foreach($autoImpacts as $ai)
+                                                                 <div class="small d-flex align-items-baseline mb-1" style="line-height: 1.25;">
+                                                                     <span class="badge {{ $ai['is_ok'] ? 'badge-success' : 'badge-danger' }} mr-1 flex-shrink-0" style="font-size: 10px;">
+                                                                         <i class="fas {{ $ai['is_ok'] ? 'fa-check' : 'fa-exclamation-triangle' }} mr-1"></i>{{ $ai['code'] }}
+                                                                     </span>
+                                                                     <span class="{{ $ai['is_ok'] ? 'text-success' : 'text-danger font-weight-bold' }}" style="font-size: 11.5px;">
+                                                                         {{ $ai['desc'] }}
+                                                                     </span>
+                                                                 </div>
+                                                             @endforeach
+                                                         </div>
+                                                     @endif
+
+                                                     <!-- 2. Catatan Tambahan Kustom (Jika Diisi di Form) -->
+                                                     @if(!empty($obj->impact_note))
+                                                         <div class="p-1 px-2 rounded bg-light border text-dark font-italic small mt-1" style="font-size: 11px; line-height: 1.2;">
+                                                             <i class="fas fa-pencil-alt text-warning mr-1"></i><strong>Catatan:</strong> {{ $obj->impact_note }}
+                                                         </div>
+                                                     @elseif(empty($autoImpacts))
+                                                         <span class="text-muted small font-italic">- Tautkan ke pos finansial untuk melihat dampak -</span>
+                                                     @endif
+                                                 </td>
+                                                <td class="text-center">
+                                                    @if($obj->polarity === 'Naik')
+                                                        <span class="badge badge-success px-2 py-1" title="Semakin tinggi semakin baik">
+                                                            <i class="fas fa-arrow-up mr-1"></i> Naik
                                                         </span>
-                                                    </div>
-                                                @elseif($obj->odoo_account_code)
-                                                    <div class="mt-1">
-                                                        <span class="badge badge-light border text-dark font-weight-normal" style="font-size: 11px;">
-                                                            <i class="fas fa-coins text-warning mr-1"></i> Dampak: <strong>{{ $obj->odoo_account_code }}</strong>
+                                                    @else
+                                                        <span class="badge badge-info px-2 py-1" title="Semakin rendah semakin baik (Efisiensi Biaya / Cacat)">
+                                                            <i class="fas fa-arrow-down mr-1"></i> Turun
                                                         </span>
-                                                    </div>
-                                                @endif
-                                            </td>
-                                            <td class="text-center">
-                                                @if($obj->polarity === 'Turun')
-                                                    <span class="badge badge-info"><i class="fas fa-arrow-down mr-1"></i> Turun Baik</span>
-                                                @else
-                                                    <span class="badge badge-primary"><i class="fas fa-arrow-up mr-1"></i> Naik Baik</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-center">
-                                                {{ number_format($obj->target, 2) }}
-                                                @if($obj->unit)<small class="text-muted ml-1">{{ $obj->unit }}</small>@endif
-                                            </td>
-                                            <td class="text-center font-weight-bold">
-                                                {{ number_format($obj->actual, 2) }}
-                                                @if($obj->unit)<small class="text-muted ml-1">{{ $obj->unit }}</small>@endif
-                                            </td>
-                                            <td class="text-center font-weight-bold text-teal">
-                                                {{ number_format($obj->achievement_pct, 1) }}%
-                                            </td>
-                                            <td class="text-center">
-                                                @if($obj->status === 'Tercapai')
-                                                    <span class="badge badge-tercapai px-2 py-1"><i class="fas fa-check-circle"></i> Tercapai</span>
-                                                @elseif($obj->status === 'Waspada')
-                                                    <span class="badge badge-waspada px-2 py-1"><i class="fas fa-exclamation-circle"></i> Waspada</span>
-                                                @else
-                                                    <span class="badge badge-dibawah px-2 py-1"><i class="fas fa-times-circle"></i> Off-Target</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-center">
+                                                    @endif
+                                                </td>
+                                                <td class="text-right font-weight-normal text-muted">
+                                                    {{ number_format($obj->target, 2, ',', '.') }} {{ $obj->unit }}
+                                                </td>
+                                                <td class="text-right font-weight-bold text-dark">
+                                                    {{ number_format($obj->actual, 2, ',', '.') }} {{ $obj->unit }}
+                                                </td>
+                                                <td class="text-center">
+                                                    @if($obj->status === 'Tercapai')
+                                                        <span class="badge badge-success px-2 py-1 font-weight-bold">
+                                                            <i class="fas fa-check-circle mr-1"></i> {{ number_format($obj->achievement_pct, 1) }}%
+                                                        </span>
+                                                    @elseif($obj->status === 'Waspada')
+                                                        <span class="badge badge-warning text-dark px-2 py-1 font-weight-bold">
+                                                            <i class="fas fa-exclamation-circle mr-1"></i> {{ number_format($obj->achievement_pct, 1) }}%
+                                                        </span>
+                                                    @else
+                                                        <span class="badge badge-danger px-2 py-1 font-weight-bold">
+                                                            <i class="fas fa-times-circle mr-1"></i> {{ number_format($obj->achievement_pct, 1) }}%
+                                                        </span>
+                                                    @endif
+                                                </td>
                                                 @if(auth()->user()?->can('manage objectives') || auth()->user()?->can('can_write_kpi'))
-                                                    <button wire:click="openEditModal({{ $obj->id }})" class="btn btn-xs {{ $isClosed ? 'btn-secondary' : 'btn-primary' }}" {{ $isClosed ? 'disabled' : '' }} title="{{ $isClosed ? 'Terkunci' : 'Edit' }}">
-                                                        <i class="fas fa-edit"></i>
+                                                    <td class="text-center">
+                                                        <div class="btn-group btn-group-xs">
+                                                            <button wire:click="openEditModal({{ $obj->id }})" class="btn btn-xs btn-outline-info" title="Ubah KPI">
+                                                                <i class="fas fa-pencil-alt"></i>
+                                                            </button>
+                                                            <button wire:click="deleteObjective({{ $obj->id }})" wire:confirm="Hapus sasaran mutu [{{ $obj->kpi_code }}]?" class="btn btn-xs btn-outline-danger" title="Hapus">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                @endif
+                                            </tr>
+                                        @endforeach
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="text-center py-5 text-muted">
+                                                <i class="fas fa-bullseye fa-3x mb-2 d-block text-secondary"></i>
+                                                Belum ada Sasaran Mutu untuk periode {{ $selectedPeriod }}.<br>
+                                                @if(auth()->user()?->can('manage objectives') || auth()->user()?->can('can_write_kpi'))
+                                                    <button type="button" wire:click="openCreateModal" class="btn btn-sm btn-warning font-weight-bold text-dark mt-2">
+                                                        <i class="fas fa-plus-circle mr-1"></i> Tambah Sasaran Mutu Baru
                                                     </button>
-                                                    <button wire:click="deleteObjective({{ $obj->id }})" wire:confirm="Apakah Anda yakin ingin menghapus KPI '{{ $obj->kpi_code }} - {{ $obj->kpi_name }}'?" class="btn btn-xs {{ $isClosed ? 'btn-secondary' : 'btn-danger' }} ml-1" {{ $isClosed ? 'disabled' : '' }} title="{{ $isClosed ? 'Terkunci' : 'Hapus' }}">
-                                                        <i class="fas fa-trash-alt"></i>
-                                                    </button>
-                                                @else
-                                                    <span class="text-muted small"><i class="fas fa-lock"></i> View Only</span>
                                                 @endif
                                             </td>
                                         </tr>
-                                    @endforeach
-                                @empty
-                                    <tr>
-                                        <td colspan="8" class="text-center text-muted py-4">
-                                            <i class="fas fa-inbox fa-2x mb-2 d-block text-secondary"></i>
-                                            Belum ada sasaran mutu KPI yang tersimpan untuk periode {{ $selectedPeriod }}.
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            @endif
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
 
-            <!-- ========================================================================= -->
-            <!-- TAMPILAN TAB FILTER DEPARTEMEN                                            -->
-            <!-- ========================================================================= -->
-            @if($viewMode === 'tabs')
-                <div class="card card-outline card-warning shadow-sm">
-                    <!-- Nav tabs departemen -->
-                    <div class="card-header p-2 bg-light">
-                        <ul class="nav nav-pills flex-wrap">
-                            <li class="nav-item mr-1 mb-1">
-                                <a class="nav-link btn-sm {{ empty($selectedDept) ? 'active bg-warning font-weight-bold text-dark' : 'text-dark' }}" 
-                                   href="javascript:void(0)" 
-                                   wire:click="selectTabDept('')">
-                                    <i class="fas fa-th mr-1"></i> Semua Departemen
+                    <!-- ========================================== -->
+                    <!-- TAB 2: KETERKAITAN 12 POS FINANSIAL        -->
+                    <!-- ========================================== -->
+                    @elseif($activeTab === 'pos_link')
+                        <div class="p-3">
+                            <div class="alert alert-light border d-flex align-items-center mb-3">
+                                <i class="fas fa-info-circle fa-2x text-warning mr-3"></i>
+                                <div>
+                                    <strong class="text-dark">Integrasi Level 3 &rarr; Tingkat 2 (Rasio Keuangan):</strong><br>
+                                    Tabel di bawah menghubungkan setiap Sasaran Mutu departemen langsung dengan 12 Pos Finansial Inti dan rasio keuangan BSC yang dipengaruhinya.
+                                </div>
+                                <a href="{{ route('peta-pos-akun') }}" class="btn btn-sm btn-outline-teal ml-auto text-nowrap">
+                                    <i class="fas fa-th mr-1"></i> Buka Matriks Lengkap
                                 </a>
-                            </li>
-                            @foreach($departments as $d)
-                                <li class="nav-item mr-1 mb-1">
-                                    <a class="nav-link btn-sm {{ $selectedDept === $d ? 'active bg-warning font-weight-bold text-dark' : 'text-dark' }}" 
-                                       href="javascript:void(0)" 
-                                       wire:click="selectTabDept('{{ $d }}')">
-                                        {{ $d }}
-                                        <span class="badge badge-secondary ml-1">
-                                            {{ $allPeriodObjectives->where('dept_code', $d)->count() }}
-                                        </span>
-                                    </a>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
+                            </div>
 
-                    <div class="card-body p-0 table-responsive">
-                        <table class="table table-hover table-striped table-bordered m-0 align-middle">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th style="width: 10%;">Dept</th>
-                                    <th style="width: 12%;">Kode KPI</th>
-                                    <th style="width: 34%;">Sasaran Mutu (KPI Name)</th>
-                                    <th class="text-center" style="width: 10%;">Polaritas</th>
-                                    <th class="text-center" style="width: 12%;">Target</th>
-                                    <th class="text-center" style="width: 12%;">Actual</th>
-                                    <th class="text-center" style="width: 10%;">Capaian</th>
-                                    <th class="text-center" style="width: 10%;">Status</th>
-                                    <th class="text-center" style="width: 10%;">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($objectives as $obj)
-                                    <tr>
-                                        <td><span class="badge badge-dark">{{ $obj->dept_code }}</span></td>
-                                        <td><code>{{ $obj->kpi_code }}</code></td>
-                                        <td class="font-weight-normal text-dark">
-                                            <div class="font-weight-bold">{{ $obj->kpi_name }}</div>
-                                            @if($obj->odoo_account_code && isset($odooAccountMap[$obj->odoo_account_code]))
-                                                <div class="mt-1">
-                                                    <span class="badge badge-light border text-dark font-weight-normal" style="font-size: 11px;" title="KPI ini berdampak pada pos anggaran Odoo">
-                                                        <i class="fas fa-coins text-warning mr-1"></i> Dampak: <strong>{{ $odooAccountMap[$obj->odoo_account_code]->name }}</strong> ({{ $obj->odoo_account_code }})
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover align-middle" style="font-size: 13px;">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th style="width: 14%;">Pos Finansial</th>
+                                            <th style="width: 18%;">Rasio Terkait</th>
+                                            <th style="width: 38%;">Sasaran Mutu Terhubung (KPI)</th>
+                                            <th style="width: 18%;">Departemen PIC</th>
+                                            <th class="text-center" style="width: 12%;">Status Driver</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($corePos as $cp)
+                                            @php
+                                                $linkedKpis = $allObjectives->filter(function($item) use ($cp) {
+                                                    $raw = trim($item->odoo_account_code ?? '');
+                                                    if (!$raw) return false;
+                                                    $arr = array_map('trim', explode(',', str_replace(['[', ']', '"'], '', $raw)));
+                                                    return in_array($cp['code'], $arr);
+                                                });
+                                            @endphp
+                                            <tr>
+                                                <td class="font-weight-bold text-teal">
+                                                    <span class="badge badge-teal mr-1">{{ $cp['code'] }}</span>
+                                                    {{ $cp['name'] }}
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-light border text-dark font-weight-bold">
+                                                        {{ $cp['ratio'] }}
                                                     </span>
-                                                </div>
-                                            @elseif($obj->odoo_account_code)
-                                                <div class="mt-1">
-                                                    <span class="badge badge-light border text-dark font-weight-normal" style="font-size: 11px;">
-                                                        <i class="fas fa-coins text-warning mr-1"></i> Dampak: <strong>{{ $obj->odoo_account_code }}</strong>
-                                                    </span>
-                                                </div>
-                                            @endif
-                                        </td>
-                                        <td class="text-center">
-                                            @if($obj->polarity === 'Turun')
-                                                <span class="badge badge-info"><i class="fas fa-arrow-down mr-1"></i> Turun Baik</span>
-                                            @else
-                                                <span class="badge badge-primary"><i class="fas fa-arrow-up mr-1"></i> Naik Baik</span>
-                                            @endif
-                                        </td>
-                                        <td class="text-center">
-                                            {{ number_format($obj->target, 2) }}
-                                            @if($obj->unit)<small class="text-muted ml-1">{{ $obj->unit }}</small>@endif
-                                        </td>
-                                        <td class="text-center font-weight-bold">
-                                            {{ number_format($obj->actual, 2) }}
-                                            @if($obj->unit)<small class="text-muted ml-1">{{ $obj->unit }}</small>@endif
-                                        </td>
-                                        <td class="text-center font-weight-bold text-teal">
-                                            {{ number_format($obj->achievement_pct, 1) }}%
-                                        </td>
-                                        <td class="text-center">
-                                            @if($obj->status === 'Tercapai')
-                                                <span class="badge badge-tercapai px-2 py-1"><i class="fas fa-check-circle"></i> Tercapai</span>
-                                            @elseif($obj->status === 'Waspada')
-                                                <span class="badge badge-waspada px-2 py-1"><i class="fas fa-exclamation-circle"></i> Waspada</span>
-                                            @else
-                                                <span class="badge badge-dibawah px-2 py-1"><i class="fas fa-times-circle"></i> Off-Target</span>
-                                            @endif
-                                        </td>
-                                        <td class="text-center">
-                                            @if(auth()->user()?->can('manage objectives') || auth()->user()?->can('can_write_kpi'))
-                                                <button wire:click="openEditModal({{ $obj->id }})" class="btn btn-xs {{ $isClosed ? 'btn-secondary' : 'btn-primary' }}" {{ $isClosed ? 'disabled' : '' }} title="{{ $isClosed ? 'Terkunci' : 'Edit' }}">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button wire:click="deleteObjective({{ $obj->id }})" wire:confirm="Apakah Anda yakin ingin menghapus KPI '{{ $obj->kpi_code }} - {{ $obj->kpi_name }}'?" class="btn btn-xs {{ $isClosed ? 'btn-secondary' : 'btn-danger' }} ml-1" {{ $isClosed ? 'disabled' : '' }} title="{{ $isClosed ? 'Terkunci' : 'Hapus' }}">
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </button>
-                                            @else
-                                                <span class="text-muted small"><i class="fas fa-lock"></i> View Only</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="9" class="text-center text-muted py-4">
-                                            <i class="fas fa-inbox fa-2x mb-2 d-block text-secondary"></i>
-                                            Tidak ada sasaran mutu pada departemen ini untuk periode {{ $selectedPeriod }}.
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                                                </td>
+                                                <td>
+                                                    @if($linkedKpis->count() > 0)
+                                                        @foreach($linkedKpis as $lk)
+                                                            <div class="mb-1">
+                                                                <i class="fas fa-bullseye text-warning mr-1"></i>
+                                                                <strong>[{{ $lk->kpi_code }}]</strong> {{ $lk->kpi_name }}
+                                                            </div>
+                                                        @endforeach
+                                                    @else
+                                                        <span class="text-muted font-italic">Belum ada KPI khusus yang ditautkan</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @php
+                                                        $deptsLinked = [];
+                                                        foreach($matrix as $dCode => $row) {
+                                                            if (($row[$cp['code']] ?? '') === 'K') {
+                                                                $dObj = collect($departments)->firstWhere('code', $dCode);
+                                                                $deptsLinked[] = $dObj ? $dObj->name : $dCode;
+                                                            }
+                                                        }
+                                                    @endphp
+                                                    @if(count($deptsLinked) > 0)
+                                                        @foreach($deptsLinked as $dl)
+                                                            <span class="badge badge-light border mr-1 mb-1">{{ $dl }}</span>
+                                                        @endforeach
+                                                    @else
+                                                        <span class="text-muted">-</span>
+                                                    @endif
+                                                </td>
+                                                <td class="text-center font-weight-bold">
+                                                    @if($linkedKpis->where('status', 'Di Bawah Target')->count() > 0)
+                                                        <span class="badge badge-danger px-2 py-1">LEMAH (GAP)</span>
+                                                    @elseif($linkedKpis->count() > 0)
+                                                        <span class="badge badge-success px-2 py-1">KUAT</span>
+                                                    @else
+                                                        <span class="badge badge-light border text-muted">TERKENDALI</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    <!-- ========================================== -->
+                    <!-- TAB 3: TRIGGER PROGRAM KERJA (LEVEL 4)     -->
+                    <!-- ========================================== -->
+                    @elseif($activeTab === 'action')
+                        <div class="p-3">
+                            <div class="alert alert-warning border d-flex align-items-center mb-3">
+                                <i class="fas fa-exclamation-triangle fa-2x text-warning mr-3"></i>
+                                <div>
+                                    <strong class="text-dark">Alur Eskalasi Tingkat 3 &rarr; Tingkat 4 (Action Plan):</strong><br>
+                                    Sasaran mutu di bawah ini mengalami gap pencapaian (Status <strong>Di Bawah Target</strong> atau <strong>Waspada</strong>) dan membutuhkan inisiatif program kerja konkret.
+                                </div>
+                            </div>
+
+                            @php
+                                $problematic = $allObjectives->whereIn('status', ['Waspada', 'Di Bawah Target']);
+                            @endphp
+
+                            @if($problematic->count() > 0)
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover align-middle" style="font-size: 13px;">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th style="width: 12%;">Kode KPI</th>
+                                                <th style="width: 32%;">Sasaran Mutu Bermasalah</th>
+                                                <th style="width: 16%;">Departemen</th>
+                                                <th class="text-center" style="width: 14%;">Target vs Aktual</th>
+                                                <th class="text-center" style="width: 12%;">Gap Capaian</th>
+                                                <th class="text-center" style="width: 14%;">Tindakan (Level 4)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($problematic as $prob)
+                                                <tr>
+                                                    <td><code>{{ $prob->kpi_code }}</code></td>
+                                                    <td>
+                                                        <strong class="text-dark">{{ $prob->kpi_name }}</strong>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge badge-light border text-dark font-weight-bold">
+                                                            {{ $prob->dept_code }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="text-center font-weight-bold text-muted">
+                                                        {{ number_format($prob->target, 2, ',', '.') }} vs <span class="text-danger">{{ number_format($prob->actual, 2, ',', '.') }}</span> {{ $prob->unit }}
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <span class="badge badge-danger px-2 py-1 font-weight-bold">
+                                                            Gap {{ number_format(100 - $prob->achievement_pct, 1) }}%
+                                                        </span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <a href="{{ route('action-plans') }}" class="btn btn-xs btn-primary font-weight-bold">
+                                                            <i class="fas fa-plus mr-1"></i> Buat Action Plan
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="text-center py-5 text-muted">
+                                    <i class="fas fa-check-circle fa-3x text-success mb-2 d-block"></i>
+                                    <strong>Semua Sasaran Mutu Tercapai dengan Baik!</strong><br>
+                                    Tidak ada indikator operasional yang membutuhkan eskalasi darurat ke Program Kerja (Level 4).
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+                </div>
+
+                <div class="card-footer bg-light py-2 text-muted small d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-sitemap text-warning mr-1"></i> Terhubung langsung ke 10 Departemen Odoo ERP dan 12 Pos Finansial Inti Pabrik Botol Plastik.
+                    </div>
+                    <div>
+                        Periode: <strong>{{ $selectedPeriod }}</strong>
                     </div>
                 </div>
-            @endif
-
+            </div>
         </div>
     </section>
 
-    <!-- MODAL FORM TAMBAH / UBAH SASARAN MUTU KPI -->
+    <!-- MODAL FORM TAMBAH / UBAH SASARAN MUTU -->
     @if($showModal)
-        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" role="dialog">
-            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-                <div class="modal-content border-warning shadow-lg">
-                    <div class="modal-header bg-warning text-dark">
-                        <h5 class="modal-title font-weight-bold">
-                            <i class="fas {{ $isEditMode ? 'fa-edit' : 'fa-plus-circle' }} mr-2"></i>
-                            {{ $isEditMode ? 'Ubah Sasaran Mutu (KPI)' : 'Tambah Sasaran Mutu Baru' }}
+        <div class="modal fade show" style="display: block; background: rgba(0,0,0,0.5); z-index: 1050; overflow-y: auto;" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable my-3">
+                <div class="modal-content border-0 shadow-lg" style="max-height: 90vh;">
+                    <div class="modal-header bg-warning py-2 text-dark">
+                        <h5 class="modal-title font-weight-bold" style="font-size: 15px;">
+                            <i class="fas fa-bullseye mr-2"></i> {{ $isEditMode ? 'Ubah Sasaran Mutu KPI' : 'Tambah Sasaran Mutu KPI Baru' }}
                         </h5>
-                        <button type="button" class="close text-dark" wire:click="closeModal">&times;</button>
+                        <button type="button" class="close text-dark" wire:click="$set('showModal', false)">&times;</button>
                     </div>
-                    <form wire:submit.prevent="saveObjective">
-                        <div class="modal-body">
-                            <!-- Searchable Combobox Mempengaruhi Akun / Anggaran Odoo (Livewire Native) -->
-                            <div class="form-group bg-light p-2.5 rounded border mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <label class="font-weight-bold text-dark mb-0">
-                                        <i class="fas fa-coins text-warning mr-1"></i> Akun / Pos Anggaran yang Dipengaruhi (Odoo ERP):
-                                    </label>
-                                    @if($odoo_account_code)
-                                        <button type="button" wire:click="clearOdooAccount" class="btn btn-outline-danger btn-xs py-0 px-2" style="font-size: 0.75rem;">
-                                            <i class="fas fa-times mr-1"></i> Lepas Kaitan
-                                        </button>
-                                    @endif
-                                </div>
-
-                                <!-- Box Single Combobox / Searchable Dropdown -->
-                                <div class="position-relative">
-                                    <!-- Trigger Display Field -->
-                                    <div class="input-group input-group-sm" style="cursor: pointer;" wire:click="toggleOdooDropdown">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-white border-right-0 text-muted">
-                                                <i class="fas fa-search text-warning"></i>
-                                            </span>
-                                        </div>
-                                        @php
-                                            $selectedAccountLabel = $odoo_account_code 
-                                                ? $odoo_account_code . ' - ' . ($odooAccountMap[$odoo_account_code]->name ?? '') 
-                                                : '-- Klik untuk Cari & Pilih Akun Anggaran Odoo --';
-                                        @endphp
-                                        <input type="text" 
-                                               class="form-control bg-white" 
-                                               style="cursor: pointer;"
-                                               readonly 
-                                               value="{{ $selectedAccountLabel }}">
-                                        <div class="input-group-append">
-                                            <button type="button" class="btn btn-outline-secondary bg-white border-left-0">
-                                                <i class="fas {{ $showOdooDropdown ? 'fa-chevron-up text-warning' : 'fa-chevron-down text-muted' }}"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Floating Dropdown Panel (Hanya Muncul Jika Diklik) -->
-                                    @if($showOdooDropdown)
-                                        <div style="position: absolute; top: 100%; left: 0; right: 0; z-index: 1060; max-height: 310px; box-shadow: 0 10px 28px rgba(0,0,0,0.25);"
-                                             class="bg-white rounded-bottom border border-top-0 mt-1 d-flex flex-column">
-                                            
-                                            <!-- Search input inside dropdown header -->
-                                            <div class="p-2 border-bottom bg-light">
-                                                <div class="input-group input-group-sm">
-                                                    <div class="input-group-prepend">
-                                                        <span class="input-group-text bg-white border-right-0 py-1">
-                                                            <i class="fas fa-search text-muted small"></i>
-                                                        </span>
-                                                    </div>
-                                                    <input type="text" 
-                                                           wire:model.live.debounce.150ms="odooAccountSearch" 
-                                                           class="form-control form-control-sm border-left-0" 
-                                                           placeholder="Ketik kode / nama akun (cth: 5100, cogs, gaji, mesin)..."
-                                                           autofocus>
-                                                    <div class="input-group-append">
-                                                        @if(!empty($odooAccountSearch))
-                                                            <button type="button" class="btn btn-light border border-left-0 py-0 px-2 text-muted" wire:click="$set('odooAccountSearch', '')" title="Bersihkan">
-                                                                <i class="fas fa-times small"></i>
-                                                            </button>
-                                                        @endif
-                                                        <button type="button" class="btn btn-warning border py-0 px-2 text-dark font-weight-bold" wire:click="closeOdooDropdown" title="Tutup">
-                                                            <i class="fas fa-times mr-1"></i> Tutup
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Item List (Scrollable) -->
-                                            <div class="overflow-auto py-1" style="max-height: 210px;">
-                                                <!-- Option None -->
-                                                <div class="px-3 py-2 cursor-pointer border-bottom d-flex align-items-center justify-content-between account-option-item {{ empty($odoo_account_code) ? 'bg-warning text-dark font-weight-bold' : 'text-muted' }}"
-                                                     style="cursor: pointer; font-size: 0.85rem;"
-                                                     wire:click="clearOdooAccount">
-                                                    <span><i class="fas fa-ban mr-1.5 text-secondary"></i> Tidak Terkait Akun Anggaran (Operasional Umum)</span>
-                                                    @if(empty($odoo_account_code))
-                                                        <i class="fas fa-check text-dark"></i>
-                                                    @endif
-                                                </div>
-
-                                                <!-- Filtered Accounts -->
-                                                @forelse($filteredOdooAccounts as $acc)
-                                                    <div class="px-3 py-2 cursor-pointer d-flex align-items-center justify-content-between border-bottom account-option-item {{ $odoo_account_code === $acc->code ? 'bg-warning text-dark font-weight-bold' : 'text-dark' }}"
-                                                         style="cursor: pointer; font-size: 0.85rem;"
-                                                         wire:click="selectOdooAccount('{{ $acc->code }}')">
-                                                        <div>
-                                                            <span class="badge {{ $odoo_account_code === $acc->code ? 'badge-dark' : 'badge-secondary' }} mr-1.5 font-weight-normal">{{ $acc->code }}</span>
-                                                            <span>{{ $acc->name }}</span>
-                                                        </div>
-                                                        @if($odoo_account_code === $acc->code)
-                                                            <i class="fas fa-check text-dark ml-2"></i>
-                                                        @endif
-                                                    </div>
-                                                @empty
-                                                    <div class="p-3 text-center text-muted small">
-                                                        <i class="fas fa-search-minus mr-1"></i> Tidak ada akun yang cocok dengan kata kunci "{{ $odooAccountSearch }}"
-                                                    </div>
-                                                @endforelse
-                                            </div>
-
-                                            <!-- Dropdown Footer count & close button -->
-                                            <div class="px-2 py-1.5 bg-light border-top d-flex justify-content-between align-items-center" style="font-size: 0.75rem;">
-                                                <span class="text-muted">
-                                                    Ditemukan <strong>{{ $filteredOdooAccounts->count() }}</strong> dari {{ $odooAccounts->count() }} akun
-                                                </span>
-                                                <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-2" wire:click="closeOdooDropdown">
-                                                    <i class="fas fa-check mr-1"></i> Selesai
-                                                </button>
-                                            </div>
-                                        </div>
-                                    @endif
-                                </div>
-
-                                <small class="text-muted d-block mt-1.5">
-                                    <i class="fas fa-info-circle mr-1 text-info"></i> Contoh: KPI <em>Produksi Botol PET</em> mempengaruhi pos <strong>51000010 - Cost of Goods Sold (HPP)</strong>.
-                                </small>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group col-md-4">
-                                    <label class="font-weight-bold text-dark">Departemen:</label>
-                                    <select wire:model.live="dept_code" class="form-control @error('dept_code') is-invalid @enderror">
+                    <form wire:submit.prevent="saveObjective" class="d-flex flex-column" style="overflow: hidden; height: 100%;">
+                        <div class="modal-body p-3" style="overflow-y: auto; max-height: calc(90vh - 110px);">
+                            <div class="row">
+                                <div class="col-md-6 form-group mb-2">
+                                    <label class="font-weight-bold text-dark small mb-1">Departemen PIC (Odoo):</label>
+                                    <select wire:model="dept_code" class="form-control form-control-sm">
                                         @foreach($departments as $d)
-                                            <option value="{{ $d }}">{{ $deptMap[$d]->name ?? $d }} ({{ $d }})</option>
+                                            <option value="{{ $d->code }}">{{ $d->name }} ({{ $d->code }})</option>
                                         @endforeach
                                     </select>
-                                    @error('dept_code') <span class="invalid-feedback">{{ $message }}</span> @enderror
                                 </div>
-                                <div class="form-group col-md-4">
-                                    <label class="font-weight-bold text-dark">Kode KPI:</label>
-                                    <input type="text" wire:model="kpi_code" class="form-control @error('kpi_code') is-invalid @enderror" placeholder="Contoh: PRD-01">
-                                    @error('kpi_code') <span class="invalid-feedback">{{ $message }}</span> @enderror
+
+                                <div class="col-md-6 form-group mb-2">
+                                    <label class="font-weight-bold text-dark small mb-1">Kode KPI:</label>
+                                    <input type="text" wire:model="kpi_code" class="form-control form-control-sm" placeholder="Contoh: PRD-01">
+                                    @error('kpi_code') <span class="text-danger small">{{ $message }}</span> @enderror
                                 </div>
-                                <div class="form-group col-md-4">
-                                    <label class="font-weight-bold text-dark">Polaritas Target:</label>
-                                    <select wire:model="polarity" class="form-control @error('polarity') is-invalid @enderror">
-                                        <option value="Naik">Naik Baik (≥ Target)</option>
-                                        <option value="Turun">Turun Baik (≤ Target)</option>
+
+                                <div class="col-md-12 form-group mb-2">
+                                    <label class="font-weight-bold text-dark small mb-1">Nama Sasaran Mutu (Objective KPI):</label>
+                                    <input type="text" wire:model="kpi_name" class="form-control form-control-sm" placeholder="Contoh: OEE Mesin Cetak Botol Plastik">
+                                    @error('kpi_name') <span class="text-danger small">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div class="col-md-12 form-group mb-2">
+                                    <label class="font-weight-bold text-dark small d-flex justify-content-between align-items-center mb-1">
+                                        <span><i class="fas fa-link text-warning mr-1"></i> Tautkan ke 12 Pos Finansial (Bisa Pilih Lebih dari 1):</span>
+                                        <span class="badge badge-light border text-muted font-weight-normal" style="font-size: 11px;">
+                                            Dipilih: <strong class="text-teal">{{ count($selected_pos_codes) }}</strong> pos
+                                        </span>
+                                    </label>
+                                    <div class="p-2 border rounded bg-light" style="max-height: 140px; overflow-y: auto;">
+                                        <div class="row">
+                                            @foreach($corePos as $cp)
+                                                <div class="col-md-6 col-lg-4 mb-1">
+                                                    <label class="d-flex align-items-start bg-white p-1 px-2 rounded border mb-0" 
+                                                           for="pos_{{ $cp['code'] }}" 
+                                                           style="font-size: 11px; cursor: pointer; transition: all 0.2s;"
+                                                           onmouseover="this.classList.add('border-warning', 'shadow-sm')"
+                                                           onmouseout="this.classList.remove('border-warning', 'shadow-sm')">
+                                                        <input type="checkbox" 
+                                                               id="pos_{{ $cp['code'] }}" 
+                                                               value="{{ $cp['code'] }}" 
+                                                               wire:model.live="selected_pos_codes"
+                                                               style="width: 14px; height: 14px; margin-top: 2px; cursor: pointer; flex-shrink: 0;">
+                                                        <div class="ml-2 flex-grow-1" style="line-height: 1.2;">
+                                                            <div class="font-weight-bold text-dark text-truncate">
+                                                                <span class="badge badge-teal mr-1">{{ $cp['code'] }}</span> {{ $cp['name'] }}
+                                                            </div>
+                                                            <div class="text-muted" style="font-size: 10px; margin-top: 1px;">
+                                                                {{ $cp['ratio'] }}
+                                                            </div>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                    <small class="form-text text-muted" style="font-size: 11px;">
+                                        Centang 1 atau beberapa pos finansial yang dipengaruhi oleh sasaran mutu ini.
+                                    </small>
+                                </div>
+
+                                <div class="col-md-6 form-group mb-2">
+                                    <label class="font-weight-bold text-dark small mb-1">Satuan Unit:</label>
+                                    <input type="text" wire:model="unit" class="form-control form-control-sm" placeholder="Contoh: %, Jam, Pcs, Hari, Rp, kWh/kg, Miliar">
+                                </div>
+
+                                <div class="col-md-6 form-group mb-2">
+                                    <label class="font-weight-bold text-dark small mb-1">Polaritas Capaian:</label>
+                                    <select wire:model="polarity" class="form-control form-control-sm">
+                                        <option value="Naik">Naik (Semakin tinggi semakin bagus)</option>
+                                        <option value="Turun">Turun (Semakin rendah semakin bagus / Efisiensi)</option>
                                     </select>
-                                    @error('polarity') <span class="invalid-feedback">{{ $message }}</span> @enderror
                                 </div>
-                            </div>
 
-                            <div class="form-group">
-                                <label class="font-weight-bold text-dark">Nama Sasaran Mutu (KPI Name):</label>
-                                <textarea wire:model="kpi_name" rows="2" class="form-control @error('kpi_name') is-invalid @enderror" placeholder="Contoh: Efisiensi Produksi Botol PET atau Tingkat Reject Botol"></textarea>
-                                @error('kpi_name') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                            </div>
+                                <div class="col-md-6 form-group mb-2">
+                                    <label class="font-weight-bold text-dark small mb-1">Target:</label>
+                                    <input type="number" step="any" wire:model="target" class="form-control form-control-sm" placeholder="Contoh: 85 atau 100">
+                                    @error('target') <span class="text-danger small">{{ $message }}</span> @enderror
+                                </div>
 
-                            <div class="form-row">
-                                <div class="form-group col-md-4">
-                                    <label class="font-weight-bold text-dark">Target:</label>
-                                    <input type="number" step="0.01" wire:model="target" class="form-control @error('target') is-invalid @enderror" placeholder="Contoh: 100">
-                                    @error('target') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                <div class="col-md-6 form-group mb-2">
+                                    <label class="font-weight-bold text-dark small mb-1">Realisasi (Actual):</label>
+                                    <input type="number" step="any" wire:model="actual" class="form-control form-control-sm" placeholder="Contoh: 82.5 atau 95">
+                                    @error('actual') <span class="text-danger small">{{ $message }}</span> @enderror
                                 </div>
-                                <div class="form-group col-md-4">
-                                    <label class="font-weight-bold text-dark">Realisasi (Actual):</label>
-                                    <input type="number" step="0.01" wire:model="actual" class="form-control @error('actual') is-invalid @enderror" placeholder="Contoh: 95">
-                                    @error('actual') <span class="invalid-feedback">{{ $message }}</span> @enderror
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label class="font-weight-bold text-dark">Satuan Unit:</label>
-                                    <input type="text" wire:model="unit" class="form-control @error('unit') is-invalid @enderror" placeholder="Contoh: Botol, %, Pcs, Hari, Batch">
-                                    @error('unit') <span class="invalid-feedback">{{ $message }}</span> @enderror
+
+                                <div class="col-md-12 form-group mb-0">
+                                    <label class="font-weight-bold text-dark small mb-1 d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-magic text-warning mr-1"></i> Catatan Tambahan Dampak (Opsional):</span>
+                                        <span class="text-muted font-weight-normal" style="font-size: 11px;">
+                                            <i class="fas fa-check-circle text-success mr-1"></i>Dampak utama otomatis dihasilkan dari Pos Finansial
+                                        </span>
+                                    </label>
+                                    <textarea wire:model="impact_note" rows="2" class="form-control form-control-sm" 
+                                              placeholder="Tuliskan catatan dampak operasional khusus jika ada (opsional). Boleh dikosongkan."></textarea>
                                 </div>
                             </div>
                         </div>
-                        <div class="modal-footer bg-light">
-                            <button type="button" class="btn btn-secondary btn-sm" wire:click="closeModal">Batal</button>
-                            <button type="submit" class="btn btn-warning btn-sm font-weight-bold">
-                                <i class="fas fa-save mr-1"></i> {{ $isEditMode ? 'Simpan Perubahan' : 'Tambah Sasaran Mutu' }}
+                        <div class="modal-footer bg-light py-2 border-top">
+                            <button type="button" class="btn btn-sm btn-secondary" wire:click="$set('showModal', false)">Batal</button>
+                            <button type="submit" class="btn btn-sm btn-warning font-weight-bold text-dark">
+                                <i class="fas fa-save mr-1"></i> Simpan Sasaran Mutu
                             </button>
                         </div>
                     </form>
@@ -575,13 +606,4 @@
             </div>
         </div>
     @endif
-
-    <style>
-        .account-option-item {
-            transition: background-color 0.15s ease-in-out;
-        }
-        .account-option-item:hover {
-            background-color: #f1f5f9 !important;
-        }
-    </style>
 </div>
