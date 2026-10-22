@@ -18,6 +18,7 @@ use App\Livewire\UjiDampakSandbox;
 use App\Livewire\SimulasiCoa;
 use App\Livewire\PetaPosAkun;
 use App\Livewire\UjiIndikatorDepartemen;
+use App\Livewire\PohonDupont;
 
 // Guest: Login 
 Route::middleware('guest')->group(function () {
@@ -38,6 +39,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/', BscDashboard::class)->middleware('permission:view dashboard')->name('dashboard');
     // Tingkat 1 Apex & Konsolidasi Hop 4
     Route::get('/apex-consolidation', ApexConsolidation::class)->middleware('permission:view dashboard|view ratios')->name('apex-consolidation');
+    // Pohon Nilai DuPont & Driver Indikator Operasional
+    Route::get('/pohon-dupont', PohonDupont::class)->middleware('permission:view dashboard|view ratios')->name('pohon-dupont');
     // 2 Rasio — view ratios (read), manage ratios (write)
     Route::get('/ratios', FinancialRatios::class)->middleware('permission:view ratios|view dashboard')->name('financial-ratios');
     // 3 Objective — view objectives

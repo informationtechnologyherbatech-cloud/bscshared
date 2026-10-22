@@ -207,7 +207,12 @@
                                                  </td>
                                                  <td>
                                                      @php
-                                                         $rawPos = trim($obj->odoo_account_code ?? '');
+                                                         $rawPos = trim($obj->pos_anggaran ?? '');
+                                                         if (!$rawPos && trim($obj->odoo_account_code ?? '')) {
+                                                             if (str_contains($obj->odoo_account_code, 'PA')) {
+                                                                 $rawPos = trim($obj->odoo_account_code);
+                                                             }
+                                                         }
                                                          $codes = [];
                                                          if ($rawPos) {
                                                              if (str_starts_with($rawPos, '[') && str_ends_with($rawPos, ']')) {
@@ -217,10 +222,27 @@
                                                                  $codes = array_values(array_filter(array_map('trim', explode(',', $rawPos))));
                                                              }
                                                          }
-                                                         $autoImpacts = $this->getAutoImpactSummary($codes, $obj->status, $obj->polarity);
+                                                         $autoImpacts = \App\Livewire\DepartmentObjectives::getAutoImpactSummary($codes, $obj->status, $obj->polarity);
                                                      @endphp
 
-                                                     <!-- 1. Dampak Otomatis (Dari Pos Finansial Terpilih & Status Capaian) -->
+                                                     <!-- 1. Akun Odoo Terpilih (Jika Dikaitkan - Mendukung Multi Akun) -->
+                                                     @if(!empty($obj->odoo_account_code) && !str_contains($obj->odoo_account_code, 'PA'))
+                                                         @php
+                                                             $linkedOdoos = array_values(array_filter(array_map('trim', explode(',', $obj->odoo_account_code))));
+                                                         @endphp
+                                                         <div class="mb-1 d-flex flex-wrap" style="gap: 4px;">
+                                                             @foreach($linkedOdoos as $lOdoo)
+                                                                 <span class="badge badge-warning text-dark font-weight-normal px-2 py-1 shadow-sm" style="font-size: 11px;">
+                                                                     <i class="fas fa-coins text-dark mr-1"></i><strong>{{ $lOdoo }}</strong>
+                                                                     @if(isset($odooAccountMap[$lOdoo]))
+                                                                         - {{ $odooAccountMap[$lOdoo]->name }}
+                                                                     @endif
+                                                                 </span>
+                                                             @endforeach
+                                                         </div>
+                                                     @endif
+
+                                                     <!-- 2. Dampak Otomatis (Dari Pos Anggaran Terpilih & Status Capaian) -->
                                                      @if(!empty($autoImpacts))
                                                          <div class="mb-1">
                                                              @foreach($autoImpacts as $ai)
@@ -236,13 +258,13 @@
                                                          </div>
                                                      @endif
 
-                                                     <!-- 2. Catatan Tambahan Kustom (Jika Diisi di Form) -->
+                                                     <!-- 3. Catatan Tambahan Kustom (Jika Diisi di Form) -->
                                                      @if(!empty($obj->impact_note))
                                                          <div class="p-1 px-2 rounded bg-light border text-dark font-italic small mt-1" style="font-size: 11px; line-height: 1.2;">
                                                              <i class="fas fa-pencil-alt text-warning mr-1"></i><strong>Catatan:</strong> {{ $obj->impact_note }}
                                                          </div>
-                                                     @elseif(empty($autoImpacts))
-                                                         <span class="text-muted small font-italic">- Tautkan ke pos finansial untuk melihat dampak -</span>
+                                                     @elseif(empty($autoImpacts) && empty($obj->odoo_account_code))
+                                                         <span class="text-muted small font-italic">- Tautkan ke pos anggaran / akun Odoo untuk melihat dampak -</span>
                                                      @endif
                                                  </td>
                                                 <td class="text-center">
@@ -339,7 +361,7 @@
                                         @foreach($corePos as $cp)
                                             @php
                                                 $linkedKpis = $allObjectives->filter(function($item) use ($cp) {
-                                                    $raw = trim($item->odoo_account_code ?? '');
+                                                    $raw = trim($item->pos_anggaran ?? $item->odoo_account_code ?? '');
                                                     if (!$raw) return false;
                                                     $arr = array_map('trim', explode(',', str_replace(['[', ']', '"'], '', $raw)));
                                                     return in_array($cp['code'], $arr);
@@ -519,43 +541,98 @@
                                     @error('kpi_name') <span class="text-danger small">{{ $message }}</span> @enderror
                                 </div>
 
+                                <!-- BIDANG: AKUN ODOO ERP (CHART OF ACCOUNTS LENGKAP: ASSET, PIUTANG, COGS, OPEX, DLL.) -->
                                 <div class="col-md-12 form-group mb-2">
-                                    <label class="font-weight-bold text-dark small d-flex justify-content-between align-items-center mb-1">
-                                        <span><i class="fas fa-link text-warning mr-1"></i> Tautkan ke 12 Pos Finansial (Bisa Pilih Lebih dari 1):</span>
-                                        <span class="badge badge-light border text-muted font-weight-normal" style="font-size: 11px;">
-                                            Dipilih: <strong class="text-teal">{{ count($selected_pos_codes) }}</strong> pos
-                                        </span>
-                                    </label>
-                                    <div class="p-2 border rounded bg-light" style="max-height: 140px; overflow-y: auto;">
-                                        <div class="row">
-                                            @foreach($corePos as $cp)
-                                                <div class="col-md-6 col-lg-4 mb-1">
-                                                    <label class="d-flex align-items-start bg-white p-1 px-2 rounded border mb-0" 
-                                                           for="pos_{{ $cp['code'] }}" 
-                                                           style="font-size: 11px; cursor: pointer; transition: all 0.2s;"
-                                                           onmouseover="this.classList.add('border-warning', 'shadow-sm')"
-                                                           onmouseout="this.classList.remove('border-warning', 'shadow-sm')">
-                                                        <input type="checkbox" 
-                                                               id="pos_{{ $cp['code'] }}" 
-                                                               value="{{ $cp['code'] }}" 
-                                                               wire:model.live="selected_pos_codes"
-                                                               style="width: 14px; height: 14px; margin-top: 2px; cursor: pointer; flex-shrink: 0;">
-                                                        <div class="ml-2 flex-grow-1" style="line-height: 1.2;">
-                                                            <div class="font-weight-bold text-dark text-truncate">
-                                                                <span class="badge badge-teal mr-1">{{ $cp['code'] }}</span> {{ $cp['name'] }}
-                                                            </div>
-                                                            <div class="text-muted" style="font-size: 10px; margin-top: 1px;">
-                                                                {{ $cp['ratio'] }}
-                                                            </div>
-                                                        </div>
-                                                    </label>
-                                                </div>
-                                            @endforeach
+                                    <div class="p-2.5 rounded border bg-light">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <label class="font-weight-bold text-dark small mb-0">
+                                                <i class="fas fa-coins text-warning mr-1"></i> Akun Odoo ERP (Chart of Accounts: Piutang, Kas, HPP, Beban):
+                                            </label>
+                                            <div class="d-flex align-items-center" style="gap: 8px;">
+                                                <span class="badge badge-primary px-2 py-1" style="font-size: 11px;">
+                                                    Dipilih: <strong>{{ count($selected_odoo_accounts) }}</strong> akun
+                                                </span>
+                                                @if(count($selected_odoo_accounts) > 0)
+                                                    <a href="javascript:void(0)" wire:click="clearOdooAccounts" class="text-danger small font-weight-normal" title="Reset semua pilihan">
+                                                        <i class="fas fa-times-circle mr-1"></i> Kosongkan
+                                                    </a>
+                                                @endif
+                                            </div>
                                         </div>
+
+                                        <!-- Tag Pill Akun yang Terpilih -->
+                                        @if(count($selected_odoo_accounts) > 0)
+                                            <div class="p-2 mb-2 bg-white rounded border d-flex flex-wrap" style="gap: 5px; max-height: 80px; overflow-y: auto;">
+                                                @foreach($selected_odoo_accounts as $sCode)
+                                                    <span class="badge badge-light border border-primary text-dark py-1 px-2 d-inline-flex align-items-center" style="font-size: 11px;">
+                                                        <i class="fas fa-check-circle text-primary mr-1"></i>
+                                                        <strong>{{ $sCode }}</strong>
+                                                        @if(isset($odooAccountMap[$sCode]))
+                                                            <span class="badge badge-secondary ml-1 py-0 px-1" style="font-size: 9.5px;">{{ $odooAccountMap[$sCode]->type ?? 'COA' }}</span>
+                                                            <span class="text-muted ml-1" style="max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                                - {{ $odooAccountMap[$sCode]->name }}
+                                                            </span>
+                                                        @endif
+                                                        <a href="javascript:void(0)" wire:click="removeOdooAccount('{{ $sCode }}')" class="ml-1 text-danger font-weight-bold" style="text-decoration: none;">&times;</a>
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @endif
+
+                                        <!-- Search Box Filter Akun -->
+                                        <div class="input-group input-group-sm mb-2">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-white border-right-0 text-muted">
+                                                    <i class="fas fa-search"></i>
+                                                </span>
+                                            </div>
+                                            <input type="text" 
+                                                   wire:model.live.debounce.200ms="odooAccountSearch" 
+                                                   class="form-control form-control-sm border-left-0" 
+                                                   placeholder="Cari Piutang, Kas, Bank, HPP, Biaya, atau ketik kode akun (misal: 11210010)...">
+                                            @if($odooAccountSearch)
+                                                <div class="input-group-append">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" wire:click="$set('odooAccountSearch', '')">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            @endif
+                                        </div>
+
+                                        <!-- Multi-Select List Akun Odoo (Scrollable) -->
+                                        <div class="border rounded bg-white p-2" style="max-height: 150px; overflow-y: auto;">
+                                            <div class="row">
+                                                @forelse($filteredOdooAccounts as $acc)
+                                                    <div class="col-md-6 mb-1">
+                                                        <label class="d-flex align-items-center p-1 px-2 rounded border mb-0 {{ in_array($acc->code, $selected_odoo_accounts) ? 'border-primary bg-light' : '' }}" 
+                                                               style="font-size: 11.5px; cursor: pointer; transition: all 0.15s; line-height: 1.25;"
+                                                               onmouseover="this.classList.add('border-warning')"
+                                                               onmouseout="this.classList.remove('border-warning')">
+                                                            <input type="checkbox" 
+                                                                   value="{{ $acc->code }}" 
+                                                                   wire:click="toggleOdooAccount('{{ $acc->code }}')"
+                                                                   {{ in_array($acc->code, $selected_odoo_accounts) ? 'checked' : '' }}
+                                                                   style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;" class="mr-2">
+                                                            <div class="text-truncate flex-grow-1">
+                                                                <strong class="{{ in_array($acc->code, $selected_odoo_accounts) ? 'text-primary' : 'text-dark' }}">{{ $acc->code }}</strong>
+                                                                @if(!empty($acc->type))
+                                                                    <span class="badge {{ $acc->type === 'Asset' ? 'badge-info' : ($acc->type === 'COGS' ? 'badge-warning' : 'badge-light border') }} py-0 px-1 ml-1" style="font-size: 9.5px;">{{ $acc->type }}</span>
+                                                                @endif
+                                                                <span class="text-muted ml-1">- {{ $acc->name }}</span>
+                                                            </div>
+                                                        </label>
+                                                    </div>
+                                                @empty
+                                                    <div class="col-12 text-center py-2 text-muted small">
+                                                        Tidak ada akun COA yang cocok dengan kata kunci "{{ $odooAccountSearch }}".
+                                                    </div>
+                                                @endforelse
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted mt-1" style="font-size: 11px;">
+                                            <i class="fas fa-info-circle text-info mr-1"></i> Mencakup seluruh Chart of Accounts Odoo ERP: <strong>Piutang Usaha (11210010)</strong>, Kas & Bank, HPP/Bahan Baku, Aset Tetap, dan Biaya Operasional.
+                                        </small>
                                     </div>
-                                    <small class="form-text text-muted" style="font-size: 11px;">
-                                        Centang 1 atau beberapa pos finansial yang dipengaruhi oleh sasaran mutu ini.
-                                    </small>
                                 </div>
 
                                 <div class="col-md-6 form-group mb-2">

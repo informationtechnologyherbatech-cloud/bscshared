@@ -32,7 +32,10 @@ class DepartmentObjectives extends Component
     public $kpi_code = '';
     public $kpi_name = '';
     public $source_type = 'manual'; // 'manual' atau 'odoo_expense'
-    public $selected_pos_codes = []; // Array of PA codes, contoh: ['PA01', 'PA02']
+    public $selected_pos_codes = []; // Array of PA codes, contoh: ['PA01', 'PA02'] untuk Pos Anggaran
+    public $odoo_account_code = ''; // Akun Beban/COA Odoo ERP string (comma-separated jika multi)
+    public $selected_odoo_accounts = []; // Array of Odoo account codes, contoh: ['51000010', '61100330']
+    public $odooAccountSearch = ''; // Keyword pencarian akun odoo
     public $impact_note = ''; // Catatan dampak spesifik operasional/finansial
     public $unit = '';
     public $polarity = 'Naik';
@@ -51,6 +54,9 @@ class DepartmentObjectives extends Component
         'source_type' => 'required|in:manual,odoo_expense',
         'selected_pos_codes' => 'nullable|array',
         'selected_pos_codes.*' => 'string|max:20',
+        'selected_odoo_accounts' => 'nullable|array',
+        'selected_odoo_accounts.*' => 'string|max:50',
+        'odoo_account_code' => 'nullable|string|max:255',
         'impact_note' => 'nullable|string|max:1000',
         'unit' => 'nullable|string|max:30',
         'polarity' => 'required|in:Naik,Turun',
@@ -120,7 +126,7 @@ class DepartmentObjectives extends Component
     /**
      * Helper menghasilkan Dampak Finansial & Operasional Otomatis Berdasarkan Pos & Status Capaian
      */
-    public function getAutoImpactSummary($posCodes, $status, $polarity)
+    public static function getAutoImpactSummary($posCodes, $status, $polarity)
     {
         if (empty($posCodes)) {
             return null;
@@ -230,8 +236,9 @@ class DepartmentObjectives extends Component
 
     public function openCreateModal()
     {
-        $this->reset(['objId', 'kpi_code', 'kpi_name', 'target', 'actual', 'selected_pos_codes', 'impact_note', 'unit']);
+        $this->reset(['objId', 'kpi_code', 'kpi_name', 'target', 'actual', 'selected_pos_codes', 'selected_odoo_accounts', 'impact_note', 'unit']);
         $this->selected_pos_codes = [];
+        $this->selected_odoo_accounts = [];
         $this->dept_code = $this->selectedDept ?: 'PRD';
         $this->source_type = 'manual';
         $this->polarity = 'Naik';
@@ -239,8 +246,62 @@ class DepartmentObjectives extends Component
         $this->target = '';
         $this->actual = '';
         $this->impact_note = '';
+        $this->odoo_account_code = '';
+        $this->odooAccountSearch = '';
         $this->isEditMode = false;
         $this->showModal = true;
+    }
+
+    public function selectOdooAccount($code)
+    {
+        if (!in_array($code, $this->selected_odoo_accounts)) {
+            $this->selected_odoo_accounts[] = $code;
+        }
+    }
+
+    public function toggleOdooAccount($code)
+    {
+        if (in_array($code, $this->selected_odoo_accounts)) {
+            $this->selected_odoo_accounts = array_values(array_diff($this->selected_odoo_accounts, [$code]));
+        } else {
+            $this->selected_odoo_accounts[] = $code;
+        }
+    }
+
+    public function removeOdooAccount($code)
+    {
+        $this->selected_odoo_accounts = array_values(array_diff($this->selected_odoo_accounts, [$code]));
+    }
+
+    public function clearOdooAccounts()
+    {
+        $this->selected_odoo_accounts = [];
+        $this->odoo_account_code = '';
+    }
+
+    public function getOdooAccounts()
+    {
+        try {
+            // Ambil dari seluruh Chart of Accounts (COA) Odoo ERP (Asset termasuk Piutang & Kas, Liabilitas, Ekuitas, Pendapatan, HPP, Beban)
+            $coaList = DB::connection('mysql_finance')
+                ->table('coa_mappings')
+                ->where('is_active', 1)
+                ->select('account_code as code', 'account_name as name', 'account_type as type')
+                ->orderBy('account_code')
+                ->get();
+
+            if ($coaList->count() > 0) {
+                return $coaList;
+            }
+
+            return DB::connection('mysql_finance')
+                ->table('budget_categories')
+                ->select('code', 'name', DB::raw("'Expense' as type"))
+                ->orderBy('code')
+                ->get();
+        } catch (\Exception $e) {
+            return collect([]);
+        }
     }
 
     public function openEditModal($id)
@@ -251,9 +312,18 @@ class DepartmentObjectives extends Component
         $this->kpi_code = $obj->kpi_code;
         $this->kpi_name = $obj->kpi_name;
         $this->source_type = $obj->source_type ?: 'manual';
+        $this->odooAccountSearch = '';
 
-        // Parse odoo_account_code yang bisa berupa satu kode ("PA01"), comma-separated ("PA01,PA02"), atau json
-        $rawPos = trim($obj->odoo_account_code ?? '');
+        // Parse odoo accounts (bisa koma atau satu akun)
+        $rawOdoo = trim($obj->odoo_account_code ?: '');
+        if ($rawOdoo && !str_contains($rawOdoo, 'PA')) {
+            $this->selected_odoo_accounts = array_values(array_filter(array_map('trim', explode(',', $rawOdoo))));
+        } else {
+            $this->selected_odoo_accounts = [];
+        }
+
+        // Parse pos_anggaran
+        $rawPos = trim($obj->pos_anggaran ?? '');
         if ($rawPos) {
             if (str_starts_with($rawPos, '[') && str_ends_with($rawPos, ']')) {
                 $decoded = json_decode($rawPos, true);
@@ -281,9 +351,9 @@ class DepartmentObjectives extends Component
         $ach = $this->calculateAchievement($this->target, $this->actual, $this->polarity);
         $status = $this->determineStatus($ach);
 
-        // Bersihkan dan simpan pos finansial terpilih sebagai comma-separated string (misal: "PA01,PA02")
-        $cleanPos = array_values(array_filter(array_unique((array) $this->selected_pos_codes)));
-        $posString = count($cleanPos) > 0 ? implode(',', $cleanPos) : null;
+        // Gabungkan selected Odoo accounts menjadi comma-separated string
+        $cleanOdoo = array_values(array_filter(array_unique((array) $this->selected_odoo_accounts)));
+        $odooString = count($cleanOdoo) > 0 ? implode(',', $cleanOdoo) : null;
 
         DepartmentObjective::updateOrCreate(
             ['id' => $this->objId],
@@ -299,7 +369,8 @@ class DepartmentObjectives extends Component
                 'achievement_pct' => $ach,
                 'status' => $status,
                 'source_type' => $this->source_type,
-                'odoo_account_code' => $posString,
+                'odoo_account_code' => $odooString,
+                'pos_anggaran' => count($this->selected_pos_codes) > 0 ? implode(',', $this->selected_pos_codes) : null,
                 'impact_note' => $this->impact_note ?: null,
             ]
         );
@@ -322,6 +393,18 @@ class DepartmentObjectives extends Component
         $departments = $this->getOdooDepartments();
         $corePos = $this->get12CorePos();
         $posMap = collect($corePos)->keyBy('code');
+
+        // Ambil akun Odoo dari database mysql_finance
+        $odooAccounts = $this->getOdooAccounts();
+        $odooAccountMap = $odooAccounts->keyBy('code');
+
+        $filteredOdooAccounts = $odooAccounts;
+        if (!empty(trim($this->odooAccountSearch))) {
+            $kw = strtolower(trim($this->odooAccountSearch));
+            $filteredOdooAccounts = $odooAccounts->filter(function ($item) use ($kw) {
+                return str_contains(strtolower($item->code), $kw) || str_contains(strtolower($item->name), $kw);
+            });
+        }
 
         $query = DepartmentObjective::where('period', $this->selectedPeriod);
 
@@ -367,7 +450,21 @@ class DepartmentObjectives extends Component
             'allObjectives' => $allPeriodObjs,
             'corePos' => $corePos,
             'posMap' => $posMap,
+            'odooAccounts' => $odooAccounts,
+            'odooAccountMap' => $odooAccountMap,
+            'filteredOdooAccounts' => $filteredOdooAccounts,
             'matrix' => $matrix,
+            'selectedPeriod' => $this->selectedPeriod,
+            'selectedDept' => $this->selectedDept,
+            'selectedStatus' => $this->selectedStatus,
+            'search' => $this->search,
+            'activeTab' => $this->activeTab,
+            'showModal' => $this->showModal,
+            'isEditMode' => $this->isEditMode,
+            'selected_pos_codes' => $this->selected_pos_codes,
+            'selected_odoo_accounts' => $this->selected_odoo_accounts,
+            'odoo_account_code' => $this->odoo_account_code,
+            'odooAccountSearch' => $this->odooAccountSearch,
             'totalKpi' => $totalKpi,
             'tercapai' => $tercapai,
             'waspada' => $waspada,

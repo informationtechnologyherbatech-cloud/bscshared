@@ -128,6 +128,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="{{ route('pohon-dupont') }}" class="nav-link {{ request()->routeIs('pohon-dupont') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-project-diagram text-success"></i>
+                            <p>Pohon DuPont & Driver</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="{{ route('apex-consolidation', ['tab' => 'dupont']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && request('tab') === 'dupont' ? 'active' : '' }}">
                             <i class="nav-icon fas fa-sitemap text-info"></i>
                             <p>DuPont Value Tree</p>
