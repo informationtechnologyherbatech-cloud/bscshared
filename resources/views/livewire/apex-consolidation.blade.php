@@ -131,6 +131,33 @@
                     <i class="fas fa-layer-group text-primary mr-2"></i> Matriks Kontribusi 5 Pilar Rasio
                 @endif
             </h5>
+            <ul class="nav nav-pills">
+                <li class="nav-item">
+                    <button wire:click="setTab('input')" class="nav-link btn-sm font-weight-bold {{ $activeTab === 'input' ? 'active bg-teal text-white' : 'text-dark' }} mr-1">
+                        <i class="fas fa-edit mr-1"></i> Input Revenue
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button wire:click="setTab('sensitivity')" class="nav-link btn-sm font-weight-bold {{ $activeTab === 'sensitivity' ? 'active bg-warning text-dark' : 'text-dark' }} mr-1">
+                        <i class="fas fa-sliders-h mr-1"></i> Analisis Sensitivitas
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button wire:click="setTab('weights')" class="nav-link btn-sm font-weight-bold {{ $activeTab === 'weights' ? 'active bg-primary text-white' : 'text-dark' }} mr-1">
+                        <i class="fas fa-layer-group mr-1"></i> Bobot 5 Pilar
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button wire:click="setTab('dupont')" class="nav-link btn-sm font-weight-bold {{ $activeTab === 'dupont' ? 'active bg-info text-white' : 'text-dark' }} mr-1">
+                        <i class="fas fa-sitemap mr-1"></i> DuPont Tree
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('dampak') }}" class="nav-link btn-sm font-weight-bold text-purple border border-purple">
+                        <i class="fas fa-vial mr-1"></i> Skenario / What-If Sandbox <i class="fas fa-external-link-alt ml-1 small"></i>
+                    </a>
+                </li>
+            </ul>
         </div>
 
         <div class="card-body p-4">

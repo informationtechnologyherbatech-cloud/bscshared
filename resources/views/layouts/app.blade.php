@@ -210,22 +210,22 @@
                             <p>Peta Pos Akun Finansial</p>
                         </a>
                     </li>
-                    @can('view sensitivity')
+                    @canany(['view sensitivity', 'view dashboard'])
                     <li class="nav-item">
-                        <a href="{{ route('sensitivity') }}" class="nav-link {{ request()->routeIs('sensitivity') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-chart-area text-purple"></i>
+                        <a href="{{ route('apex-consolidation', ['tab' => 'sensitivity']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && request('tab') === 'sensitivity' ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-sliders-h text-purple"></i>
                             <p>Analisis Sensitivitas</p>
                         </a>
                     </li>
-                    @endcan
-                    @can('view skenario')
+                    @endcanany
+                    @canany(['view skenario', 'view dampak', 'view dashboard'])
                     <li class="nav-item">
-                        <a href="{{ route('skenario') }}" class="nav-link {{ request()->routeIs('skenario') ? 'active' : '' }}">
+                        <a href="{{ route('dampak') }}" class="nav-link {{ request()->routeIs('dampak') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-clone text-secondary"></i>
                             <p>Skenario Manajemen</p>
                         </a>
                     </li>
-                    @endcan
+                    @endcanany
 
                     {{-- 4. PERENCANAAN TERPADU --}}
                     @can('view ibp')

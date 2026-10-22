@@ -50,6 +50,11 @@ class ApexConsolidation extends Component
         $this->loadPeriodData();
     }
 
+    public function setTab($tab)
+    {
+        $this->activeTab = $tab;
+    }
+
     public function loadPillarWeights()
     {
         $saved = \App\Models\AppSetting::getValue('bsc_pillar_weights');
