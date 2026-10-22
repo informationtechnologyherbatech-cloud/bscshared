@@ -30,14 +30,27 @@ class UjiIndikatorDepartemen extends Component
     // Pencarian spesifik Pos Anggaran Card
     public $searchPosCard = '';
 
+    // Mode simulasi: 'actual' (uji capaian realisasi) atau 'target' (uji kenaikan target KPI)
+    public $simulationMode = 'actual'; // 'actual', 'target'
+
     // Simulasi penyesuaian nilai realisasi KPI (key = string kpi_id, value = simulated_actual)
     public $simulatedActuals = [];
+
+    // Simulasi penyesuaian nilai target KPI (key = string kpi_id, value = simulated_target)
+    public $simulatedTargets = [];
 
     // Filter status gap
     public $filterGapOnly = false;
 
     // Modal konfirmasi simpan ke database resmi
     public $showApplyModal = false;
+
+    // Mode penyimpanan: 'both', 'actual_only', 'target_only'
+    public $applyMode = 'both';
+
+    // Slider Interaktif Khusus Simulasi Elastisitas Manufaktur (OEE vs COGS vs NPM)
+    public $oeeShift = 0.0; // -10% s/d +15%
+    public $scrapShift = 0.0; // -5% s/d +5% (Penurunan/Kenaikan Scrap Resin)
 
     public function mount()
     {
@@ -64,8 +77,10 @@ class UjiIndikatorDepartemen extends Component
     {
         $objs = DepartmentObjective::where('period', $this->selectedPeriod)->get();
         $this->simulatedActuals = [];
+        $this->simulatedTargets = [];
         foreach ($objs as $o) {
             $this->simulatedActuals[(string) $o->id] = (float) $o->actual;
+            $this->simulatedTargets[(string) $o->id] = (float) $o->target;
         }
     }
 
@@ -75,23 +90,39 @@ class UjiIndikatorDepartemen extends Component
         $this->simulatedActuals[(string) $kpiId] = is_numeric($cleanVal) ? (float) $cleanVal : 0;
     }
 
+    public function updateSimulatedTarget($kpiId, $value)
+    {
+        $cleanVal = str_replace(',', '.', trim($value));
+        $this->simulatedTargets[(string) $kpiId] = is_numeric($cleanVal) ? (float) $cleanVal : 0;
+    }
+
     /**
      * Step adjustment nilai simulasi (+5% atau -5%, dst)
      */
     public function adjustSimulatedPercent($kpiId, $percent)
     {
         $key = (string) $kpiId;
-        $curr = isset($this->simulatedActuals[$key]) ? (float) $this->simulatedActuals[$key] : 0;
-        $multiplier = 1 + ($percent / 100);
-        $newVal = round($curr * $multiplier, 2);
-        if ($newVal < 0) $newVal = 0;
-        $this->simulatedActuals[$key] = $newVal;
+        if ($this->simulationMode === 'target') {
+            $curr = isset($this->simulatedTargets[$key]) ? (float) $this->simulatedTargets[$key] : 0;
+            $multiplier = 1 + ($percent / 100);
+            $newVal = round($curr * $multiplier, 2);
+            if ($newVal < 0) $newVal = 0;
+            $this->simulatedTargets[$key] = $newVal;
+        } else {
+            $curr = isset($this->simulatedActuals[$key]) ? (float) $this->simulatedActuals[$key] : 0;
+            $multiplier = 1 + ($percent / 100);
+            $newVal = round($curr * $multiplier, 2);
+            if ($newVal < 0) $newVal = 0;
+            $this->simulatedActuals[$key] = $newVal;
+        }
     }
 
     public function resetSimulation()
     {
+        $this->oeeShift = 0.0;
+        $this->scrapShift = 0.0;
         $this->initSimulatedValues();
-        session()->flash('message', 'Nilai uji simulasi indikator berhasil di-reset kembali ke data aktual asli!');
+        session()->flash('message', 'Nilai uji simulasi indikator berhasil di-reset kembali ke data baseline asli!');
     }
 
     /**
@@ -127,7 +158,7 @@ class UjiIndikatorDepartemen extends Component
     }
 
     /**
-     * Terapkan nilai hasil simulasi What-If langsung ke database Sasaran Mutu resmi
+     * Terapkan nilai hasil simulasi What-If langsung ke database Sasaran Mutu resmi (/objectives)
      */
     public function applySimulationToLive()
     {
@@ -136,22 +167,36 @@ class UjiIndikatorDepartemen extends Component
 
         foreach ($objs as $obj) {
             $key = (string) $obj->id;
-            if (isset($this->simulatedActuals[$key])) {
-                $simVal = (float) $this->simulatedActuals[$key];
-                $simAch = $this->calculateAchievement($obj->target, $simVal, $obj->polarity);
-                $simStatus = $this->determineStatus($simAch);
+            $updateData = [];
 
-                $obj->update([
-                    'actual' => $simVal,
-                    'achievement_pct' => $simAch,
-                    'status' => $simStatus,
-                ]);
+            // 1. Terapkan target simulasi jika dipilih
+            $targetToUse = (float) $obj->target;
+            if (($this->applyMode === 'both' || $this->applyMode === 'target_only') && isset($this->simulatedTargets[$key])) {
+                $targetToUse = (float) $this->simulatedTargets[$key];
+                $updateData['target'] = $targetToUse;
+            }
+
+            // 2. Terapkan realisasi (actual) simulasi jika dipilih
+            $actualToUse = (float) $obj->actual;
+            if (($this->applyMode === 'both' || $this->applyMode === 'actual_only') && isset($this->simulatedActuals[$key])) {
+                $actualToUse = (float) $this->simulatedActuals[$key];
+                $updateData['actual'] = $actualToUse;
+            }
+
+            if (!empty($updateData)) {
+                $newAch = $this->calculateAchievement($targetToUse, $actualToUse, $obj->polarity);
+                $newStatus = $this->determineStatus($newAch);
+                $updateData['achievement_pct'] = $newAch;
+                $updateData['status'] = $newStatus;
+
+                $obj->update($updateData);
                 $updatedCount++;
             }
         }
 
         $this->showApplyModal = false;
-        session()->flash('message', "Sukses! $updatedCount nilai hasil simulasi telah resmi diterapkan ke Sasaran Mutu periode {$this->selectedPeriod}.");
+        $modeDesc = ($this->applyMode === 'target_only') ? 'target' : (($this->applyMode === 'actual_only') ? 'realisasi (actual)' : 'target & realisasi');
+        session()->flash('message', "Sukses! $updatedCount parameter $modeDesc hasil simulasi telah resmi disimpan ke Sasaran Departemen (/objectives) periode {$this->selectedPeriod}.");
     }
 
     /**
@@ -384,7 +429,19 @@ class UjiIndikatorDepartemen extends Component
                 $simVal = (float) $obj->actual;
             }
 
-            $simAch = $this->calculateAchievement($obj->target, $simVal, $obj->polarity);
+            // Nilai Target yang disimulasikan
+            if (array_key_exists($keyStr, $this->simulatedTargets)) {
+                $simTarget = (float) $this->simulatedTargets[$keyStr];
+            } else {
+                $simTarget = (float) $obj->target;
+            }
+
+            // Jika sedang dalam mode simulasi target, hitung achievement dari target simulasi vs actual
+            // Jika mode simulasi actual, hitung dari actual simulasi vs target
+            $activeTarget = ($this->simulationMode === 'target') ? $simTarget : (float) $obj->target;
+            $activeActual = ($this->simulationMode === 'actual') ? $simVal : (float) $obj->actual;
+
+            $simAch = $this->calculateAchievement($activeTarget, $activeActual, $obj->polarity);
             $simStatus = $this->determineStatus($simAch);
 
             if ($simStatus === 'Tercapai') $totalSimTercapai++;
@@ -443,10 +500,12 @@ class UjiIndikatorDepartemen extends Component
                 'base_ach' => (float) $obj->achievement_pct,
                 'base_status' => $obj->status,
                 'sim_actual' => $simVal,
+                'sim_target' => $simTarget,
                 'sim_ach' => $simAch,
                 'sim_status' => $simStatus,
                 'diff_ach' => round($simAch - (float) $obj->achievement_pct, 1),
                 'diff_val' => round($simVal - (float) $obj->actual, 2),
+                'diff_target' => round($simTarget - (float) $obj->target, 2),
                 'budget_codes' => $budgetCodes,
                 'odoo_codes' => $odooCodes,
                 'impact_note' => $obj->impact_note,
@@ -548,6 +607,42 @@ class UjiIndikatorDepartemen extends Component
             usort($kpiSimulations, fn($a, $b) => strcmp($a['kpi_code'], $b['kpi_code']));
         }
 
+        // 4. MODEL ELASTISITAS OPERASIONAL PABRIK BOTOL (OEE vs COGS vs NPM)
+        // Baseline pabrik Herbatech: Revenue 115.2 M, COGS ~28.66 M (24.88%), OPEX ~1.34 M, Net Profit ~85.2 M
+        $baseRev = 115.20;
+        $baseCogs = $baseRev * 0.2488; // ~ 28.66 M
+        $baseOpex = $baseRev * 0.0116; // ~ 1.34 M
+
+        // Setiap kenaikan 1% OEE Mesin Blow/Injection Molding menghasilkan efisiensi biaya tetap/overhead COGS sebesar 0.45%
+        // dan setiap penurunan 1% Scrap Rate Resin menghemat 0.75% biaya bahan baku langsung
+        $cogsReductionPct = ($this->oeeShift * 0.45) + ($this->scrapShift * -0.75); // jika scrap turun (negatif), penghematan positif
+        $simCogs = max(0, $baseCogs * (1 - ($cogsReductionPct / 100)));
+        $cogsDeltaNominal = $simCogs - $baseCogs; // negatif = penghematan
+
+        $simGrossProfit = $baseRev - $simCogs;
+        $simNetProfit = $simGrossProfit - $baseOpex;
+        $baseNetProfit = ($baseRev - $baseCogs) - $baseOpex;
+        $npmDeltaNominal = $simNetProfit - $baseNetProfit;
+
+        $baseGpmPct = ($baseRev > 0) ? (($baseRev - $baseCogs) / $baseRev) * 100 : 0;
+        $simGpmPct = ($baseRev > 0) ? ($simGrossProfit / $baseRev) * 100 : 0;
+        $baseNpmPct = ($baseRev > 0) ? ($baseNetProfit / $baseRev) * 100 : 0;
+        $simNpmPct = ($baseRev > 0) ? ($simNetProfit / $baseRev) * 100 : 0;
+
+        $elasticityData = [
+            'oeeShift' => $this->oeeShift,
+            'scrapShift' => $this->scrapShift,
+            'cogsReductionPct' => round($cogsReductionPct, 2),
+            'baseCogs' => round($baseCogs, 2),
+            'simCogs' => round($simCogs, 2),
+            'cogsDeltaNominal' => round($cogsDeltaNominal, 2),
+            'baseGpmPct' => round($baseGpmPct, 2),
+            'simGpmPct' => round($simGpmPct, 2),
+            'baseNpmPct' => round($baseNpmPct, 2),
+            'simNpmPct' => round($simNpmPct, 2),
+            'npmDeltaNominal' => round($npmDeltaNominal, 2),
+        ];
+
         return view('livewire.uji-indikator-departemen', [
             'periods' => $periods,
             'departments' => $departments,
@@ -561,6 +656,7 @@ class UjiIndikatorDepartemen extends Component
             'totalSimTercapai' => $totalSimTercapai,
             'totalSimWaspada' => $totalSimWaspada,
             'totalSimDiBawah' => $totalSimDiBawah,
+            'elasticityData' => $elasticityData,
         ])->layout('layouts.app', ['title' => 'Uji Indikator Departemen (Level 3)']);
     }
 }

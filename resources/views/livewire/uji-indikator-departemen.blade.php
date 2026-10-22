@@ -25,20 +25,30 @@
                             </select>
                         </div>
 
+                        <!-- Mode Simulasi Toggle (Target vs Realisasi) -->
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" wire:click="$set('simulationMode', 'actual')" class="btn {{ $simulationMode === 'actual' ? 'btn-warning font-weight-bold text-dark' : 'btn-outline-secondary bg-white' }}" title="Uji Simulasi Realisasi (Actual)">
+                                <i class="fas fa-chart-line mr-1"></i> Uji Realisasi
+                            </button>
+                            <button type="button" wire:click="$set('simulationMode', 'target')" class="btn {{ $simulationMode === 'target' ? 'btn-info font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}" title="Uji Kenaikan Target KPI">
+                                <i class="fas fa-bullseye mr-1"></i> Uji Target KPI
+                            </button>
+                        </div>
+
                         <!-- Tombol Reset Simulasi -->
-                        <button type="button" wire:click="resetSimulation" class="btn btn-sm btn-outline-secondary" title="Kembalikan semua nilai ke data aktual asli">
+                        <button type="button" wire:click="resetSimulation" class="btn btn-sm btn-outline-secondary" title="Kembalikan semua nilai ke data baseline asli">
                             <i class="fas fa-undo mr-1"></i> Reset Baseline
                         </button>
 
-                        <!-- Tombol Terapkan ke Live -->
+                        <!-- Tombol Terapkan ke Sasaran Departemen (/objectives) -->
                         @if(auth()->user()?->can('manage objectives') || auth()->user()?->can('can_write_kpi'))
-                            <button type="button" wire:click="$set('showApplyModal', true)" class="btn btn-sm btn-success font-weight-bold" title="Terapkan hasil simulasi ke data sasaran mutu resmi">
-                                <i class="fas fa-check-double mr-1"></i> Terapkan ke Sasaran Mutu
+                            <button type="button" wire:click="$set('showApplyModal', true)" class="btn btn-sm btn-success font-weight-bold shadow-sm" title="Terapkan hasil simulasi ke data sasaran departemen resmi">
+                                <i class="fas fa-save mr-1"></i> Terapkan ke Sasaran Departemen
                             </button>
                         @endif
 
                         <a href="{{ route('department-objectives') }}" class="btn btn-sm btn-outline-warning text-dark font-weight-bold">
-                            <i class="fas fa-bullseye mr-1"></i> Sasaran Mutu
+                            <i class="fas fa-external-link-alt mr-1"></i> Buka /objectives
                         </a>
                     </div>
                 </div>
@@ -111,9 +121,124 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            <!-- WIDGET GRAFIK & SIMULATOR ELASTISITAS OPERASIONAL (OEE vs COGS vs NPM) -->
+            <div class="card border-0 shadow-sm mb-3" style="background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
+                <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center flex-wrap" style="gap: 8px;">
+                    <div>
+                        <strong class="text-dark">
+                            <i class="fas fa-chart-line text-primary mr-1"></i> Visualisasi Grafik Elastisitas Operasional: Pengaruh OEE Mesin & Scrap Rate ke COGS dan NPM
+                        </strong>
+                        <div class="text-muted small">Simulasi transmisi mikro-operasional lantai pabrik cetak botol ke laporan laba rugi.</div>
+                    </div>
+                    <span class="badge badge-primary px-2 py-1 font-weight-bold">
+                        <i class="fas fa-microchip mr-1"></i> Model Elastisitas Manufaktur
+                    </span>
+                </div>
+                <div class="card-body p-3">
+                    <div class="row align-items-center">
+                        <!-- TUAS SLIDER ELASTISITAS -->
+                        <div class="col-lg-5 border-right pr-lg-4 mb-3 mb-lg-0">
+                            <!-- Slider OEE Mesin -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="small font-weight-bold text-dark mb-0">
+                                        <i class="fas fa-cogs text-teal mr-1"></i> Pergeseran OEE Mesin Cetak (Blow/Inj):
+                                    </label>
+                                    <span class="badge badge-teal font-weight-bold">{{ $oeeShift >= 0 ? '+' : '' }}{{ $oeeShift }}%</span>
+                                </div>
+                                <input type="range" class="form-range w-100" min="-10" max="15" step="1" wire:model.live="oeeShift">
+                                <div class="d-flex justify-content-between text-muted" style="font-size: 10px;">
+                                    <span>Drop (-10%)</span>
+                                    <span>Baseline (0%)</span>
+                                    <span>Lonjakan (+15%)</span>
+                                </div>
+                            </div>
 
-            <!-- PROYEKSI STATUS KESEHATAN 130 POS ANGGARAN ODOO & AKUN FINANSIAL -->
+                            <!-- Slider Scrap Rate Bahan Resin -->
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="small font-weight-bold text-dark mb-0">
+                                        <i class="fas fa-recycle text-warning mr-1"></i> Pergeseran Scrap Rate Biji Plastik:
+                                    </label>
+                                    <span class="badge badge-warning text-dark font-weight-bold">{{ $scrapShift >= 0 ? '+' : '' }}{{ $scrapShift }}%</span>
+                                </div>
+                                <input type="range" class="form-range w-100" min="-5" max="5" step="0.5" wire:model.live="scrapShift">
+                                <div class="d-flex justify-content-between text-muted" style="font-size: 10px;">
+                                    <span>Hemat / Efisien (-5%)</span>
+                                    <span>Baseline (0%)</span>
+                                    <span>Boros / Cacat (+5%)</span>
+                                </div>
+                            </div>
+
+                            <div class="p-2 bg-light rounded border text-muted small mt-2" style="font-size: 11px;">
+                                <i class="fas fa-lightbulb text-warning mr-1"></i> <strong>Rasio Elastisitas:</strong> Tiap <strong>+5% OEE</strong> menekan beban overhead tetap pabrik sebesar <strong>~2.25%</strong>, dan tiap <strong>-1% Scrap</strong> menghemat <strong>0.75% HPP</strong> resin polimer murni.
+                            </div>
+                        </div>
+
+                        <!-- GRAFIK BATANG & HASIL PROYEKSI -->
+                        <div class="col-lg-7 pl-lg-4">
+                            <div class="row">
+                                <!-- Box HPP / COGS -->
+                                <div class="col-md-6 mb-2">
+                                    <div class="p-2 bg-white rounded border shadow-xs h-100">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="text-muted small font-weight-bold">HPP / COGS Pabrik:</span>
+                                            <span class="badge {{ $elasticityData['cogsDeltaNominal'] <= 0 ? 'badge-success' : 'badge-danger' }} font-weight-bold">
+                                                {{ $elasticityData['cogsDeltaNominal'] <= 0 ? 'Efisiensi' : 'Pembengkakan' }}
+                                            </span>
+                                        </div>
+                                        <div class="d-flex align-items-baseline mb-1">
+                                            <h4 class="font-weight-bold text-dark mb-0">IDR {{ number_format($elasticityData['simCogs'], 2) }} M</h4>
+                                            <small class="text-muted ml-2">(Baseline: {{ number_format($elasticityData['baseCogs'], 2) }} M)</small>
+                                        </div>
+                                        <div class="small {{ $elasticityData['cogsDeltaNominal'] <= 0 ? 'text-success' : 'text-danger' }} font-weight-bold mb-2">
+                                            <i class="fas {{ $elasticityData['cogsDeltaNominal'] <= 0 ? 'fa-arrow-down' : 'fa-arrow-up' }} mr-1"></i>
+                                            {{ $elasticityData['cogsDeltaNominal'] <= 0 ? '-' : '+' }}IDR {{ number_format(abs($elasticityData['cogsDeltaNominal']), 2) }} M ({{ $elasticityData['cogsReductionPct'] }}%)
+                                        </div>
+                                        <!-- Visual Progress Bar Efisiensi COGS -->
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar {{ $elasticityData['cogsDeltaNominal'] <= 0 ? 'bg-success' : 'bg-danger' }}" role="progressbar" style="width: {{ min(100, max(10, 100 - ($elasticityData['cogsReductionPct'] * 3))) }}%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Box Net Profit Margin (NPM) -->
+                                <div class="col-md-6 mb-2">
+                                    <div class="p-2 bg-white rounded border shadow-xs h-100">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="text-muted small font-weight-bold">Net Profit Margin (NPM):</span>
+                                            <span class="badge {{ $elasticityData['npmDeltaNominal'] >= 0 ? 'badge-success' : 'badge-danger' }} font-weight-bold">
+                                                {{ $elasticityData['npmDeltaNominal'] >= 0 ? 'Ekspansi Laba' : 'Laba Tertekan' }}
+                                            </span>
+                                        </div>
+                                        <div class="d-flex align-items-baseline mb-1">
+                                            <h4 class="font-weight-bold {{ $elasticityData['npmDeltaNominal'] >= 0 ? 'text-success' : 'text-danger' }} mb-0">{{ number_format($elasticityData['simNpmPct'], 2) }}%</h4>
+                                            <small class="text-muted ml-2">(Baseline: {{ number_format($elasticityData['baseNpmPct'], 2) }}%)</small>
+                                        </div>
+                                        <div class="small {{ $elasticityData['npmDeltaNominal'] >= 0 ? 'text-success' : 'text-danger' }} font-weight-bold mb-2">
+                                            <i class="fas {{ $elasticityData['npmDeltaNominal'] >= 0 ? 'fa-arrow-up' : 'fa-arrow-down' }} mr-1"></i>
+                                            {{ $elasticityData['npmDeltaNominal'] >= 0 ? '+' : '-' }}IDR {{ number_format(abs($elasticityData['npmDeltaNominal']), 2) }} M tambahan laba bersih
+                                        </div>
+                                        <!-- Visual Progress Bar Kenaikan NPM -->
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar {{ $elasticityData['npmDeltaNominal'] >= 0 ? 'bg-teal' : 'bg-warning' }}" role="progressbar" style="width: {{ min(100, max(15, ($elasticityData['simNpmPct'] / 85) * 100)) }}%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mini Perbandingan GPM -->
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border mt-1 small">
+                                <span class="text-dark font-weight-bold">Gross Profit Margin (GPM) Baru:</span>
+                                <div>
+                                    <span class="font-weight-bold text-teal">{{ number_format($elasticityData['simGpmPct'], 2) }}%</span>
+                                    <span class="text-muted"> (Sebelumnya: {{ number_format($elasticityData['baseGpmPct'], 2) }}%)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center flex-wrap" style="gap: 10px;">
                     <div>
@@ -270,8 +395,12 @@
                                     <th style="width: 11%;">Dept PIC</th>
                                     <th class="text-center" style="width: 7%;">Target</th>
                                     <th class="text-center" style="width: 7%;">Aktual Asli</th>
-                                    <th class="text-center bg-warning text-dark" style="width: 18%;">
-                                        <i class="fas fa-edit mr-1"></i> Realisasi Uji (Simulasi)
+                                    <th class="text-center {{ $simulationMode === 'target' ? 'bg-info text-white' : 'bg-warning text-dark' }}" style="width: 19%;">
+                                        @if($simulationMode === 'target')
+                                            <i class="fas fa-bullseye mr-1"></i> Target Baru Uji (Simulasi)
+                                        @else
+                                            <i class="fas fa-edit mr-1"></i> Realisasi Uji (Simulasi)
+                                        @endif
                                     </th>
                                     <th class="text-center" style="width: 11%;">Hasil Uji Capaian</th>
                                     <th style="width: 18%;">Dampak Finansial & Operasional</th>
@@ -295,12 +424,23 @@
                                                 {{ $kpi['dept_name'] }} ({{ $kpi['dept_code'] }})
                                             </span>
                                         </td>
-                                        <td class="text-center font-weight-bold text-muted">
-                                            {{ number_format($kpi['target'], 2, ',', '.') }} {{ $kpi['unit'] }}
+                                        <td class="text-center font-weight-bold {{ $simulationMode === 'target' ? 'text-info font-weight-bold' : 'text-muted' }}">
+                                            @if($simulationMode === 'target' && $kpi['diff_target'] != 0)
+                                                <del class="text-muted small d-block">{{ number_format($kpi['target'], 2, ',', '.') }}</del>
+                                                <span class="text-info font-weight-bold">{{ number_format($kpi['sim_target'], 2, ',', '.') }}</span>
+                                            @else
+                                                {{ number_format($kpi['target'], 2, ',', '.') }}
+                                            @endif
+                                            <div style="font-size: 10px;">{{ $kpi['unit'] }}</div>
                                         </td>
                                         <td class="text-center text-muted">
-                                            {{ number_format($kpi['actual'], 2, ',', '.') }} {{ $kpi['unit'] }}
-                                            <div style="font-size: 10px;">(Baseline)</div>
+                                            @if($simulationMode === 'actual' && $kpi['diff_val'] != 0)
+                                                <del class="text-muted small d-block">{{ number_format($kpi['actual'], 2, ',', '.') }}</del>
+                                                <span class="text-warning font-weight-bold">{{ number_format($kpi['sim_actual'], 2, ',', '.') }}</span>
+                                            @else
+                                                {{ number_format($kpi['actual'], 2, ',', '.') }}
+                                            @endif
+                                            <div style="font-size: 10px;">{{ $kpi['unit'] }} (Baseline)</div>
                                         </td>
                                         <td class="text-center bg-light">
                                             <!-- Step Adjustment Buttons (+5%, -5%, +10%, -10%) -->
@@ -311,25 +451,49 @@
                                                 <button type="button" wire:click="adjustSimulatedPercent('{{ $kpi['id'] }}', 10)" class="btn btn-outline-secondary py-0" title="Naik 10%" style="font-size: 10px;">+10%</button>
                                             </div>
 
-                                            <div class="input-group input-group-sm">
-                                                <input type="number" 
-                                                       step="any" 
-                                                       wire:key="input-kpi-{{ $kpi['id'] }}"
-                                                       value="{{ $kpi['sim_actual'] }}"
-                                                       wire:change="updateSimulatedActual('{{ $kpi['id'] }}', $event.target.value)"
-                                                       wire:keydown.enter="updateSimulatedActual('{{ $kpi['id'] }}', $event.target.value)"
-                                                       class="form-control form-control-sm text-center font-weight-bold text-dark border-warning"
-                                                       style="background: #fffdf5;">
-                                                <div class="input-group-append">
-                                                    <span class="input-group-text bg-white small px-2">{{ $kpi['unit'] }}</span>
-                                                    <button type="button" 
-                                                            onclick="let inp = this.closest('.input-group').querySelector('input'); @this.updateSimulatedActual('{{ $kpi['id'] }}', inp.value);"
-                                                            class="btn btn-warning btn-xs font-weight-bold" 
-                                                            title="Terapkan Nilai Uji">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
+                                            @if($simulationMode === 'target')
+                                                <!-- INPUT SIMULASI TARGET -->
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" 
+                                                           step="any" 
+                                                           wire:key="input-target-{{ $kpi['id'] }}"
+                                                           value="{{ $kpi['sim_target'] }}"
+                                                           wire:change="updateSimulatedTarget('{{ $kpi['id'] }}', $event.target.value)"
+                                                           wire:keydown.enter="updateSimulatedTarget('{{ $kpi['id'] }}', $event.target.value)"
+                                                           class="form-control form-control-sm text-center font-weight-bold text-dark border-info"
+                                                           style="background: #f0fdf4;">
+                                                    <div class="input-group-append">
+                                                        <span class="input-group-text bg-white small px-2">{{ $kpi['unit'] }}</span>
+                                                        <button type="button" 
+                                                                onclick="let inp = this.closest('.input-group').querySelector('input'); @this.updateSimulatedTarget('{{ $kpi['id'] }}', inp.value);"
+                                                                class="btn btn-info btn-xs font-weight-bold" 
+                                                                title="Terapkan Target Uji">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            @else
+                                                <!-- INPUT SIMULASI REALISASI (ACTUAL) -->
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" 
+                                                           step="any" 
+                                                           wire:key="input-kpi-{{ $kpi['id'] }}"
+                                                           value="{{ $kpi['sim_actual'] }}"
+                                                           wire:change="updateSimulatedActual('{{ $kpi['id'] }}', $event.target.value)"
+                                                           wire:keydown.enter="updateSimulatedActual('{{ $kpi['id'] }}', $event.target.value)"
+                                                           class="form-control form-control-sm text-center font-weight-bold text-dark border-warning"
+                                                           style="background: #fffdf5;">
+                                                    <div class="input-group-append">
+                                                        <span class="input-group-text bg-white small px-2">{{ $kpi['unit'] }}</span>
+                                                        <button type="button" 
+                                                                onclick="let inp = this.closest('.input-group').querySelector('input'); @this.updateSimulatedActual('{{ $kpi['id'] }}', inp.value);"
+                                                                class="btn btn-warning btn-xs font-weight-bold" 
+                                                                title="Terapkan Realisasi Uji">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @endif
                                         </td>
                                         <td class="text-center">
                                             @if($kpi['sim_status'] === 'Tercapai')
@@ -448,30 +612,53 @@
         </div>
     </section>
 
-    <!-- MODAL KONFIRMASI TERAPKAN KE LIVE -->
+    <!-- MODAL KONFIRMASI TERAPKAN KE SASARAN DEPARTEMEN (/objectives) -->
     @if($showApplyModal)
         <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); z-index: 1050;">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header bg-success text-white py-2">
                         <h5 class="modal-title font-weight-bold" style="font-size: 15px;">
-                            <i class="fas fa-check-double mr-1"></i> Konfirmasi Terapkan Hasil Uji Simulasi
+                            <i class="fas fa-check-double mr-1"></i> Konfirmasi Terapkan Hasil Uji Simulasi ke /objectives
                         </h5>
                         <button type="button" class="close text-white" wire:click="$set('showApplyModal', false)">&times;</button>
                     </div>
                     <div class="modal-body p-3">
-                        <div class="alert alert-warning py-2 mb-3" style="font-size: 12.5px;">
-                            <i class="fas fa-exclamation-triangle mr-1"></i> <strong>Perhatian:</strong>
-                            Aksi ini akan memperbarui nilai <strong>Realisasi (Actual)</strong> pada seluruh Sasaran Mutu (KPI) periode <strong>{{ $selectedPeriod }}</strong> di database resmi sesuai dengan angka hasil uji simulasi di layar ini.
+                        <div class="alert alert-info py-2 mb-3" style="font-size: 12.5px;">
+                            <i class="fas fa-info-circle mr-1"></i> <strong>Pilih Parameter yang Ingin Diterapkan:</strong><br>
+                            Anda dapat memilih untuk memperbarui <strong>Target Baru</strong> hasil simulasi, <strong>Realisasi (Actual)</strong>, atau keduanya ke menu <strong>Sasaran Departemen & KPI (/objectives)</strong> untuk periode <strong>{{ $selectedPeriod }}</strong>.
                         </div>
+
+                        <div class="form-group mb-3">
+                            <label class="small font-weight-bold text-dark d-block mb-1">Cakupan Penyimpanan ke Database Resmi:</label>
+                            <div class="custom-control custom-radio mb-1">
+                                <input type="radio" id="modeBoth" wire:model.live="applyMode" value="both" class="custom-control-input">
+                                <label class="custom-control-label small font-weight-bold" for="modeBoth">
+                                    Simpan Target & Realisasi Baru Sekaligus (Rekomendasi)
+                                </label>
+                            </div>
+                            <div class="custom-control custom-radio mb-1">
+                                <input type="radio" id="modeTarget" wire:model.live="applyMode" value="target_only" class="custom-control-input">
+                                <label class="custom-control-label small text-info font-weight-bold" for="modeTarget">
+                                    Hanya Simpan Nilai Target Baru (Realisasi Tetap)
+                                </label>
+                            </div>
+                            <div class="custom-control custom-radio">
+                                <input type="radio" id="modeActual" wire:model.live="applyMode" value="actual_only" class="custom-control-input">
+                                <label class="custom-control-label small text-warning font-weight-bold" for="modeActual">
+                                    Hanya Simpan Nilai Realisasi Baru (Target Tetap)
+                                </label>
+                            </div>
+                        </div>
+
                         <p class="small text-muted mb-0">
-                            Apakah Anda yakin ingin menerapkan seluruh nilai uji simulasi ini menjadi data capaian sasaran mutu resmi?
+                            Apakah Anda yakin ingin menerapkan parameter simulasi ini menjadi data resmi di menu <strong>/objectives</strong>?
                         </p>
                     </div>
                     <div class="modal-footer bg-light py-2">
                         <button type="button" class="btn btn-sm btn-secondary" wire:click="$set('showApplyModal', false)">Batal</button>
                         <button type="button" class="btn btn-sm btn-success font-weight-bold" wire:click="applySimulationToLive">
-                            <i class="fas fa-save mr-1"></i> Ya, Terapkan Sekarang
+                            <i class="fas fa-save mr-1"></i> Ya, Terapkan ke Sasaran Departemen
                         </button>
                     </div>
                 </div>
