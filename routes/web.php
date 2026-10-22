@@ -57,18 +57,18 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/uji-indikator', UjiIndikatorDepartemen::class)->middleware('permission:view objectives|view dashboard')->name('uji-indikator');
     // 7 Action Plan — view actionplans
     Route::get('/action-plans', ActionPlans::class)->middleware('permission:view actionplans|view dashboard')->name('action-plans');
-    // 8 Konsensus IBP — view ibp
-    Route::get('/ibp', \App\Livewire\ComingSoon::class)->middleware('permission:view ibp')->name('ibp')
-        ->defaults('title', 'Konsensus IBP')->defaults('desc', 'IBP 5 langkah: Product→Demand→Supply→Rekonsiliasi Finansial→MBR, proyeksi 12 bulan.');
-    // 9 Sensitivitas — view sensitivity
-    Route::get('/sensitivity', \App\Livewire\ComingSoon::class)->middleware('permission:view sensitivity')->name('sensitivity')
-        ->defaults('title', 'Sensitivitas')->defaults('desc', 'Margin keamanan rasio terhadap skenario normal/moderat/krisis.');
-    // 10 Skenario — view skenario
-    Route::get('/skenario', \App\Livewire\ComingSoon::class)->middleware('permission:view skenario')->name('skenario')
-        ->defaults('title', 'Skenario')->defaults('desc', 'Simpan/muat skenario, undo/redo 50 langkah.');
-    // 11 Dokumentasi Metode — view dokumentasi
-    Route::get('/dokumentasi', \App\Livewire\ComingSoon::class)->middleware('permission:view dokumentasi')->name('dokumentasi')
-        ->defaults('title', 'Dokumentasi Metode')->defaults('desc', 'Metodologi skoring polaritas/band/cap/agregasi + self-test 12s.');
+    // 8 Konsensus IBP — view ibp (5 langkah terpadu & persetujuan Direksi/Kadep)
+    Route::get('/ibp', \App\Livewire\KonsensusIbp::class)->middleware('permission:view ibp|view dashboard')->name('ibp');
+    // 9 Sensitivitas — view sensitivity (Redirect ke simulator sensitivitas aktif)
+    Route::get('/sensitivity', function () {
+        return redirect()->route('apex-consolidation', ['tab' => 'sensitivity']);
+    })->middleware('permission:view sensitivity|view dashboard')->name('sensitivity');
+    // 10 Skenario — view skenario (Redirect ke Sandbox Uji Dampak & Skenario What-If)
+    Route::get('/skenario', function () {
+        return redirect()->route('dampak');
+    })->middleware('permission:view skenario|view dampak|view dashboard')->name('skenario');
+    // 11 Dokumentasi Metode — view dokumentasi (Panduan polaritas, 5 pilar, DuPont, & 15 rasio)
+    Route::get('/dokumentasi', \App\Livewire\DokumentasiMetode::class)->middleware('permission:view dokumentasi|view dashboard')->name('dokumentasi');
     // 12 Gateway & Audit — view gateway (umbrella) + specific
     Route::get('/integration', SystemIntegration::class)->middleware('permission:view integration|view gateway')->name('system-integration');
     Route::get('/staging-logs', StagingLogs::class)->middleware('permission:view staging|view gateway')->name('staging-logs');
