@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('financial_ratios', function (Blueprint $table) {
-            $table->string('benchmark', 100)->nullable()->after('target');
+            if (!Schema::hasColumn('financial_ratios', 'benchmark')) {
+                $table->string('benchmark', 100)->nullable()->after('target');
+            }
         });
     }
 
