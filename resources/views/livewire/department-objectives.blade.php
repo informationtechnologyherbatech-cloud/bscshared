@@ -276,15 +276,32 @@
                                                         );
                                                     @endphp
                                                     @if(!empty($obj->impact_note))
-                                                        <div class="p-1 px-2 rounded bg-light border text-dark font-italic small mt-1 shadow-xs" style="font-size: 11px; line-height: 1.25;">
-                                                            <i class="fas fa-pencil-alt text-warning mr-1"></i><strong>Catatan:</strong> {{ $obj->impact_note }}
+                                                        <div class="p-1.5 px-2 rounded mt-1 shadow-xs" style="font-size: 11px; line-height: 1.3; background-color: #f0f7ff; border: 1px solid #b8daff; border-left: 3px solid #007bff !important;">
+                                                            <div class="d-flex align-items-center mb-0.5" style="gap: 4px;">
+                                                                <span class="badge badge-primary text-white font-weight-bold py-0 px-1" style="font-size: 9.5px; letter-spacing: 0.3px;">
+                                                                    <i class="fas fa-pen mr-1"></i>Manual
+                                                                </span>
+                                                                <span class="text-primary font-weight-bold" style="font-size: 10px;">
+                                                                    Catatan Tambahan Dampak:
+                                                                </span>
+                                                            </div>
+                                                            <div class="text-dark font-italic pl-0.5">
+                                                                {{ $obj->impact_note }}
+                                                            </div>
                                                         </div>
                                                     @elseif(!empty($autoNote))
-                                                        <div class="p-1 px-2 rounded bg-light border text-dark small mt-1 shadow-xs" style="font-size: 11px; line-height: 1.25; border-left: 3px solid #ffc107 !important;">
-                                                            <span class="text-secondary font-weight-bold" style="font-size: 10px;">
-                                                                <i class="fas fa-magic text-warning mr-1"></i>Catatan Tambahan Dampak:
-                                                            </span>
-                                                            <span class="text-dark font-italic">{{ $autoNote }}</span>
+                                                        <div class="p-1.5 px-2 rounded mt-1 shadow-xs" style="font-size: 11px; line-height: 1.3; background-color: #fffdf5; border: 1px solid #ffeeba; border-left: 3px solid #ffc107 !important;">
+                                                            <div class="d-flex align-items-center mb-0.5" style="gap: 4px;">
+                                                                <span class="badge badge-warning text-dark font-weight-bold py-0 px-1" style="font-size: 9.5px; letter-spacing: 0.3px;">
+                                                                    <i class="fas fa-robot mr-1"></i>Otomatis
+                                                                </span>
+                                                                <span class="text-secondary font-weight-bold" style="font-size: 10px;">
+                                                                    Catatan Tambahan Dampak:
+                                                                </span>
+                                                            </div>
+                                                            <div class="text-dark font-italic pl-0.5">
+                                                                {{ $autoNote }}
+                                                            </div>
                                                         </div>
                                                     @elseif(empty($autoImpacts) && empty($obj->odoo_account_code))
                                                         <span class="text-muted small font-italic">- Tautkan ke pos anggaran / akun Odoo untuk melihat dampak -</span>

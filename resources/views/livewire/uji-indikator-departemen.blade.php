@@ -8,11 +8,11 @@
                         <i class="fas fa-flask text-warning mr-2"></i> Uji Indikator Departemen (Level 3)
                     </h1>
                     <small class="text-muted">
-                        Simulasi What-If: Uji perubahan nilai capaian sasaran mutu (KPI) dan pantau langsung rambatannya ke 12 Pos Finansial Inti Pabrik Botol Plastik.
+                        Simulasi What-If: Uji perubahan nilai capaian sasaran mutu (KPI) dan pantau langsung rambatannya ke 130 Pos Anggaran Odoo & Akun Finansial.
                     </small>
                 </div>
                 <div class="col-sm-6 text-right">
-                    <div class="d-inline-flex align-items-center" style="gap: 8px;">
+                    <div class="d-inline-flex align-items-center flex-wrap" style="gap: 8px;">
                         <!-- Filter Periode -->
                         <div class="input-group input-group-sm" style="width: 170px;">
                             <div class="input-group-prepend">
@@ -26,9 +26,16 @@
                         </div>
 
                         <!-- Tombol Reset Simulasi -->
-                        <button type="button" wire:click="resetSimulation" class="btn btn-sm btn-outline-secondary" title="Kembalikan semua nilai ke data aktual">
+                        <button type="button" wire:click="resetSimulation" class="btn btn-sm btn-outline-secondary" title="Kembalikan semua nilai ke data aktual asli">
                             <i class="fas fa-undo mr-1"></i> Reset Baseline
                         </button>
+
+                        <!-- Tombol Terapkan ke Live -->
+                        @if(auth()->user()?->can('manage objectives') || auth()->user()?->can('can_write_kpi'))
+                            <button type="button" wire:click="$set('showApplyModal', true)" class="btn btn-sm btn-success font-weight-bold" title="Terapkan hasil simulasi ke data sasaran mutu resmi">
+                                <i class="fas fa-check-double mr-1"></i> Terapkan ke Sasaran Mutu
+                            </button>
+                        @endif
 
                         <a href="{{ route('department-objectives') }}" class="btn btn-sm btn-outline-warning text-dark font-weight-bold">
                             <i class="fas fa-bullseye mr-1"></i> Sasaran Mutu
@@ -110,7 +117,7 @@
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
                     <strong class="text-dark">
-                        <i class="fas fa-sitemap text-teal mr-2"></i> Proyeksi Dampak ke 12 Pos Finansial Inti Pabrik Botol Plastik
+                        <i class="fas fa-sitemap text-teal mr-2"></i> Proyeksi Dampak ke Pos Finansial Inti Pabrik Botol Plastik
                     </strong>
                     <span class="badge badge-teal font-weight-normal px-2 py-1">Tingkat 3 &rarr; Tingkat 2 CoA</span>
                 </div>
@@ -169,42 +176,60 @@
                 <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center flex-wrap" style="gap: 10px;">
                     <div>
                         <strong class="text-dark"><i class="fas fa-sliders-h text-warning mr-2"></i> Meja Uji Nilai Realisasi KPI (What-If Sliders/Input):</strong>
-                        <div class="text-muted small">Ubah angka pada kolom Realisasi Uji untuk melihat perubahan capaian & proyeksi dampak secara langsung.</div>
+                        <div class="text-muted small">Gunakan tombol &plusmn;5% / &plusmn;10% atau ketik angka langsung untuk melihat perubahan capaian & catatan dampak secara otomatis.</div>
                     </div>
-                    <div class="d-flex align-items-center" style="gap: 10px;">
+                    <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                        <!-- Search Box KPI -->
+                        <div class="input-group input-group-sm" style="width: 180px;">
+                            <input type="text" wire:model.live.debounce.300ms="searchKpi" class="form-control" placeholder="Cari nama/kode KPI...">
+                            @if($searchKpi)
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" wire:click="$set('searchKpi', '')">&times;</button>
+                                </div>
+                            @endif
+                        </div>
+
                         <!-- Filter Dept Odoo -->
-                        <select wire:model.live="selectedDept" class="form-control form-control-sm" style="width: 200px;">
-                            <option value="">-- Semua Departemen Odoo --</option>
+                        <select wire:model.live="selectedDept" class="form-control form-control-sm" style="width: 180px;">
+                            <option value="">-- Semua Departemen --</option>
                             @foreach($departments as $d)
                                 <option value="{{ $d->code }}">{{ $d->name }} ({{ $d->code }})</option>
                             @endforeach
+                        </select>
+
+                        <!-- Sort By -->
+                        <select wire:model.live="sortBy" class="form-control form-control-sm" style="width: 160px;">
+                            <option value="default">Urut Default</option>
+                            <option value="gap_desc">GAP Terbesar &uarr;</option>
+                            <option value="gap_asc">Capaian Tertinggi</option>
+                            <option value="kpi_code">Kode KPI</option>
                         </select>
 
                         <!-- Toggle Gap Only -->
                         <div class="custom-control custom-switch" style="font-size: 12px;">
                             <input type="checkbox" class="custom-control-input" id="filterGap" wire:model.live="filterGapOnly">
                             <label class="custom-control-label font-weight-bold text-danger" for="filterGap" style="cursor: pointer;">
-                                Tampilkan Hanya Yang GAP / Bermasalah
+                                Hanya GAP
                             </label>
                         </div>
                     </div>
                 </div>
 
                 <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 580px; overflow-y: auto;">
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
                         <table class="table table-bordered table-hover table-sm m-0 align-middle" style="font-size: 12.5px;">
                             <thead class="bg-light position-sticky" style="top: 0; z-index: 2;">
                                 <tr>
                                     <th style="width: 8%;">Kode KPI</th>
-                                    <th style="width: 24%;">Sasaran Mutu (Nama KPI)</th>
-                                    <th style="width: 12%;">Dept PIC</th>
+                                    <th style="width: 20%;">Sasaran Mutu (Nama KPI)</th>
+                                    <th style="width: 11%;">Dept PIC</th>
                                     <th class="text-center" style="width: 7%;">Target</th>
-                                    <th class="text-center" style="width: 8%;">Aktual Asli</th>
-                                    <th class="text-center bg-warning text-dark" style="width: 14%;">
+                                    <th class="text-center" style="width: 7%;">Aktual Asli</th>
+                                    <th class="text-center bg-warning text-dark" style="width: 18%;">
                                         <i class="fas fa-edit mr-1"></i> Realisasi Uji (Simulasi)
                                     </th>
                                     <th class="text-center" style="width: 11%;">Hasil Uji Capaian</th>
-                                    <th style="width: 16%;">Dampak ke Pos Finansial</th>
+                                    <th style="width: 18%;">Dampak Finansial & Operasional</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -221,11 +246,8 @@
                                             <small class="text-muted">Arah: <strong>{{ $kpi['polarity'] }}</strong> ({{ $kpi['unit'] }})</small>
                                         </td>
                                         <td>
-                                            @php
-                                                $dObj = collect($departments)->firstWhere('code', $kpi['dept_code']);
-                                            @endphp
-                                            <span class="badge badge-light border text-dark font-weight-bold">
-                                                {{ $dObj ? $dObj->name : $kpi['dept_code'] }}
+                                            <span class="badge badge-light border text-dark font-weight-bold px-2 py-1">
+                                                {{ $kpi['dept_name'] }} ({{ $kpi['dept_code'] }})
                                             </span>
                                         </td>
                                         <td class="text-center font-weight-bold text-muted">
@@ -236,6 +258,14 @@
                                             <div style="font-size: 10px;">(Baseline)</div>
                                         </td>
                                         <td class="text-center bg-light">
+                                            <!-- Step Adjustment Buttons (+5%, -5%, +10%, -10%) -->
+                                            <div class="btn-group btn-group-xs mb-1 w-100" role="group">
+                                                <button type="button" wire:click="adjustSimulatedPercent('{{ $kpi['id'] }}', -10)" class="btn btn-outline-secondary py-0" title="Turun 10%" style="font-size: 10px;">-10%</button>
+                                                <button type="button" wire:click="adjustSimulatedPercent('{{ $kpi['id'] }}', -5)" class="btn btn-outline-secondary py-0" title="Turun 5%" style="font-size: 10px;">-5%</button>
+                                                <button type="button" wire:click="adjustSimulatedPercent('{{ $kpi['id'] }}', 5)" class="btn btn-outline-secondary py-0" title="Naik 5%" style="font-size: 10px;">+5%</button>
+                                                <button type="button" wire:click="adjustSimulatedPercent('{{ $kpi['id'] }}', 10)" class="btn btn-outline-secondary py-0" title="Naik 10%" style="font-size: 10px;">+10%</button>
+                                            </div>
+
                                             <div class="input-group input-group-sm">
                                                 <input type="number" 
                                                        step="any" 
@@ -281,7 +311,7 @@
                                                         &Delta; {{ ($kpi['diff_val'] > 0 ? '+' : '') . number_format($kpi['diff_val'], 2, ',', '.') }} {{ $kpi['unit'] }}
                                                     </span>
                                                     <div class="{{ $isBetter ? 'text-success' : 'text-danger' }} font-weight-bold" style="font-size: 10.5px;">
-                                                        {{ $isBetter ? 'Lebih Efisien/Baik' : 'Menurun/Memburuk' }}
+                                                        {{ $isBetter ? 'Lebih Baik' : 'Memburuk' }}
                                                     </div>
                                                 </div>
                                             @else
@@ -289,25 +319,58 @@
                                             @endif
                                         </td>
                                         <td>
-                                            @if(count($kpi['pos_codes']) > 0)
-                                                <div class="d-flex flex-wrap" style="gap: 4px;">
-                                                    @foreach($kpi['pos_codes'] as $pc)
-                                                        @if(isset($posMap[$pc]))
-                                                            <span class="badge {{ $isGap ? 'badge-danger' : 'badge-teal' }}" style="font-size: 10px;" title="{{ $posMap[$pc]['name'] }}">
-                                                                <i class="fas fa-link mr-1"></i>{{ $pc }}
-                                                            </span>
-                                                        @endif
+                                            <!-- Akun Odoo COA Terpilih (Piutang, Kas, HPP, dll) -->
+                                            @if(count($kpi['odoo_codes']) > 0)
+                                                <div class="mb-1 d-flex flex-wrap" style="gap: 4px;">
+                                                    @foreach($kpi['odoo_codes'] as $oCode)
+                                                        @php
+                                                            $acc = $allAccountsMap[$oCode] ?? null;
+                                                        @endphp
+                                                        <span class="badge badge-warning text-dark font-weight-normal px-2 py-0.5 shadow-xs" style="font-size: 10px;" title="{{ $acc ? $acc->name : $oCode }}">
+                                                            <i class="fas fa-coins mr-1"></i><strong>{{ $oCode }}</strong>
+                                                            @if($acc)
+                                                                - {{ \Illuminate\Support\Str::limit($acc->name, 18) }}
+                                                            @endif
+                                                        </span>
                                                     @endforeach
                                                 </div>
-                                                <div class="text-dark small mt-1 font-italic" style="font-size: 11px; line-height: 1.2;">
-                                                    @if($isGap)
-                                                        <span class="text-danger font-weight-bold"><i class="fas fa-exclamation-circle mr-1"></i>Risiko pembengkakan / target pos terancam</span>
-                                                    @else
-                                                        <span class="text-success"><i class="fas fa-check mr-1"></i>Mendukung pencapaian target pos finansial</span>
-                                                    @endif
+                                            @endif
+
+                                            <!-- Pos Anggaran Odoo (130 Pos / PA01-PA12) -->
+                                            @if(count($kpi['budget_codes']) > 0)
+                                                <div class="d-flex flex-wrap mb-1" style="gap: 4px;">
+                                                    @foreach($kpi['budget_codes'] as $pc)
+                                                        @php
+                                                            $acc = $allAccountsMap[$pc] ?? null;
+                                                            $isCore = isset($posMap[$pc]);
+                                                        @endphp
+                                                        <span class="badge {{ $isGap ? 'badge-danger' : ($isCore ? 'badge-teal' : 'badge-info') }} px-1.5 py-0.5" style="font-size: 10px;" title="{{ $acc ? $acc->name : ($posMap[$pc]['name'] ?? $pc) }}">
+                                                            <i class="fas fa-link mr-1"></i>{{ $pc }}
+                                                            @if($acc)
+                                                                - {{ \Illuminate\Support\Str::limit($acc->name, 16) }}
+                                                            @endif
+                                                        </span>
+                                                    @endforeach
                                                 </div>
-                                            @else
-                                                <span class="text-muted small font-italic">- Tidak terhubung langsung ke pos -</span>
+                                            @endif
+
+                                            <!-- Catatan Tambahan Dampak (Manual vs Otomatis) -->
+                                            @if(!empty($kpi['impact_note']))
+                                                <div class="p-1 px-2 rounded mt-1 shadow-xs" style="font-size: 10.5px; line-height: 1.25; background-color: #f0f7ff; border: 1px solid #b8daff; border-left: 3px solid #007bff !important;">
+                                                    <span class="badge badge-primary text-white font-weight-bold py-0 px-1 mr-1" style="font-size: 9px;">
+                                                        <i class="fas fa-pen mr-1"></i>Manual
+                                                    </span>
+                                                    <span class="text-dark font-italic">{{ $kpi['impact_note'] }}</span>
+                                                </div>
+                                            @elseif(!empty($kpi['auto_note']))
+                                                <div class="p-1 px-2 rounded mt-1 shadow-xs" style="font-size: 10.5px; line-height: 1.25; background-color: #fffdf5; border: 1px solid #ffeeba; border-left: 3px solid #ffc107 !important;">
+                                                    <span class="badge badge-warning text-dark font-weight-bold py-0 px-1 mr-1" style="font-size: 9px;">
+                                                        <i class="fas fa-robot mr-1"></i>Otomatis
+                                                    </span>
+                                                    <span class="text-dark font-italic">{{ $kpi['auto_note'] }}</span>
+                                                </div>
+                                            @elseif(empty($kpi['budget_codes']) && empty($kpi['odoo_codes']))
+                                                <span class="text-muted small font-italic">- Belum ditautkan ke akun -</span>
                                             @endif
                                         </td>
                                     </tr>
@@ -327,16 +390,47 @@
                     </div>
                 </div>
 
-                <div class="card-footer bg-light py-2 text-muted small d-flex justify-content-between align-items-center">
+                <div class="card-footer bg-light py-2 text-muted small d-flex justify-content-between align-items-center flex-wrap">
                     <div>
-                        <i class="fas fa-info-circle text-warning mr-1"></i> Meja Uji Indikator berjalan di memory sandbox (tidak mengubah data riil database hingga disimpan resmi di Level 3).
+                        <i class="fas fa-info-circle text-warning mr-1"></i> Meja Uji Indikator berjalan di memory sandbox (tidak mengubah data riil database kecuali Anda menekan tombol "Terapkan ke Sasaran Mutu").
                     </div>
                     <div>
-                        Periode: <strong>{{ $selectedPeriod }}</strong>
+                        Menampilkan <strong>{{ count($kpiSimulations) }}</strong> dari <strong>{{ $totalKpi }}</strong> Sasaran Mutu &bull; Periode: <strong>{{ $selectedPeriod }}</strong>
                     </div>
                 </div>
             </div>
 
         </div>
     </section>
+
+    <!-- MODAL KONFIRMASI TERAPKAN KE LIVE -->
+    @if($showApplyModal)
+        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); z-index: 1050;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-success text-white py-2">
+                        <h5 class="modal-title font-weight-bold" style="font-size: 15px;">
+                            <i class="fas fa-check-double mr-1"></i> Konfirmasi Terapkan Hasil Uji Simulasi
+                        </h5>
+                        <button type="button" class="close text-white" wire:click="$set('showApplyModal', false)">&times;</button>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="alert alert-warning py-2 mb-3" style="font-size: 12.5px;">
+                            <i class="fas fa-exclamation-triangle mr-1"></i> <strong>Perhatian:</strong>
+                            Aksi ini akan memperbarui nilai <strong>Realisasi (Actual)</strong> pada seluruh Sasaran Mutu (KPI) periode <strong>{{ $selectedPeriod }}</strong> di database resmi sesuai dengan angka hasil uji simulasi di layar ini.
+                        </div>
+                        <p class="small text-muted mb-0">
+                            Apakah Anda yakin ingin menerapkan seluruh nilai uji simulasi ini menjadi data capaian sasaran mutu resmi?
+                        </p>
+                    </div>
+                    <div class="modal-footer bg-light py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" wire:click="$set('showApplyModal', false)">Batal</button>
+                        <button type="button" class="btn btn-sm btn-success font-weight-bold" wire:click="applySimulationToLive">
+                            <i class="fas fa-save mr-1"></i> Ya, Terapkan Sekarang
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
