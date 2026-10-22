@@ -388,8 +388,34 @@ class UjiIndikatorDepartemen extends Component
                 $kpiSimulations[] = $kpiData;
             }
 
-            // Petakan ke 12 pos
+            // Petakan ke 12 pos (mendukung kode PA01-PA12 maupun akun Odoo COA yang terhubung)
+            $matchedCorePos = [];
             foreach ($budgetCodes as $c) {
+                if (isset($posSimulations[$c])) {
+                    $matchedCorePos[$c] = true;
+                }
+            }
+
+            // Pemetaan akun Odoo ke pos inti
+            $allTokens = array_merge($budgetCodes, $odooCodes);
+            foreach ($allTokens as $t) {
+                if (str_starts_with($t, '4')) $matchedCorePos['PA01'] = true;
+                if (str_starts_with($t, '51000') || str_starts_with($t, '11300010')) $matchedCorePos['PA02'] = true;
+                if (str_contains(strtolower($t), '61100310')) $matchedCorePos['PA03'] = true;
+                if (str_contains(strtolower($t), '61100110')) $matchedCorePos['PA04'] = true;
+                if (str_contains(strtolower($t), '51008010') || str_contains(strtolower($t), '61100230')) $matchedCorePos['PA05'] = true;
+                if (str_starts_with($t, '113')) $matchedCorePos['PA06'] = true;
+                if (str_starts_with($t, '112')) $matchedCorePos['PA07'] = true;
+                if (str_starts_with($t, '211')) $matchedCorePos['PA08'] = true;
+                if (str_starts_with($t, '111')) $matchedCorePos['PA09'] = true;
+                if (str_contains(strtolower($t), '61100510')) $matchedCorePos['PA10'] = true;
+                if (str_starts_with($t, '12')) $matchedCorePos['PA11'] = true;
+                if (in_array(substr($t, 0, 1), ['6', '8', '9']) && !isset($matchedCorePos['PA03']) && !isset($matchedCorePos['PA04']) && !isset($matchedCorePos['PA05']) && !isset($matchedCorePos['PA10'])) {
+                    $matchedCorePos['PA12'] = true;
+                }
+            }
+
+            foreach (array_keys($matchedCorePos) as $c) {
                 if (isset($posSimulations[$c])) {
                     $posSimulations[$c]['kpis'][] = $kpiData;
                     if ($simStatus === 'Tercapai') $posSimulations[$c]['tercapai_count']++;
