@@ -112,37 +112,25 @@
             <!-- Sidebar Menu — RBAC 13 Menu PRD Tabel 4 (hanya tampil sesuai permission) -->
             <nav class="mt-2">
                 <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu" data-accordion="false">
-                    <li class="nav-header">KONSOLIDASI KINERJA</li>
+                    {{-- 1. DASHBOARD & KONSOLIDASI EKSEKUTIF --}}
+                    <li class="nav-header">DASHBOARD & KONSOLIDASI</li>
                     @can('view dashboard')
                     <li class="nav-item">
                         <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-tachometer-alt"></i>
-                            <p>Piramida BSC</p>
-                        </a>
-                    </li>
-                    <li class="nav-header">LEVEL 1</li>
-                    <li class="nav-item">
-                        <a href="{{ route('apex-consolidation', ['tab' => 'input']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && (request('tab') === 'input' || !request('tab')) ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-edit text-teal"></i>
-                            <p>Input Realisasi Revenue</p>
+                            <i class="nav-icon fas fa-tachometer-alt text-teal"></i>
+                            <p>Piramida Eksekutif BSC</p>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="{{ route('pohon-dupont') }}" class="nav-link {{ request()->routeIs('pohon-dupont') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-project-diagram text-success"></i>
-                            <p>Pohon DuPont & Driver</p>
+                            <p>Pohon Nilai & Driver DuPont</p>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ route('apex-consolidation', ['tab' => 'dupont']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && request('tab') === 'dupont' ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-sitemap text-info"></i>
-                            <p>DuPont Value Tree</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('apex-consolidation', ['tab' => 'sensitivity']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && request('tab') === 'sensitivity' ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-sliders-h text-warning"></i>
-                            <p>Simulator Sensitivitas</p>
+                        <a href="{{ route('apex-consolidation', ['tab' => 'input']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && (request('tab') === 'input' || !request('tab')) ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-edit text-info"></i>
+                            <p>Input Realisasi Revenue</p>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -152,152 +140,107 @@
                         </a>
                     </li>
                     @endcan
+
+                    {{-- 2. KINERJA STRATEGIS (BSC TIER 1 - 4) --}}
+                    @canany(['view ratios', 'view objectives', 'view actionplans', 'view wiring'])
+                    <li class="nav-header">KINERJA STRATEGIS (BSC)</li>
+                    @endcanany
                     @can('view ratios')
-                    <li class="nav-header">LEVEL 2</li>
                     <li class="nav-item">
                         <a href="{{ route('financial-ratios') }}" class="nav-link {{ request()->routeIs('financial-ratios') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-coins text-success"></i>
-                            <p>Rasio Keuangan</p>
+                            <p>Rasio Finansial Inti</p>
                         </a>
                     </li>
                     @endcan
-                    @canany(['view objectives', 'view coa'])
-                    <li class="nav-header">LEVEL 3</li>
                     @can('view objectives')
                     <li class="nav-item">
                         <a href="{{ route('department-objectives') }}" class="nav-link {{ request()->routeIs('department-objectives') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-bullseye text-warning"></i>
-                            <p>Objective Departemen</p>
+                            <p>Sasaran Departemen & KPI</p>
                         </a>
                     </li>
                     @endcan
-                    <li class="nav-item">
-                        <a href="{{ route('peta-pos-akun') }}" class="nav-link {{ request()->routeIs('peta-pos-akun') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-th text-teal"></i>
-                            <p>Peta Pos Akun</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('uji-indikator') }}" class="nav-link {{ request()->routeIs('uji-indikator') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-flask text-warning"></i>
-                            <p>Uji Indikator</p>
-                        </a>
-                    </li>
-                    @endcanany
                     @can('view actionplans')
-                    <li class="nav-header">LEVEL 4</li>
                     <li class="nav-item">
                         <a href="{{ route('action-plans') }}" class="nav-link {{ request()->routeIs('action-plans') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-tasks text-info"></i>
-                            <p>Program Kerja (Action)</p>
+                            <p>Program Kerja & Action Plan</p>
                         </a>
                     </li>
                     @endcan
                     @can('view wiring')
                     <li class="nav-item">
                         <a href="{{ route('bsc-wiring') }}" class="nav-link {{ request()->routeIs('bsc-wiring') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-project-diagram text-teal"></i>
-                            <p>Wiring / Peta Hubungan</p>
+                            <i class="nav-icon fas fa-sitemap text-teal"></i>
+                            <p>Peta Hubungan Strategis</p>
                         </a>
                     </li>
                     @endcan
 
-                    @canany(['view dampak','view coa','view sensitivity','view skenario'])
-                    <li class="nav-header">SIMULASI & ANALISIS</li>
+                    {{-- 3. SIMULASI & SANDBOX COA --}}
+                    @canany(['view coa', 'view dampak', 'view sensitivity', 'view skenario', 'view objectives'])
+                    <li class="nav-header">SIMULASI & SANDBOX COA</li>
                     @endcanany
-                    @can('view dampak')
-                    <li class="nav-item">
-                        <a href="{{ route('dampak') }}" class="nav-link {{ request()->routeIs('dampak') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-flask"></i>
-                            <p>Uji Dampak / What-If</p>
-                        </a>
-                    </li>
-                    @endcan
                     @can('view coa')
                     <li class="nav-item">
                         <a href="{{ route('coa') }}" class="nav-link {{ request()->routeIs('coa') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-calculator"></i>
-                            <p>Simulasi CoA</p>
+                            <i class="nav-icon fas fa-calculator text-primary"></i>
+                            <p>Simulasi Saldo CoA & Odoo</p>
                         </a>
                     </li>
                     @endcan
+                    <li class="nav-item">
+                        <a href="{{ route('uji-indikator') }}" class="nav-link {{ request()->routeIs('uji-indikator') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-flask text-warning"></i>
+                            <p>Uji Indikator & Elastisitas</p>
+                        </a>
+                    </li>
+                    @can('view dampak')
+                    <li class="nav-item">
+                        <a href="{{ route('dampak') }}" class="nav-link {{ request()->routeIs('dampak') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-vial text-info"></i>
+                            <p>Simulasi Dampak / What-If</p>
+                        </a>
+                    </li>
+                    @endcan
+                    <li class="nav-item">
+                        <a href="{{ route('peta-pos-akun') }}" class="nav-link {{ request()->routeIs('peta-pos-akun') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-th text-teal"></i>
+                            <p>Peta Pos Akun Finansial</p>
+                        </a>
+                    </li>
                     @can('view sensitivity')
                     <li class="nav-item">
                         <a href="{{ route('sensitivity') }}" class="nav-link {{ request()->routeIs('sensitivity') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-chart-area"></i>
-                            <p>Sensitivitas</p>
+                            <i class="nav-icon fas fa-chart-area text-purple"></i>
+                            <p>Analisis Sensitivitas</p>
                         </a>
                     </li>
                     @endcan
                     @can('view skenario')
                     <li class="nav-item">
                         <a href="{{ route('skenario') }}" class="nav-link {{ request()->routeIs('skenario') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-layer-group"></i>
-                            <p>Skenario</p>
+                            <i class="nav-icon fas fa-clone text-secondary"></i>
+                            <p>Skenario Manajemen</p>
                         </a>
                     </li>
                     @endcan
 
+                    {{-- 4. PERENCANAAN TERPADU --}}
                     @can('view ibp')
-                    <li class="nav-header">PERENCANAAN</li>
+                    <li class="nav-header">PERENCANAAN TERPADU</li>
                     <li class="nav-item">
                         <a href="{{ route('ibp') }}" class="nav-link {{ request()->routeIs('ibp') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-handshake"></i>
-                            <p>Konsensus IBP</p>
+                            <i class="nav-icon fas fa-handshake text-success"></i>
+                            <p>Konsensus Rapat IBP</p>
                         </a>
                     </li>
                     @endcan
 
-                    @can('view dokumentasi')
-                    <li class="nav-header">DOKUMENTASI</li>
-                    <li class="nav-item">
-                        <a href="{{ route('dokumentasi') }}" class="nav-link {{ request()->routeIs('dokumentasi') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-book"></i>
-                            <p>Dokumentasi Metode</p>
-                        </a>
-                    </li>
-                    @endcan
-
-                    @canany(['view integration','view staging','view gateway'])
-                    <li class="nav-header">INTEGRASI & AUDIT</li>
-                    @endcanany
-                    @can('view integration')
-                    <li class="nav-item">
-                        <a href="{{ route('system-integration') }}" class="nav-link {{ request()->routeIs('system-integration') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-plug"></i>
-                            <p>Integrasi & Gateway</p>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view staging')
-                    <li class="nav-item">
-                        <a href="{{ route('staging-logs') }}" class="nav-link {{ request()->routeIs('staging-logs') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-network-wired"></i>
-                            <p>Staging & Audit Log</p>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view gateway')
-                        @cannot('view integration')
-                        <li class="nav-item">
-                            <a href="{{ route('system-integration') }}" class="nav-link {{ request()->routeIs('system-integration') ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-plug"></i>
-                                <p>Integrasi & Gateway</p>
-                            </a>
-                        </li>
-                        @endcannot
-                        @cannot('view staging')
-                        <li class="nav-item">
-                            <a href="{{ route('staging-logs') }}" class="nav-link {{ request()->routeIs('staging-logs') ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-network-wired"></i>
-                                <p>Staging & Audit Log</p>
-                            </a>
-                        </li>
-                        @endcannot
-                    @endcan
-
-                    @canany(['manage users','manage settings','view systeminfo','manage apikey','can_manage_users'])
-                    <li class="nav-header">ADMINISTRASI</li>
+                    {{-- 5. SISTEM & ADMINISTRASI --}}
+                    @canany(['manage users','manage settings','view systeminfo','manage apikey','can_manage_users','view integration','view staging'])
+                    <li class="nav-header">SISTEM & PENGATURAN</li>
                     <li class="nav-item">
                         <a href="{{ route('master-departments') }}" class="nav-link {{ request()->routeIs('master-departments') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-building text-teal"></i>
@@ -305,22 +248,46 @@
                         </a>
                     </li>
                     @endcanany
+                    @can('view integration')
+                    <li class="nav-item">
+                        <a href="{{ route('system-integration') }}" class="nav-link {{ request()->routeIs('system-integration') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-plug text-info"></i>
+                            <p>Integrasi & Gateway API</p>
+                        </a>
+                    </li>
+                    @endcan
+                    @can('view staging')
+                    <li class="nav-item">
+                        <a href="{{ route('staging-logs') }}" class="nav-link {{ request()->routeIs('staging-logs') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-network-wired text-muted"></i>
+                            <p>Log Audit & Staging</p>
+                        </a>
+                    </li>
+                    @endcan
                     @can('manage users')
                     <li class="nav-item">
                         <a href="{{ route('manage-users') }}" class="nav-link {{ request()->routeIs('manage-users') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-users-cog"></i>
-                            <p>Manage User</p>
+                            <i class="nav-icon fas fa-users-cog text-warning"></i>
+                            <p>Manajemen Pengguna</p>
                         </a>
                     </li>
                     @endcan
                     @canany(['manage settings','view systeminfo','manage apikey'])
                     <li class="nav-item">
                         <a href="{{ route('settings') }}" class="nav-link {{ request()->routeIs('settings') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-cogs"></i>
-                            <p>Setting</p>
+                            <i class="nav-icon fas fa-cogs text-secondary"></i>
+                            <p>Konfigurasi Sistem</p>
                         </a>
                     </li>
                     @endcanany
+                    @can('view dokumentasi')
+                    <li class="nav-item">
+                        <a href="{{ route('dokumentasi') }}" class="nav-link {{ request()->routeIs('dokumentasi') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-book-open text-info"></i>
+                            <p>Dokumentasi Metode BSC</p>
+                        </a>
+                    </li>
+                    @endcan
                 </ul>
             </nav>
             <!-- /.sidebar-menu -->
