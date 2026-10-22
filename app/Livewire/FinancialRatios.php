@@ -28,12 +28,14 @@ class FinancialRatios extends Component
     public $category = 'Profitabilitas';
     public $ratio_name = '';
     public $target = 0;
+    public $benchmark = '';
     public $actual = 0;
 
     protected $rules = [
         'category' => 'required|string|max:100',
         'ratio_name' => 'required|string|max:150',
         'target' => 'required|numeric|min:0',
+        'benchmark' => 'nullable|string|max:100',
         'actual' => 'required|numeric|min:0',
     ];
 
@@ -73,244 +75,89 @@ class FinancialRatios extends Component
         $month = isset($parts[1]) ? (int)$parts[1] : (int)date('m');
 
         try {
-            // 1. Ambil Tahun Fiskal Aktif dari Finance
-            $activeFiscalYear = \Illuminate\Support\Facades\DB::connection('mysql_finance')
-                ->table('fiscal_years')
-                ->where('year', $year)
-                ->first();
+            // Panggil langsung FinancialRatioController Finance App secara dinamis 100% tanpa hardcoding
+            $bridgePath = app_path('Services/FinanceRatioBridge.php');
+            $output = [];
+            $returnVar = 0;
+            exec("php {$bridgePath} {$month} 2>&1", $output, $returnVar);
 
-            if (!$activeFiscalYear) {
-                $activeFiscalYear = \Illuminate\Support\Facades\DB::connection('mysql_finance')
-                    ->table('fiscal_years')
-                    ->where('is_active', 1)
-                    ->first();
+            $jsonStr = implode('', $output);
+            $ratioGroups = json_decode($jsonStr, true);
+
+            if (!is_array($ratioGroups) || empty($ratioGroups)) {
+                throw new \Exception("Gagal mengambil data dari Controller Finance: " . substr($jsonStr, 0, 200));
             }
-
-            // 2. Fetch Real Omset / Revenue untuk bulan yang dipilih dari global_monthly_budgets
-            $actualRev = \Illuminate\Support\Facades\DB::connection('mysql_finance')
-                ->table('global_monthly_budgets')
-                ->where('fiscal_year_id', $activeFiscalYear?->id)
-                ->where('month', $month)
-                ->where('type', 'actual')
-                ->value('amount');
-
-            $forecastRev = \Illuminate\Support\Facades\DB::connection('mysql_finance')
-                ->table('global_monthly_budgets')
-                ->where('fiscal_year_id', $activeFiscalYear?->id)
-                ->where('month', $month)
-                ->where('type', 'forecast')
-                ->value('amount');
-
-            $revenue = (float) ($actualRev ?? ($forecastRev ?? 0));
-
-            // 3. Fetch Real Odoo Expenses & COGS dari tabel expenses
-            $baseExpenseQuery = \Illuminate\Support\Facades\DB::connection('mysql_finance')
-                ->table('expenses')
-                ->where('is_synced', 1)
-                ->whereYear('date', $year)
-                ->whereMonth('date', $month);
-
-            $totalExpenses = (float) (clone $baseExpenseQuery)->sum('amount');
-
-            $cogs = (float) \Illuminate\Support\Facades\DB::connection('mysql_finance')
-                ->table('expenses')
-                ->join('budget_categories', 'budget_categories.id', '=', 'expenses.budget_category_id')
-                ->where('expenses.is_synced', 1)
-                ->whereYear('expenses.date', $year)
-                ->whereMonth('expenses.date', $month)
-                ->where('budget_categories.code', 'like', '5%')
-                ->sum('expenses.amount');
-
-            $opex = $totalExpenses - $cogs;
-            $grossProfit = $revenue - $cogs;
-            $netIncome = $revenue - $totalExpenses;
-
-            // 4. Hitung Komponen Neraca & Rasio Persis Controller Finance
-            $currentAssets = $revenue * 1.6;
-            $shortTermLiabilities = $totalExpenses * 0.75;
-            $cashAndAr = $revenue * 1.1;
-            $totalLiabilities = $shortTermLiabilities * 1.35;
-            $totalEquity = max($revenue * 2.2, 1);
-            $totalAssets = $totalLiabilities + $totalEquity;
-            $inventory = max($cogs * 0.35, 1);
-            $ar = max($revenue * 0.28, 1);
-            $ap = max($cogs * 0.30, 1);
-
-            // Matriks Rasio Lengkap Identik Halaman Finance
-            $financeRatios = [
-                // LIKUIDITAS
-                [
-                    'name' => 'CURRENT RATIO',
-                    'category' => 'Likuiditas',
-                    'actual' => $shortTermLiabilities > 0 ? round($currentAssets / $shortTermLiabilities, 2) : 2.37,
-                    'target' => 2.0,
-                    'is_lower_better' => false,
-                ],
-                [
-                    'name' => 'QUICK RATIO',
-                    'category' => 'Likuiditas',
-                    'actual' => $shortTermLiabilities > 0 ? round($cashAndAr / $shortTermLiabilities, 2) : 1.63,
-                    'target' => 1.5,
-                    'is_lower_better' => false,
-                ],
-                // SOLVABILITAS
-                [
-                    'name' => 'DEBT TO EQUITY RATIO (DER)',
-                    'category' => 'Solvabilitas',
-                    'actual' => $totalEquity > 0 ? round($totalLiabilities / $totalEquity, 2) : 0.41,
-                    'target' => 1.0,
-                    'is_lower_better' => true,
-                ],
-                [
-                    'name' => 'DEBT TO TOTAL ASSET RATIO (DAR)',
-                    'category' => 'Solvabilitas',
-                    'actual' => $totalAssets > 0 ? round($totalLiabilities / $totalAssets, 2) : 0.29,
-                    'target' => 0.5,
-                    'is_lower_better' => true,
-                ],
-                // AKTIVITAS
-                [
-                    'name' => 'INVENTORY TURN OVER (ITO)',
-                    'category' => 'Aktivitas',
-                    'actual' => $inventory > 0 ? round($cogs / $inventory, 2) : 2.86,
-                    'target' => 2.5,
-                    'is_lower_better' => false,
-                ],
-                [
-                    'name' => 'AR TURN OVER (Perputaran Piutang)',
-                    'category' => 'Aktivitas',
-                    'actual' => $ar > 0 ? round($revenue / $ar, 2) : 3.57,
-                    'target' => 3.5,
-                    'is_lower_better' => false,
-                ],
-                [
-                    'name' => 'DAYS SALES OUTSTANDING (DSO)',
-                    'category' => 'Aktivitas',
-                    'actual' => $revenue > 0 ? round(($ar / $revenue) * 360, 2) : 100.80,
-                    'target' => 90.0,
-                    'is_lower_better' => true,
-                ],
-                [
-                    'name' => 'DAYS INVENTORY OUTSTANDING (DIO)',
-                    'category' => 'Aktivitas',
-                    'actual' => $cogs > 0 ? round(($inventory / $cogs) * 360, 2) : 126.00,
-                    'target' => 120.0,
-                    'is_lower_better' => true,
-                ],
-                [
-                    'name' => 'DAYS PAYABLE OUTSTANDING (DPO)',
-                    'category' => 'Aktivitas',
-                    'actual' => $cogs > 0 ? round(($ap / $cogs) * 360, 2) : 108.00,
-                    'target' => 90.0,
-                    'is_dpo' => true,
-                ],
-                [
-                    'name' => 'TOTAL ASSET TURN OVER (TATO)',
-                    'category' => 'Aktivitas',
-                    'actual' => $totalAssets > 0 ? round($revenue / $totalAssets, 2) : 0.41,
-                    'target' => 1.2,
-                    'is_lower_better' => false,
-                ],
-                // PROFITABILITAS
-                [
-                    'name' => 'GROSS PROFIT MARGIN (GPM)',
-                    'category' => 'Profitabilitas',
-                    'actual' => $revenue > 0 ? round(($grossProfit / $revenue) * 100, 2) : 75.12,
-                    'target' => 30.0,
-                    'is_lower_better' => false,
-                ],
-                [
-                    'name' => 'EBIT / OPERATING MARGIN',
-                    'category' => 'Profitabilitas',
-                    'actual' => $revenue > 0 ? round((($revenue - $opex) / $revenue) * 100, 2) : 98.86,
-                    'target' => 20.0,
-                    'is_lower_better' => false,
-                ],
-                [
-                    'name' => 'NET PROFIT MARGIN (NPM)',
-                    'category' => 'Profitabilitas',
-                    'actual' => $revenue > 0 ? round(($netIncome / $revenue) * 100, 2) : 73.97,
-                    'target' => 15.0,
-                    'is_lower_better' => false,
-                ],
-                [
-                    'name' => 'RETURN ON ASSET (ROA)',
-                    'category' => 'Profitabilitas',
-                    'actual' => $totalAssets > 0 ? round((($revenue - $opex) / $totalAssets) * 100, 2) : 40.13,
-                    'target' => 10.0,
-                    'is_lower_better' => false,
-                ],
-                [
-                    'name' => 'RETURN ON EQUITY (ROE)',
-                    'category' => 'Profitabilitas',
-                    'actual' => $totalEquity > 0 ? round(($netIncome / $totalEquity) * 100, 2) : 33.62,
-                    'target' => 15.0,
-                    'is_lower_better' => false,
-                ],
-            ];
 
             $syncedCount = 0;
-            foreach ($financeRatios as $fr) {
-                $targetVal = (float)$fr['target'];
-                $actualVal = (float)$fr['actual'];
-                $isLowerBetter = $fr['is_lower_better'] ?? false;
-                $isDpo = $fr['is_dpo'] ?? false;
+            foreach ($ratioGroups as $categoryTitle => $items) {
+                // Normalisasi nama kategori (misal: LIKUIDITAS -> Likuiditas)
+                $catName = ucfirst(strtolower($categoryTitle));
 
-                if ($isDpo) {
-                    if ($actualVal >= 60 && $actualVal <= 110) {
-                        $ach = 100.00;
-                        $status = 'Tercapai';
-                    } elseif ($actualVal < 60) {
-                        $ach = round(($actualVal / 60) * 100, 2);
-                        $status = $ach >= 80 ? 'Waspada' : 'Di Bawah Target';
-                    } else {
-                        $ach = round((90 / $actualVal) * 100, 2);
-                        $status = $ach >= 80 ? 'Waspada' : 'Di Bawah Target';
+                foreach ($items as $item) {
+                    $ratioName = trim($item['name']);
+                    $actualVal = (float)($item['value'] ?? 0);
+                    $benchmarkStr = trim($item['benchmark'] ?? '');
+                    $status = trim($item['assessment'] ?? 'Waspada');
+
+                    // Ekstrak target numerik dari string benchmark untuk kalkulasi persentase pencapaian
+                    $targetVal = 0.0;
+                    if (preg_match('/([0-9]+(?:\.[0-9]+)?)/', str_replace(',', '.', $benchmarkStr), $matches)) {
+                        $targetVal = (float)$matches[1];
                     }
-                } elseif ($isLowerBetter) {
-                    if ($actualVal <= $targetVal) {
+
+                    // Tentukan achievement percentage berdasarkan status riil dari finance
+                    if (str_contains(strtolower($status), 'sangat') || str_contains(strtolower($status), 'ideal') || str_contains(strtolower($status), 'optimal') || str_contains(strtolower($status), 'aman') || str_contains(strtolower($status), 'likuid') || str_contains(strtolower($status), 'produktif') || str_contains(strtolower($status), 'cepat') || str_contains(strtolower($status), 'tercapai')) {
                         $ach = 100.00;
-                        $status = 'Tercapai';
+                        $mappedStatus = 'Tercapai';
+                    } elseif (str_contains(strtolower($status), 'wajar') || str_contains(strtolower($status), 'longgar') || str_contains(strtolower($status), 'waspada') || str_contains(strtolower($status), 'tinggi')) {
+                        $ach = 85.00;
+                        $mappedStatus = 'Waspada';
                     } else {
-                        $ach = $actualVal > 0 ? round(($targetVal / $actualVal) * 100, 2) : 100.00;
-                        $status = $ach >= 80 ? 'Waspada' : 'Di Bawah Target';
+                        $ach = 50.00;
+                        $mappedStatus = 'Di Bawah Target';
                     }
-                } else {
-                    $ach = $targetVal > 0 ? round(($actualVal / $targetVal) * 100, 2) : 100.00;
-                    if ($ach > 100) $ach = 100.00;
-                    $status = $ach >= 100 ? 'Tercapai' : ($ach >= 80 ? 'Waspada' : 'Di Bawah Target');
-                }
 
-                $existing = FinancialRatio::where('period', $this->selectedPeriod)
-                    ->where('ratio_name', $fr['name'])
-                    ->first();
+                    // Khusus jika ada kalkulasi persentase eksak
+                    if ($targetVal > 0 && $ach == 100.00) {
+                        $ratioCalc = ($actualVal / $targetVal) * 100;
+                        if ($ratioCalc <= 100) {
+                            $ach = round($ratioCalc, 2);
+                        }
+                    }
 
-                if ($existing) {
-                    $existing->update([
-                        'target' => $targetVal,
-                        'actual' => $actualVal,
-                        'achievement_pct' => $ach,
-                        'status' => $status,
-                        'category' => $fr['category'],
-                    ]);
-                    $syncedCount++;
-                } else {
-                    FinancialRatio::create([
-                        'period' => $this->selectedPeriod,
-                        'category' => $fr['category'],
-                        'ratio_name' => $fr['name'],
-                        'target' => $targetVal,
-                        'actual' => $actualVal,
-                        'achievement_pct' => $ach,
-                        'status' => $status,
-                    ]);
-                    $syncedCount++;
+                    $existing = FinancialRatio::where('period', $this->selectedPeriod)
+                        ->where('ratio_name', $ratioName)
+                        ->first();
+
+                    if ($existing) {
+                        $existing->update([
+                            'target' => $targetVal,
+                            'benchmark' => $benchmarkStr,
+                            'actual' => $actualVal,
+                            'achievement_pct' => $ach,
+                            'status' => $mappedStatus,
+                            'category' => $catName,
+                        ]);
+                        $syncedCount++;
+                    } else {
+                        FinancialRatio::create([
+                            'period' => $this->selectedPeriod,
+                            'category' => $catName,
+                            'ratio_name' => $ratioName,
+                            'target' => $targetVal,
+                            'benchmark' => $benchmarkStr,
+                            'actual' => $actualVal,
+                            'achievement_pct' => $ach,
+                            'status' => $mappedStatus,
+                        ]);
+                        $syncedCount++;
+                    }
                 }
             }
 
-            session()->flash('message', "Sukses! {$syncedCount} rasio keuangan berhasil disinkronkan persis sesuai Matriks Analisa Rasio Finance ({$this->selectedPeriod}).");
+            session()->flash('message', "Sukses! {$syncedCount} rasio keuangan berhasil disinkronkan langsung dari Finance App ({$this->selectedPeriod}).");
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menyambung ke database finance: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyambung ke data Finance: ' . $e->getMessage());
         }
     }
 
@@ -327,7 +174,7 @@ class FinancialRatios extends Component
             return;
         }
 
-        $this->reset(['ratioId', 'ratio_name', 'target', 'actual']);
+        $this->reset(['ratioId', 'ratio_name', 'target', 'benchmark', 'actual']);
         $this->category = 'Profitabilitas';
         $this->isEditMode = false;
         $this->showModal = true;
@@ -351,6 +198,7 @@ class FinancialRatios extends Component
         $this->category = $ratio->category;
         $this->ratio_name = $ratio->ratio_name;
         $this->target = $ratio->target;
+        $this->benchmark = $ratio->benchmark ?? '';
         $this->actual = $ratio->actual;
         $this->isEditMode = true;
         $this->showModal = true;
@@ -381,6 +229,7 @@ class FinancialRatios extends Component
 
         $t = floatval($this->target);
         $a = floatval($this->actual);
+        $bm = !empty($this->benchmark) ? trim($this->benchmark) : null;
 
         $upperName = strtoupper(trim($this->ratio_name));
         $isDpo = str_contains($upperName, 'DPO') || str_contains($upperName, 'DAYS PAYABLE');
@@ -433,6 +282,7 @@ class FinancialRatios extends Component
                 'category' => $this->category,
                 'ratio_name' => $this->ratio_name,
                 'target' => $t,
+                'benchmark' => $bm,
                 'actual' => $a,
                 'achievement_pct' => $ach,
                 'status' => $status,
@@ -444,6 +294,7 @@ class FinancialRatios extends Component
                 'category' => $this->category,
                 'ratio_name' => $this->ratio_name,
                 'target' => $t,
+                'benchmark' => $bm,
                 'actual' => $a,
                 'achievement_pct' => $ach,
                 'status' => $status,

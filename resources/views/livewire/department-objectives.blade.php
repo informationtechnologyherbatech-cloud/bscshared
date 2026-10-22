@@ -110,7 +110,8 @@
                         <li class="nav-item">
                             <a class="nav-link py-1 px-3 {{ $activeTab === 'pos_link' ? 'active bg-warning text-dark font-weight-bold' : 'text-dark' }}" 
                                wire:click.prevent="$set('activeTab', 'pos_link')" href="#">
-                                <i class="fas fa-th mr-1"></i> Keterkaitan 12 Pos Finansial
+                                <i class="fas fa-th mr-1"></i> Keterkaitan 130 Pos Anggaran Odoo & COA
+                                <span class="badge {{ $activeTab === 'pos_link' ? 'badge-dark text-white' : 'badge-warning text-dark' }} ml-1">{{ $totalBudgetPosCount ?? 130 }} Pos / {{ $totalCoaCount ?? 301 }} COA</span>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -331,93 +332,261 @@
                         </div>
 
                     <!-- ========================================== -->
-                    <!-- TAB 2: KETERKAITAN 12 POS FINANSIAL        -->
+                    <!-- TAB 2: KETERKAITAN 130 POS ANGGARAN & COA  -->
                     <!-- ========================================== -->
                     @elseif($activeTab === 'pos_link')
                         <div class="p-3">
                             <div class="alert alert-light border d-flex align-items-center mb-3">
                                 <i class="fas fa-info-circle fa-2x text-warning mr-3"></i>
                                 <div>
-                                    <strong class="text-dark">Integrasi Level 3 &rarr; Tingkat 2 (Rasio Keuangan):</strong><br>
-                                    Tabel di bawah menghubungkan setiap Sasaran Mutu departemen langsung dengan 12 Pos Finansial Inti dan rasio keuangan BSC yang dipengaruhinya.
+                                    <strong class="text-dark">Integrasi Level 3 &rarr; Tingkat 2 (130 Pos Anggaran & Chart of Accounts Odoo):</strong><br>
+                                    Menghubungkan Sasaran Mutu (KPI) operasional departemen dengan <strong>{{ $totalBudgetPosCount ?? 130 }} Pos Akun Anggaran Odoo</strong> dan seluruh <strong>Chart of Accounts (COA) Odoo ERP</strong> (Piutang, Kas & Bank, HPP/Beban Pokok, OPEX, Liabilitas, Ekuitas, Pendapatan).
                                 </div>
-                                <a href="{{ route('peta-pos-akun') }}" class="btn btn-sm btn-outline-teal ml-auto text-nowrap">
-                                    <i class="fas fa-th mr-1"></i> Buka Matriks Lengkap
-                                </a>
+                                <div class="ml-auto d-flex align-items-center" style="gap: 8px;">
+                                    <a href="{{ route('peta-pos-akun') }}" class="btn btn-sm btn-outline-teal text-nowrap">
+                                        <i class="fas fa-th mr-1"></i> Buka Matriks Departemen
+                                    </a>
+                                </div>
                             </div>
 
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-hover align-middle" style="font-size: 13px;">
-                                    <thead class="bg-light">
+                            <!-- Filter & Search Toolbar Tab 2 -->
+                            <div class="card bg-light border-0 shadow-none mb-3">
+                                <div class="card-body p-2 d-flex flex-wrap align-items-center justify-content-between" style="gap: 10px;">
+                                    <!-- Kategori Filter Buttons -->
+                                    <div class="btn-group btn-group-sm flex-wrap" role="group">
+                                        <button type="button" 
+                                                wire:click="$set('posAccountTypeFilter', '')" 
+                                                class="btn {{ $posAccountTypeFilter === '' ? 'btn-warning font-weight-bold text-dark' : 'btn-outline-secondary bg-white' }}">
+                                            Semua Akun ({{ $allPosAccounts->count() }})
+                                        </button>
+                                        <button type="button" 
+                                                wire:click="$set('posAccountTypeFilter', 'BUDGET_130')" 
+                                                class="btn {{ $posAccountTypeFilter === 'BUDGET_130' ? 'btn-teal font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}"
+                                                title="130 Kategori Pos Anggaran Departemen Odoo">
+                                            <i class="fas fa-star text-warning mr-1"></i> 130 Pos Anggaran Odoo ({{ $totalBudgetPosCount }})
+                                        </button>
+                                        <button type="button" 
+                                                wire:click="$set('posAccountTypeFilter', 'Asset')" 
+                                                class="btn {{ $posAccountTypeFilter === 'Asset' ? 'btn-info font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}">
+                                            Asset (Piutang & Kas) ({{ $allPosAccounts->where('type', 'Asset')->count() }})
+                                        </button>
+                                        <button type="button" 
+                                                wire:click="$set('posAccountTypeFilter', 'COGS')" 
+                                                class="btn {{ $posAccountTypeFilter === 'COGS' ? 'btn-danger font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}">
+                                            HPP / COGS ({{ $allPosAccounts->where('type', 'COGS')->count() }})
+                                        </button>
+                                        <button type="button" 
+                                                wire:click="$set('posAccountTypeFilter', 'Expense')" 
+                                                class="btn {{ $posAccountTypeFilter === 'Expense' ? 'btn-secondary font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}">
+                                            Beban OPEX ({{ $allPosAccounts->where('type', 'Expense')->count() }})
+                                        </button>
+                                        <button type="button" 
+                                                wire:click="$set('posAccountTypeFilter', 'Liability')" 
+                                                class="btn {{ $posAccountTypeFilter === 'Liability' ? 'btn-dark font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}">
+                                            Liabilitas / Hutang ({{ $allPosAccounts->where('type', 'Liability')->count() }})
+                                        </button>
+                                        <button type="button" 
+                                                wire:click="$set('posAccountTypeFilter', 'Revenue')" 
+                                                class="btn {{ $posAccountTypeFilter === 'Revenue' ? 'btn-success font-weight-bold text-white' : 'btn-outline-secondary bg-white' }}">
+                                            Pendapatan / Sales ({{ $allPosAccounts->where('type', 'Revenue')->count() }})
+                                        </button>
+                                    </div>
+
+                                    <!-- Search Box Akun -->
+                                    <div class="input-group input-group-sm" style="width: 280px;">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                        </div>
+                                        <input type="text" 
+                                               wire:model.live.debounce.300ms="posSearch" 
+                                               class="form-control border-left-0" 
+                                               placeholder="Cari kode akun, nama COA, rasio...">
+                                        @if($posSearch)
+                                            <div class="input-group-append">
+                                                <button class="btn btn-outline-secondary bg-white" type="button" wire:click="$set('posSearch', '')">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Info Hasil Filter -->
+                            <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                                <span class="small text-muted">
+                                    Menampilkan <strong>{{ $posAccountsList->count() }}</strong> pos akun Odoo ERP & COA
+                                    @if($posAccountTypeFilter === 'BUDGET_130')
+                                        <span class="badge badge-teal ml-1">Kategori: 130 Pos Anggaran</span>
+                                    @elseif($posAccountTypeFilter)
+                                        <span class="badge badge-info ml-1">Kategori: {{ $posAccountTypeFilter }}</span>
+                                    @endif
+                                    @if($posSearch)
+                                        <span class="badge badge-warning text-dark ml-1">Pencarian: "{{ $posSearch }}"</span>
+                                    @endif
+                                </span>
+                            </div>
+
+                            <div class="table-responsive border rounded bg-white shadow-xs" style="max-height: 700px; overflow-y: auto;">
+                                <table class="table table-bordered table-hover align-middle mb-0" style="font-size: 13px;">
+                                    <thead class="bg-light position-sticky" style="top: 0; z-index: 10;">
                                         <tr>
-                                            <th style="width: 14%;">Pos Finansial</th>
-                                            <th style="width: 18%;">Rasio Terkait</th>
-                                            <th style="width: 38%;">Sasaran Mutu Terhubung (KPI)</th>
-                                            <th style="width: 18%;">Departemen PIC</th>
-                                            <th class="text-center" style="width: 12%;">Status Driver</th>
+                                            <th style="width: 24%;">Kode & Nama Akun Odoo ERP</th>
+                                            <th style="width: 14%;">Tipe / Kategori</th>
+                                            <th style="width: 18%;">Rasio Finansial Terkait</th>
+                                            <th style="width: 24%;">Sasaran Mutu Terhubung (KPI)</th>
+                                            <th style="width: 10%;">PIC Dept</th>
+                                            <th class="text-center" style="width: 10%;">Status Driver</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($corePos as $cp)
+                                        @forelse($posAccountsList as $acc)
                                             @php
-                                                $linkedKpis = $allObjectives->filter(function($item) use ($cp) {
-                                                    $raw = trim($item->pos_anggaran ?? $item->odoo_account_code ?? '');
-                                                    if (!$raw) return false;
-                                                    $arr = array_map('trim', explode(',', str_replace(['[', ']', '"'], '', $raw)));
-                                                    return in_array($cp['code'], $arr);
+                                                $code = $acc['code'];
+                                                $isBudget = $acc['is_budget_pos'] ?? false;
+                                                $type = $acc['type'] ?? 'COA';
+
+                                                // Cari KPI sasaran mutu yang menautkan kode akun Odoo ini atau pos_anggaran
+                                                $linkedKpis = $allObjectives->filter(function($item) use ($code, $type) {
+                                                    $raw = trim(($item->pos_anggaran ?? '') . ',' . ($item->odoo_account_code ?? ''));
+                                                    if (!$raw || $raw === ',') return false;
+                                                    $tokens = array_filter(array_map('trim', explode(',', str_replace(['[', ']', '"'], '', $raw))));
+                                                    
+                                                    // Pencocokan langsung kode akun
+                                                    if (in_array($code, $tokens)) return true;
+
+                                                    // Jika akun adalah HPP atau Bahan Baku, cocokkan juga kode mapping PA02
+                                                    if (in_array('PA02', $tokens) && (str_starts_with($code, '51000') || str_starts_with($code, '11300010') || str_contains(strtolower($code), '51000010'))) {
+                                                        return true;
+                                                    }
+                                                    // Jika akun adalah Listrik, cocokkan PA03
+                                                    if (in_array('PA03', $tokens) && (str_contains(strtolower($code), '61100310') || str_contains(strtolower($acc['name'] ?? ''), 'listrik'))) {
+                                                        return true;
+                                                    }
+                                                    // Jika akun Tenaga Kerja, cocokkan PA04
+                                                    if (in_array('PA04', $tokens) && (str_contains(strtolower($acc['name'] ?? ''), 'gaji') || str_contains(strtolower($acc['name'] ?? ''), 'tenaga kerja'))) {
+                                                        return true;
+                                                    }
+                                                    // Jika akun Maintenance, cocokkan PA05
+                                                    if (in_array('PA05', $tokens) && (str_contains(strtolower($acc['name'] ?? ''), 'pemeliharaan') || str_contains(strtolower($acc['name'] ?? ''), 'perawatan'))) {
+                                                        return true;
+                                                    }
+                                                    // Jika akun Persediaan, cocokkan PA06
+                                                    if (in_array('PA06', $tokens) && str_starts_with($code, '113')) {
+                                                        return true;
+                                                    }
+                                                    // Jika akun Piutang, cocokkan PA07
+                                                    if (in_array('PA07', $tokens) && str_starts_with($code, '112')) {
+                                                        return true;
+                                                    }
+                                                    // Jika akun Kas/Bank, cocokkan PA09
+                                                    if (in_array('PA09', $tokens) && str_starts_with($code, '111')) {
+                                                        return true;
+                                                    }
+
+                                                    return false;
                                                 });
+
+                                                // Warna badge tipe
+                                                $badgeTypeClass = match($type) {
+                                                    'Asset' => 'badge-info',
+                                                    'Liability' => 'badge-dark',
+                                                    'Equity' => 'badge-primary',
+                                                    'Revenue' => 'badge-success',
+                                                    'COGS' => 'badge-danger',
+                                                    'Expense' => 'badge-secondary',
+                                                    default => 'badge-light border'
+                                                };
                                             @endphp
                                             <tr>
-                                                <td class="font-weight-bold text-teal">
-                                                    <span class="badge badge-teal mr-1">{{ $cp['code'] }}</span>
-                                                    {{ $cp['name'] }}
-                                                </td>
+                                                <!-- Kode & Nama Akun -->
                                                 <td>
-                                                    <span class="badge badge-light border text-dark font-weight-bold">
-                                                        {{ $cp['ratio'] }}
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="badge badge-light border text-dark font-weight-bold mr-2" style="font-size: 12px; font-family: monospace;">
+                                                            {{ $code }}
+                                                        </span>
+                                                        <div class="flex-grow-1">
+                                                            <strong class="text-dark">{{ $acc['name'] }}</strong>
+                                                            @if($isBudget)
+                                                                <span class="badge badge-teal py-0 px-1 ml-1" style="font-size: 9.5px;" title="Pos Anggaran Resmi Departemen Odoo">
+                                                                    <i class="fas fa-check-circle mr-1"></i> Pos Anggaran Odoo
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                <!-- Tipe Akun -->
+                                                <td>
+                                                    <span class="badge {{ $badgeTypeClass }} px-2 py-1" style="font-size: 11px;">
+                                                        {{ $type }}
+                                                    </span>
+                                                    @if($isBudget)
+                                                        <span class="d-block text-muted small mt-1" style="font-size: 10.5px;">Anggaran Odoo</span>
+                                                    @else
+                                                        <span class="d-block text-muted small mt-1" style="font-size: 10.5px;">COA Neraca / L/R</span>
+                                                    @endif
+                                                </td>
+
+                                                <!-- Rasio Terkait -->
+                                                <td>
+                                                    <span class="badge badge-light border text-dark font-weight-bold" style="font-size: 11.5px;">
+                                                        {{ $acc['ratio'] }}
                                                     </span>
                                                 </td>
+
+                                                <!-- Sasaran Mutu Terhubung (KPI) -->
                                                 <td>
                                                     @if($linkedKpis->count() > 0)
                                                         @foreach($linkedKpis as $lk)
-                                                            <div class="mb-1">
+                                                            <div class="mb-1 p-1 rounded bg-light border d-flex align-items-center">
                                                                 <i class="fas fa-bullseye text-warning mr-1"></i>
-                                                                <strong>[{{ $lk->kpi_code }}]</strong> {{ $lk->kpi_name }}
+                                                                <div class="text-truncate" style="max-width: 250px;">
+                                                                    <strong>[{{ $lk->kpi_code }}]</strong> {{ $lk->kpi_name }}
+                                                                </div>
+                                                                <span class="badge {{ $lk->status === 'Tercapai' ? 'badge-success' : ($lk->status === 'Waspada' ? 'badge-warning text-dark' : 'badge-danger') }} ml-auto py-0 px-1" style="font-size: 9.5px;">
+                                                                    {{ $lk->achievement_pct }}%
+                                                                </span>
                                                             </div>
                                                         @endforeach
                                                     @else
-                                                        <span class="text-muted font-italic">Belum ada KPI khusus yang ditautkan</span>
+                                                        <span class="text-muted font-italic small">- Belum ditautkan ke KPI -</span>
                                                     @endif
                                                 </td>
+
+                                                <!-- Departemen PIC -->
                                                 <td>
-                                                    @php
-                                                        $deptsLinked = [];
-                                                        foreach($matrix as $dCode => $row) {
-                                                            if (($row[$cp['code']] ?? '') === 'K') {
-                                                                $dObj = collect($departments)->firstWhere('code', $dCode);
-                                                                $deptsLinked[] = $dObj ? $dObj->name : $dCode;
-                                                            }
-                                                        }
-                                                    @endphp
-                                                    @if(count($deptsLinked) > 0)
-                                                        @foreach($deptsLinked as $dl)
-                                                            <span class="badge badge-light border mr-1 mb-1">{{ $dl }}</span>
-                                                        @endforeach
+                                                    @if(!empty($acc['dept_code']))
+                                                        <span class="badge badge-light border text-dark" title="{{ $acc['dept_name'] ?? $acc['dept_code'] }}">
+                                                            <i class="fas fa-building text-muted mr-1"></i> {{ $acc['dept_code'] }}
+                                                        </span>
+                                                        <small class="d-block text-muted text-truncate" style="max-width: 100px; font-size: 10px;">
+                                                            {{ $acc['dept_name'] ?? '' }}
+                                                        </small>
                                                     @else
-                                                        <span class="text-muted">-</span>
+                                                        <span class="text-muted small">Sentral / Korporat</span>
                                                     @endif
                                                 </td>
+
+                                                <!-- Status Driver Finansial -->
                                                 <td class="text-center font-weight-bold">
                                                     @if($linkedKpis->where('status', 'Di Bawah Target')->count() > 0)
-                                                        <span class="badge badge-danger px-2 py-1">LEMAH (GAP)</span>
+                                                        <span class="badge badge-danger px-2 py-1" style="font-size: 10.5px;">LEMAH (GAP)</span>
                                                     @elseif($linkedKpis->count() > 0)
-                                                        <span class="badge badge-success px-2 py-1">KUAT</span>
+                                                        <span class="badge badge-success px-2 py-1" style="font-size: 10.5px;">KUAT</span>
                                                     @else
-                                                        <span class="badge badge-light border text-muted">TERKENDALI</span>
+                                                        <span class="badge badge-light border text-muted" style="font-size: 10px;">TERKENDALI</span>
                                                     @endif
                                                 </td>
                                             </tr>
-                                        @endforeach
+                                        @empty
+                                            <tr>
+                                                <td colspan="6" class="text-center py-4 text-muted">
+                                                    <i class="fas fa-search fa-2x mb-2 text-muted"></i><br>
+                                                    Tidak ditemukan pos akun Odoo yang sesuai dengan kriteria filter.
+                                                </td>
+                                            </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>
@@ -521,7 +690,7 @@
                         <div class="modal-body p-3" style="overflow-y: auto; max-height: calc(90vh - 110px);">
                             <div class="row">
                                 <div class="col-md-6 form-group mb-2">
-                                    <label class="font-weight-bold text-dark small mb-1">Departemen PIC (Odoo):</label>
+                                    <label class="font-weight-bold text-dark small mb-1">Departemen PIC:</label>
                                     <select wire:model="dept_code" class="form-control form-control-sm">
                                         @foreach($departments as $d)
                                             <option value="{{ $d->code }}">{{ $d->name }} ({{ $d->code }})</option>

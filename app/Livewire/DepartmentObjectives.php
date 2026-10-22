@@ -24,6 +24,10 @@ class DepartmentObjectives extends Component
 
     public $search = '';
 
+    // Filter Pos Akun (Tab 2: 130 Pos Anggaran & COA)
+    public $posAccountTypeFilter = '';
+    public $posSearch = '';
+
     // CRUD Modal State
     public $showModal = false;
     public $isEditMode = false;
@@ -86,20 +90,14 @@ class DepartmentObjectives extends Component
     }
 
     /**
-     * Dapatkan 10 Departemen Asli Odoo ERP
+     * Dapatkan Daftar Departemen dari Master Departemen (Tabel departments)
      */
     public function getOdooDepartments()
     {
-        try {
-            return DB::connection('mysql_finance')
-                ->table('departments')
-                ->select('id', 'name', 'code')
-                ->orderBy('id', 'asc')
-                ->get()
-                ->toArray();
-        } catch (\Exception $e) {
-            return DB::table('departments')->where('is_active', 1)->orderBy('sort_order')->get()->toArray();
-        }
+        return \App\Models\Department::where('is_active', 1)
+            ->orderBy('sort_order', 'asc')
+            ->orderBy('name', 'asc')
+            ->get();
     }
 
     /**
@@ -239,7 +237,8 @@ class DepartmentObjectives extends Component
         $this->reset(['objId', 'kpi_code', 'kpi_name', 'target', 'actual', 'selected_pos_codes', 'selected_odoo_accounts', 'impact_note', 'unit']);
         $this->selected_pos_codes = [];
         $this->selected_odoo_accounts = [];
-        $this->dept_code = $this->selectedDept ?: 'PRD';
+        $firstDept = \App\Models\Department::where('is_active', 1)->orderBy('sort_order')->value('code') ?: 'FAT';
+        $this->dept_code = $this->selectedDept ?: $firstDept;
         $this->source_type = 'manual';
         $this->polarity = 'Naik';
         $this->unit = '';
@@ -302,6 +301,178 @@ class DepartmentObjectives extends Component
         } catch (\Exception $e) {
             return collect([]);
         }
+    }
+
+    /**
+     * Dapatkan 130 Pos Akun Anggaran Odoo ditambah seluruh Chart of Accounts (COA) Odoo ERP
+     */
+    public function getAllOdooAccountsAndCOA()
+    {
+        try {
+            // 1. Ambil 130 Pos Anggaran (budget_categories) dengan Departemen PIC terkait
+            $bcRows = DB::connection('mysql_finance')
+                ->table('budget_categories')
+                ->leftJoin('departments', 'budget_categories.department_id', '=', 'departments.id')
+                ->select(
+                    'budget_categories.code',
+                    'budget_categories.name',
+                    'departments.name as dept_name',
+                    'departments.code as dept_code'
+                )
+                ->orderBy('budget_categories.code')
+                ->get()
+                ->keyBy('code');
+
+            // 2. Ambil seluruh COA Odoo aktif dari coa_mappings
+            $coaRows = DB::connection('mysql_finance')
+                ->table('coa_mappings')
+                ->where('coa_mappings.is_active', 1)
+                ->leftJoin('departments', 'coa_mappings.department_id', '=', 'departments.id')
+                ->select(
+                    'coa_mappings.account_code as code',
+                    'coa_mappings.account_name as name',
+                    'coa_mappings.account_type as type',
+                    'departments.name as dept_name',
+                    'departments.code as dept_code'
+                )
+                ->orderBy('coa_mappings.account_code')
+                ->get();
+
+            $list = collect([]);
+
+            // Jika coaRows kosong, gunakan minimal budget_categories
+            if ($coaRows->isEmpty()) {
+                foreach ($bcRows as $code => $bc) {
+                    $prefix = substr($code, 0, 1);
+                    $type = ($prefix === '5') ? 'COGS' : 'Expense';
+                    $list->push([
+                        'code' => $code,
+                        'name' => $bc->name,
+                        'type' => $type,
+                        'is_budget_pos' => true,
+                        'ratio' => $this->determineRatioByAccount($code, $type, $bc->name),
+                        'dept_name' => $bc->dept_name,
+                        'dept_code' => $bc->dept_code,
+                    ]);
+                }
+                return $list;
+            }
+
+            // Gabungkan COA dan tandai apakah termasuk pos anggaran Odoo (130 pos)
+            foreach ($coaRows as $c) {
+                $code = $c->code;
+                $isBudget = isset($bcRows[$code]);
+                $deptName = $c->dept_name ?: ($isBudget ? $bcRows[$code]->dept_name : null);
+                $deptCode = $c->dept_code ?: ($isBudget ? $bcRows[$code]->dept_code : null);
+
+                $list->push([
+                    'code' => $code,
+                    'name' => $c->name,
+                    'type' => $c->type,
+                    'is_budget_pos' => $isBudget,
+                    'ratio' => $this->determineRatioByAccount($code, $c->type, $c->name),
+                    'dept_name' => $deptName,
+                    'dept_code' => $deptCode,
+                ]);
+            }
+
+            // Tambahkan pos anggaran jika ada di budget_categories tapi belum ada di coa_mappings
+            $existingCodes = $coaRows->pluck('code')->toArray();
+            foreach ($bcRows as $code => $bc) {
+                if (!in_array($code, $existingCodes)) {
+                    $prefix = substr($code, 0, 1);
+                    $type = ($prefix === '5') ? 'COGS' : 'Expense';
+                    $list->push([
+                        'code' => $code,
+                        'name' => $bc->name,
+                        'type' => $type,
+                        'is_budget_pos' => true,
+                        'ratio' => $this->determineRatioByAccount($code, $type, $bc->name),
+                        'dept_name' => $bc->dept_name,
+                        'dept_code' => $bc->dept_code,
+                    ]);
+                }
+            }
+
+            // Urutkan: Pos Akun Anggaran (130) didahulukan, lalu berdasarkan kode akun
+            return $list->sortByDesc('is_budget_pos')->values();
+        } catch (\Exception $e) {
+            // Fallback ke 12 pos inti jika koneksi error
+            return collect($this->get12CorePos())->map(function($cp) {
+                return [
+                    'code' => $cp['code'],
+                    'name' => $cp['name'],
+                    'type' => 'Pos Finansial',
+                    'is_budget_pos' => true,
+                    'ratio' => $cp['ratio'],
+                    'dept_name' => 'Operasional',
+                    'dept_code' => 'ALL',
+                ];
+            });
+        }
+    }
+
+    /**
+     * Helper menentukan Rasio Keuangan / Parameter Kinerja BSC Berdasarkan Akun
+     */
+    private function determineRatioByAccount($code, $type, $name)
+    {
+        $prefix = substr($code, 0, 1);
+        $nameLower = strtolower($name);
+
+        if ($type === 'Revenue' || $prefix === '4') {
+            return 'Sales Growth & Revenue';
+        }
+        if ($type === 'COGS' || $prefix === '5') {
+            if (str_contains($nameLower, 'gaji') || str_contains($nameLower, 'tenaga kerja')) {
+                return 'COGS & SDM Produksi';
+            }
+            if (str_contains($nameLower, 'penyusutan')) {
+                return 'COGS & Utilisasi Mesin (TATO)';
+            }
+            return 'Gross Profit Margin (GPM) & COGS';
+        }
+        if ($type === 'Expense' || in_array($prefix, ['6', '8', '9'])) {
+            if (str_contains($nameLower, 'listrik') || str_contains($nameLower, 'pln')) {
+                return 'OPEX Energi & Utilitas Pabrik';
+            }
+            if (str_contains($nameLower, 'armada') || str_contains($nameLower, 'ekspedisi') || str_contains($nameLower, 'kirim')) {
+                return 'OPEX Logistik & Distribusi';
+            }
+            if (str_contains($nameLower, 'pemeliharaan') || str_contains($nameLower, 'perawatan') || str_contains($nameLower, 'sparepart')) {
+                return 'TATO & Maintenance Mould/Mesin';
+            }
+            if (str_contains($nameLower, 'gaji') || str_contains($nameLower, 'tunjangan') || str_contains($nameLower, 'lembur')) {
+                return 'OPEX Payroll & Human Capital';
+            }
+            return 'Net Profit Margin (NPM) & OPEX';
+        }
+        if ($type === 'Asset' || $prefix === '1') {
+            if (str_contains($nameLower, 'piutang') || str_starts_with($code, '112')) {
+                return 'DSO & Piutang Pelanggan (AR)';
+            }
+            if (str_contains($nameLower, 'kas') || str_contains($nameLower, 'bank') || str_starts_with($code, '111')) {
+                return 'Cash Runway & Quick Ratio';
+            }
+            if (str_contains($nameLower, 'persediaan') || str_starts_with($code, '113')) {
+                return 'ITO & DIO Persediaan (Resin/Botol)';
+            }
+            if (str_starts_with($code, '12')) {
+                return 'ROA & Utilisasi Aset Tetap (TATO)';
+            }
+            return 'Current Ratio & Likuiditas Aset';
+        }
+        if ($type === 'Liability' || $prefix === '2') {
+            if (str_contains($nameLower, 'hutang usaha') || str_starts_with($code, '211')) {
+                return 'DPO & Utang Usaha Supplier';
+            }
+            return 'Solvabilitas & Debt to Equity (DER)';
+        }
+        if ($type === 'Equity' || $prefix === '3') {
+            return 'ROE & Return on Equity';
+        }
+
+        return 'Finansial & Operasional';
     }
 
     public function openEditModal($id)
@@ -443,6 +614,32 @@ class DepartmentObjectives extends Component
         $matrixJson = DB::table('app_settings')->where('key', $key)->value('value');
         $matrix = $matrixJson ? json_decode($matrixJson, true) : [];
 
+        // Ambil 130 Pos Anggaran Odoo ditambah seluruh Chart of Accounts (COA) Odoo ERP untuk Tab 2
+        $allPosAccounts = $this->getAllOdooAccountsAndCOA();
+
+        // Filter untuk Tab 2 (Kategori Akun & Keyword Pencarian Pos)
+        $filteredPosAccounts = $allPosAccounts;
+        if ($this->posAccountTypeFilter) {
+            if ($this->posAccountTypeFilter === 'BUDGET_130') {
+                $filteredPosAccounts = $filteredPosAccounts->where('is_budget_pos', true);
+            } else {
+                $filteredPosAccounts = $filteredPosAccounts->where('type', $this->posAccountTypeFilter);
+            }
+        }
+        if (!empty(trim($this->posSearch))) {
+            $pKw = strtolower(trim($this->posSearch));
+            $filteredPosAccounts = $filteredPosAccounts->filter(function($item) use ($pKw) {
+                return str_contains(strtolower($item['code']), $pKw)
+                    || str_contains(strtolower($item['name']), $pKw)
+                    || str_contains(strtolower($item['dept_name'] ?? ''), $pKw)
+                    || str_contains(strtolower($item['ratio'] ?? ''), $pKw);
+            });
+        }
+
+        // Hitung statistik pos akun untuk badge header
+        $totalBudgetPosCount = $allPosAccounts->where('is_budget_pos', true)->count();
+        $totalCoaCount = $allPosAccounts->count();
+
         return view('livewire.department-objectives', [
             'periods' => $periods,
             'departments' => $departments,
@@ -453,11 +650,17 @@ class DepartmentObjectives extends Component
             'odooAccounts' => $odooAccounts,
             'odooAccountMap' => $odooAccountMap,
             'filteredOdooAccounts' => $filteredOdooAccounts,
+            'posAccountsList' => $filteredPosAccounts,
+            'allPosAccounts' => $allPosAccounts,
+            'totalBudgetPosCount' => $totalBudgetPosCount,
+            'totalCoaCount' => $totalCoaCount,
             'matrix' => $matrix,
             'selectedPeriod' => $this->selectedPeriod,
             'selectedDept' => $this->selectedDept,
             'selectedStatus' => $this->selectedStatus,
             'search' => $this->search,
+            'posAccountTypeFilter' => $this->posAccountTypeFilter,
+            'posSearch' => $this->posSearch,
             'activeTab' => $this->activeTab,
             'showModal' => $this->showModal,
             'isEditMode' => $this->isEditMode,

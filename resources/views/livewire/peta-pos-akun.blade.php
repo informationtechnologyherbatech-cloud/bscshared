@@ -5,10 +5,10 @@
             <div class="row align-items-center">
                 <div class="col-sm-7">
                     <h1 class="m-0 text-dark font-weight-bold" style="font-size: 22px;">
-                        <i class="fas fa-th text-teal mr-2"></i> Peta Pos Akun & Unit Kerja (Level 3)
+                        <i class="fas fa-th text-teal mr-2"></i> Peta Pos Akun & Chart of Accounts Odoo (Level 3)
                     </h1>
                     <p class="text-muted small mb-0 mt-1">
-                        Matriks pemetaan hubungan dan pengaruh unit kerja departemen terhadap 12 pos akun finansial inti pabrik manufaktur botol plastik.
+                        Matriks pemetaan hubungan 10 departemen unit kerja terhadap <strong>12 Pos Finansial Inti</strong> dan <strong>130 Akun Chart of Accounts (COA) Odoo ERP</strong> (Piutang, Kas, HPP, OPEX).
                     </p>
                 </div>
                 <div class="col-sm-5 text-sm-right mt-2 mt-sm-0">
@@ -44,10 +44,10 @@
 
                 <div class="col-lg-3 col-6">
                     <div class="info-box shadow-xs bg-white border p-2 mb-2">
-                        <span class="info-box-icon bg-info text-white rounded"><i class="fas fa-list-ol"></i></span>
+                        <span class="info-box-icon bg-info text-white rounded"><i class="fas fa-coins"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text text-muted small font-weight-bold">POS AKUN INTI</span>
-                            <span class="info-box-number text-dark font-weight-bold" style="font-size: 20px;">{{ $totalPos }} Pos Finansial</span>
+                            <span class="info-box-text text-muted small font-weight-bold">POS AKUN & COA ODOO</span>
+                            <span class="info-box-number text-dark font-weight-bold" style="font-size: 19px;">12 Pos / 130 Akun COA</span>
                         </div>
                     </div>
                 </div>
@@ -78,7 +78,7 @@
                 <div class="card-header bg-white py-2 px-3 border-bottom d-flex align-items-center justify-content-between flex-wrap">
                     <div class="d-flex align-items-center flex-wrap">
                         <span class="font-weight-bold text-dark mr-3">
-                            <i class="fas fa-table text-teal mr-1"></i> Matriks Hubungan 12 Pos Akun Inti & Unit Kerja Odoo
+                            <i class="fas fa-table text-teal mr-1"></i> Matriks Hubungan 12 Pos Finansial & 130 Akun Chart of Accounts (COA) Odoo
                         </span>
                         <!-- Legenda Singkat -->
                         <div class="d-inline-flex align-items-center" style="gap: 12px; font-size: 12px;">
@@ -88,7 +88,7 @@
                         </div>
                     </div>
                     <small class="text-muted mt-2 mt-md-0">
-                        <i class="fas fa-check-circle text-teal mr-1"></i> Tersambung langsung ke database Odoo ERP (mysql_finance).
+                        <i class="fas fa-check-circle text-teal mr-1"></i> Terhubung langsung ke 130 Akun COA Odoo ERP (mysql_finance).
                     </small>
                 </div>
 
@@ -124,7 +124,7 @@
                             box-shadow: 2px 0 5px rgba(0,0,0,0.05);
                         }
                         .matrix-table th.pos-header {
-                            min-width: 82px;
+                            min-width: 90px;
                             padding: 8px 4px;
                             background: #f1f5f9;
                             position: sticky;
@@ -172,12 +172,15 @@
                                     UNIT KERJA (DEPARTEMEN ODOO)
                                 </th>
                                 @foreach($posAkunList as $pa)
-                                    <th class="pos-header" title="{{ $pa['full_name'] }} &middot; Driver Rasio: {{ $pa['ratio_link'] }}">
+                                    <th class="pos-header" title="{{ $pa['full_name'] }}&#10;COA: {{ $pa['coa_range'] ?? '' }}&#10;Akun Odoo: {{ $pa['odoo_accounts'] ?? '' }}&#10;Driver: {{ $pa['ratio_link'] }}">
                                         <div class="font-weight-bold text-dark" style="font-size: 11px;">{{ $pa['code'] }}</div>
-                                        <div class="font-weight-bold text-teal text-truncate" style="font-size: 10px; max-width: 85px;">
+                                        <div class="font-weight-bold text-teal text-truncate" style="font-size: 10px; max-width: 95px;">
                                             {{ $pa['name'] }}
                                         </div>
-                                        <div class="text-muted text-truncate" style="font-size: 9px; max-width: 85px;">
+                                        <div class="badge badge-light border text-muted text-truncate my-0.5" style="font-size: 8.5px; max-width: 95px;" title="Akun COA Odoo">
+                                            {{ $pa['coa_range'] ?? 'COA' }}
+                                        </div>
+                                        <div class="text-muted text-truncate" style="font-size: 9px; max-width: 95px;">
                                             {{ $pa['ratio_link'] }}
                                         </div>
                                     </th>

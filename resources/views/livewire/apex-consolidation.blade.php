@@ -1,11 +1,11 @@
-<div>
+<div class="px-2 py-3 px-md-3">
     <!-- HEADER & PERIODE SELECTION -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div>
             <h2 class="font-weight-bold text-dark mb-1">
                 <i class="fas fa-crown text-warning mr-2"></i> Level 1: Apex & Konsolidasi Hop 4
             </h2>
-            <p class="text-muted mb-0">Pusat input data revenue puncak, pengaturan bobot konsolidasi, dan analisis transmisi ke rasio makro.</p>
+            <p class="text-muted mb-0">Pusat input data revenue puncak dan analisis transmisi ke rasio makro.</p>
         </div>
         <div class="d-flex align-items-center mt-3 mt-md-0">
             <span class="mr-2 font-weight-bold text-muted small">Periode Evaluasi:</span>
@@ -69,15 +69,15 @@
         </div>
     @endif
 
-    <!-- 4 RINGKASAN METRIK KONSOLIDASI (Hanya tampil pada sub menu Input & Bobot Revenue) -->
+    <!-- 4 RINGKASAN METRIK KONSOLIDASI (Hanya tampil pada sub menu Input Revenue) -->
     @if($activeTab === 'input')
         <div class="row mb-4">
             <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
                 <div class="card shadow-sm border-0 text-white h-100" style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);">
                     <div class="card-body p-3">
-                        <small class="text-white-50 text-uppercase font-weight-bold">Apex Score Konsolidasi</small>
-                        <h2 class="font-weight-bold my-1 text-white">{{ number_format($apexScore, 2) }}%</h2>
-                        <small class="text-white"><i class="fas fa-crown mr-1"></i> North Star Metric Organisasi</small>
+                        <small class="text-white-50 text-uppercase font-weight-bold">Target Revenue (RKAP)</small>
+                        <h2 class="font-weight-bold my-1 text-white">IDR {{ number_format($target_revenue, 2) }} M</h2>
+                        <small class="text-white"><i class="fas fa-bullseye mr-1"></i> Pagu Baseline Target Tahunan</small>
                     </div>
                 </div>
             </div>
@@ -86,25 +86,30 @@
                     <div class="card-body p-3">
                         <small class="text-white-50 text-uppercase font-weight-bold">Realisasi Revenue Hop 4</small>
                         <h2 class="font-weight-bold my-1 text-white">IDR {{ number_format($actual_revenue, 2) }} M</h2>
-                        <small class="text-white-50">Target: IDR {{ number_format($target_revenue, 2) }} M ({{ number_format($revenueAchievementPct, 1) }}%)</small>
+                        <small class="text-white-50">Capaian: <strong>{{ number_format($revenueAchievementPct, 1) }}%</strong> dari Target</small>
                     </div>
                 </div>
             </div>
             <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
                 <div class="card shadow-sm border-0 text-white h-100" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%);">
                     <div class="card-body p-3">
-                        <small class="text-white-50 text-uppercase font-weight-bold">Rata-Rata Rasio Keuangan</small>
-                        <h2 class="font-weight-bold my-1 text-white">{{ number_format($avgRatioScore, 1) }}%</h2>
-                        <small class="text-white-50">Rerata Capaian 7 Rasio Makro</small>
+                        <small class="text-white-50 text-uppercase font-weight-bold">Deviasi / Gap Omset</small>
+                        @php
+                            $gapRev = $actual_revenue - $target_revenue;
+                        @endphp
+                        <h2 class="font-weight-bold my-1 text-white">{{ $gapRev >= 0 ? '+' : '' }}IDR {{ number_format($gapRev, 2) }} M</h2>
+                        <small class="text-white-50">{{ $gapRev >= 0 ? 'Surplus Penjualan' : 'Defisit terhadap Target' }}</small>
                     </div>
                 </div>
             </div>
             <div class="col-md-3 col-sm-6">
-                <div class="card shadow-sm border-0 text-white h-100" style="background: linear-gradient(135deg, #4b5563 0%, #374151 100%);">
+                <div class="card shadow-sm border-0 text-white h-100" style="background: linear-gradient(135deg, {{ $revenueAchievementPct >= 100 ? '#059669 0%, #047857 100%' : ($revenueAchievementPct >= 80 ? '#d97706 0%, #b45309 100%' : '#dc2626 0%, #b91c1c 100%') }});">
                     <div class="card-body p-3">
-                        <small class="text-white-50 text-uppercase font-weight-bold">Rasio Pembobot</small>
-                        <h2 class="font-weight-bold my-1 text-white">{{ number_format($weight_revenue, 0) }}% : {{ number_format($weight_ratios, 0) }}%</h2>
-                        <small class="text-white-50">Bobot Revenue vs Rasio</small>
+                        <small class="text-white-50 text-uppercase font-weight-bold">Status Capaian Omset</small>
+                        <h2 class="font-weight-bold my-1 text-white">
+                            {{ $revenueAchievementPct >= 100 ? 'TERCAPAI' : ($revenueAchievementPct >= 80 ? 'WASPADA' : 'DI BAWAH') }}
+                        </h2>
+                        <small class="text-white-50">Evaluasi Realisasi vs Target</small>
                     </div>
                 </div>
             </div>
@@ -117,7 +122,7 @@
         <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center">
             <h5 class="font-weight-bold text-dark mb-2 mb-md-0">
                 @if($activeTab === 'input')
-                    <i class="fas fa-edit text-teal mr-2"></i> Form Input & Bobot Revenue
+                    <i class="fas fa-edit text-teal mr-2"></i> Form Target & Realisasi Revenue
                 @elseif($activeTab === 'dupont')
                     <i class="fas fa-sitemap text-info mr-2"></i> DuPont Value Tree Decomposition
                 @elseif($activeTab === 'sensitivity')
@@ -137,7 +142,7 @@
                     <div class="col-md-7 mb-4 mb-md-0">
                         <div class="p-3 bg-light rounded border h-100">
                             <h5 class="font-weight-bold text-teal mb-3">
-                                <i class="fas fa-pen-square mr-1"></i> Input Realisasi Revenue & Bobot Konsolidasi
+                                <i class="fas fa-pen-square mr-1"></i> Input Target & Realisasi Revenue
                             </h5>
 
                             @if($isClosed)
@@ -176,48 +181,14 @@
                                     </div>
                                 </div>
 
-                                <hr>
-
-                                <div class="form-row">
-                                    <div class="form-group col-md-6">
-                                        <label class="font-weight-bold text-dark small">Bobot Komponen Revenue (%):</label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.5" class="form-control" wire:model="weight_revenue" {{ $isClosed ? 'disabled' : '' }}>
-                                            <div class="input-group-append">
-                                                <span class="input-group-text bg-white">%</span>
-                                            </div>
-                                        </div>
-                                        <small class="text-muted">Standar BSC: 45%.</small>
-                                    </div>
-                                    <div class="form-group col-md-6">
-                                        <label class="font-weight-bold text-dark small">Bobot Komponen Rasio Keuangan (%):</label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.5" class="form-control" wire:model="weight_ratios" {{ $isClosed ? 'disabled' : '' }}>
-                                            <div class="input-group-append">
-                                                <span class="input-group-text bg-white">%</span>
-                                            </div>
-                                        </div>
-                                        <small class="text-muted">Standar BSC: 55%.</small>
-                                    </div>
-                                </div>
-
-                                <div class="p-3 bg-white rounded border mb-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="small font-weight-bold text-muted">Total Pembobotan:</span>
-                                        <span class="badge {{ round($weight_revenue + $weight_ratios, 1) == 100.0 ? 'badge-success' : 'badge-danger' }} px-3 py-1 font-weight-bold">
-                                            {{ $weight_revenue + $weight_ratios }}% {{ round($weight_revenue + $weight_ratios, 1) == 100.0 ? '(Valid 100%)' : '(Harus 100%)' }}
-                                        </span>
-                                    </div>
-                                </div>
-
                                 @can('manage ratios')
                                     @if(!$isClosed)
-                                        <button type="submit" class="btn btn-teal btn-block font-weight-bold">
-                                            <i class="fas fa-save mr-1"></i> Simpan & Rekalkulasi Apex Score
+                                        <button type="submit" class="btn btn-teal btn-block font-weight-bold mt-3">
+                                            <i class="fas fa-save mr-1"></i> Simpan Data Revenue
                                         </button>
                                     @endif
                                 @else
-                                    <div class="alert alert-info small mb-0">
+                                    <div class="alert alert-info small mb-0 mt-3">
                                         <i class="fas fa-info-circle mr-1"></i> Anda memiliki akses baca (Read-Only). Perubahan angka hanya diizinkan untuk Admin FAT atau Super Admin.
                                     </div>
                                 @endcan
@@ -236,24 +207,24 @@
                                     <strong>Pilih Periode Aktif:</strong> Pastikan memilih bulan evaluasi yang sesuai di bagian atas (contoh: <code>2026-08</code>).
                                 </li>
                                 <li>
-                                    <strong>Input Target & Actual Revenue:</strong>
-                                    Masukkan nilai target omset perusahaan dari RKAP serta realisasi aktual penutupan buku (dalam satuan <em>Miliar Rupiah</em>).
+                                    <strong>Target Baseline Revenue:</strong> Masukkan nilai target omset penjualan perusahaan dari RKAP tahunan (dalam satuan <em>Miliar Rupiah</em>).
                                 </li>
                                 <li>
-                                    <strong>Atur Proporsi Bobot:</strong>
-                                    Secara default, konsolidasi Apex menggunakan formula $45\%$ omset dan $55\%$ rasio makro. Total kedua bobot harus berjumlah tepat $100\%$.
+                                    <strong>Realisasi Actual Revenue:</strong> Masukkan pencapaian omset pendapatan riil penutupan buku pada periode berjalan.
                                 </li>
                                 <li>
-                                    <strong>Klik Simpan:</strong>
-                                    Sistem akan secara instan menghitung ulang <em>Apex Score</em> dan memperbarui puncak <strong>Piramida BSC</strong> serta jalur transmisi <strong>Wiring Hop 4</strong>.
+                                    <strong>Klik Simpan:</strong> Sistem akan secara instan menyimpan data omset revenue periode ini dan mengupdate capaian target perusahaan.
                                 </li>
                             </ol>
 
-                            <div class="card bg-light border-0 p-2 mb-0">
-                                <strong class="small text-dark"><i class="fas fa-calculator text-teal mr-1"></i> Rumus Konsolidasi Apex:</strong>
-                                <code class="small text-dark mt-1">
-                                    Apex = (% Capaian Omset × Bobot Revenue) + (% Rerata 7 Rasio × Bobot Rasio)
-                                </code>
+                            <div class="card bg-light border-0 p-2.5 mb-0">
+                                <strong class="small text-dark"><i class="fas fa-chart-line text-teal mr-1"></i> Kinerja Omset Periode Ini:</strong>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <span class="small text-muted">Persentase Capaian:</span>
+                                    <span class="badge {{ $revenueAchievementPct >= 100 ? 'badge-success' : ($revenueAchievementPct >= 80 ? 'badge-warning text-dark' : 'badge-danger') }} font-weight-bold px-2 py-1" style="font-size: 12px;">
+                                        {{ number_format($revenueAchievementPct, 2) }}%
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>

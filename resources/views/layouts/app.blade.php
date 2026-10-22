@@ -124,7 +124,7 @@
                     <li class="nav-item">
                         <a href="{{ route('apex-consolidation', ['tab' => 'input']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && (request('tab') === 'input' || !request('tab')) ? 'active' : '' }}">
                             <i class="nav-icon fas fa-edit text-teal"></i>
-                            <p>Input & Bobot Revenue</p>
+                            <p>Input Realisasi Revenue</p>
                         </a>
                     </li>
                     <li class="nav-item">

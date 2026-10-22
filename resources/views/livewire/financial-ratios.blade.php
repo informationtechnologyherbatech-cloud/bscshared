@@ -197,12 +197,17 @@
                             </div>
 
                             <div class="form-row">
-                                <div class="form-group col-md-6">
-                                    <label class="font-weight-bold text-dark">Target:</label>
+                                <div class="form-group col-md-4">
+                                    <label class="font-weight-bold text-dark">Target Numerik:</label>
                                     <input type="number" step="0.01" wire:model="target" class="form-control @error('target') is-invalid @enderror" placeholder="0.00">
                                     @error('target') <span class="invalid-feedback">{{ $message }}</span> @enderror
                                 </div>
-                                <div class="form-group col-md-6">
+                                <div class="form-group col-md-4">
+                                    <label class="font-weight-bold text-dark">Benchmark / Standar:</label>
+                                    <input type="text" wire:model="benchmark" class="form-control @error('benchmark') is-invalid @enderror" placeholder="Contoh: 1.5-2.5 X, ≥ 8 X">
+                                    @error('benchmark') <span class="invalid-feedback">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="form-group col-md-4">
                                     <label class="font-weight-bold text-dark">Realisasi (Actual):</label>
                                     <input type="number" step="0.01" wire:model="actual" class="form-control @error('actual') is-invalid @enderror" placeholder="0.00">
                                     @error('actual') <span class="invalid-feedback">{{ $message }}</span> @enderror

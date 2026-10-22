@@ -110,33 +110,27 @@ class ApexConsolidation extends Component
         $this->validate([
             'target_revenue' => 'required|numeric|min:0.01',
             'actual_revenue' => 'required|numeric|min:0',
-            'weight_revenue' => 'required|numeric|min:0|max:100',
-            'weight_ratios' => 'required|numeric|min:0|max:100',
         ]);
 
-        if (round($this->weight_revenue + $this->weight_ratios, 1) != 100.0) {
-            session()->flash('error', 'Total bobot harus tepat 100% (Saat ini: ' . ($this->weight_revenue + $this->weight_ratios) . '%).');
-            return;
-        }
-
-        // Recalculate Apex Score
+        // Recalculate Apex Score (Berdasarkan rata-rata pencapaian rasio keuangan dan capaian revenue murni 50:50 atau persist nilai yang ada)
         $ratios = FinancialRatio::where('period', $this->selectedPeriod)->get();
         $avgRatioScore = $ratios->count() > 0 ? $ratios->avg('achievement_pct') : 100.0;
         $revenueAchievementPct = round(($this->actual_revenue / $this->target_revenue) * 100, 2);
 
-        $apexScore = round((($this->weight_revenue / 100) * $revenueAchievementPct) + (($this->weight_ratios / 100) * $avgRatioScore), 2);
+        // Jika tidak ada pembobotan khusus, konsolidasi score mengacu langsung ke pencapaian revenue dan rerata rasio
+        $wRev = $this->weight_revenue > 0 ? $this->weight_revenue : 50.0;
+        $wRat = $this->weight_ratios > 0 ? $this->weight_ratios : 50.0;
+        $apexScore = round((($wRev / 100) * $revenueAchievementPct) + (($wRat / 100) * $avgRatioScore), 2);
 
         if ($period) {
             $period->update([
                 'target_revenue' => $this->target_revenue,
                 'actual_revenue' => $this->actual_revenue,
-                'weight_revenue' => $this->weight_revenue,
-                'weight_ratios' => $this->weight_ratios,
                 'apex_score' => $apexScore,
             ]);
         }
 
-        session()->flash('message', 'Data Tingkat 1 Apex & Target Revenue untuk periode ' . $this->selectedPeriod . ' berhasil disimpan dan dikonsolidasikan!');
+        session()->flash('message', 'Data Target & Realisasi Revenue untuk periode ' . $this->selectedPeriod . ' berhasil disimpan!');
     }
 
     public function render()

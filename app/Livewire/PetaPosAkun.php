@@ -16,79 +16,103 @@ class PetaPosAkun extends Component
     // Data Matriks: matrix[dept_code][pa_code] = 'K' | 'L' | '-'
     public $matrix = [];
 
-    // 12 Pos Finansial Inti Pabrik Manufaktur Botol Plastik
+    // 12 Pos Finansial Inti Pabrik Manufaktur Botol Plastik (Dipetakan ke 130 Akun & Chart of Accounts Odoo ERP)
     public $posAkunList = [
         [
             'code' => 'PA01',
             'name' => 'PENJUALAN BOTOL',
             'full_name' => 'Pendapatan Penjualan Botol Plastik (Jar, Galon, Botol PET/HDPE)',
-            'ratio_link' => 'Revenue & Growth'
+            'ratio_link' => 'Revenue & Growth',
+            'coa_range' => '4100xxxx (Revenue)',
+            'odoo_accounts' => '41000010 - Penjualan Botol PET, 41000020 - Penjualan Galon & Jar',
         ],
         [
             'code' => 'PA02',
             'name' => 'BAHAN BAKU RESIN',
             'full_name' => 'Beban Pokok Biji Plastik PET/HDPE, Masterbatch, & Bahan Crusher',
-            'ratio_link' => 'GPM & COGS'
+            'ratio_link' => 'GPM & COGS',
+            'coa_range' => '5100xxxx (COGS Material)',
+            'odoo_accounts' => '51000010 - COGS Raw Material Biji Plastik, 51000020 - Masterbatch Pigmen',
         ],
         [
             'code' => 'PA03',
             'name' => 'LISTRIK & ENERGI',
             'full_name' => 'Biaya Listrik Pabrik & Utilitas Mesin Blow/Injection Moulding',
-            'ratio_link' => 'GPM & Operasional'
+            'ratio_link' => 'GPM & Operasional',
+            'coa_range' => '5100xxxx / 6110xxxx (Energy)',
+            'odoo_accounts' => '61100310 - Beban Listrik PLN Pabrik & Gardu Trafo',
         ],
         [
             'code' => 'PA04',
             'name' => 'TENAGA KERJA',
             'full_name' => 'Biaya Gaji & Tunjangan Operator Mesin, Sortir, dan Packing',
-            'ratio_link' => 'COGS & Produktivitas'
+            'ratio_link' => 'COGS & Produktivitas',
+            'coa_range' => '5100xxxx / 6110xxxx (Payroll)',
+            'odoo_accounts' => '61100110 - Gaji Operator & Lembur, 61100190 - BPJS Ketenagakerjaan',
         ],
         [
             'code' => 'PA05',
             'name' => 'MAINTENANCE MOULD',
             'full_name' => 'Biaya Perawatan Mesin Pabrik, Oli Hidrolik, Sparepart, & Moulding',
-            'ratio_link' => 'TATO & Efisiensi Aset'
+            'ratio_link' => 'TATO & Efisiensi Aset',
+            'coa_range' => '5100xxxx / 6110xxxx (Maintenance)',
+            'odoo_accounts' => '51008010 - Penyusutan Mesin, 61100230 - Perawatan Moulding & Mesin',
         ],
         [
             'code' => 'PA06',
             'name' => 'PERSEDIAAN BOTOL',
             'full_name' => 'Persediaan Bahan Baku Biji Plastik & Stok Botol Jadi di Gudang',
-            'ratio_link' => 'ITO & DIO'
+            'ratio_link' => 'ITO & DIO',
+            'coa_range' => '1130xxxx (Asset Inventory)',
+            'odoo_accounts' => '11310010 - Persediaan Bahan Baku Resin, 11330010 - Persediaan Barang Jadi Botol',
         ],
         [
             'code' => 'PA07',
             'name' => 'PIUTANG USAHA',
             'full_name' => 'Piutang Penjualan Pelanggan, Distributor, dan Maklon Botol',
-            'ratio_link' => 'DSO & AR Turnover'
+            'ratio_link' => 'DSO & AR Turnover',
+            'coa_range' => '1120xxxx (Asset Receivable)',
+            'odoo_accounts' => '11210010 - Piutang Usaha Pelanggan, 11210020 - Piutang Karyawan',
         ],
         [
             'code' => 'PA08',
             'name' => 'UTANG SUPPLIER',
             'full_name' => 'Utang Usaha Supplier Biji Plastik & Vendor Bahan Kemas',
-            'ratio_link' => 'DPO & Cash Flow'
+            'ratio_link' => 'DPO & Cash Flow',
+            'coa_range' => '2110xxxx (Liability Payable)',
+            'odoo_accounts' => '21110010 - Utang Usaha Supplier Resin & Vendor',
         ],
         [
             'code' => 'PA09',
             'name' => 'KAS & REKENING',
             'full_name' => 'Kas Operasional & Rekening Giro Bank untuk Likuiditas',
-            'ratio_link' => 'Current & Quick Ratio'
+            'ratio_link' => 'Current & Quick Ratio',
+            'coa_range' => '1110xxxx (Cash & Bank)',
+            'odoo_accounts' => '11110010 - Petty Cash, 11110001 - BSI, 11120013 - Mandiri, 11120014 - BCA',
         ],
         [
             'code' => 'PA10',
             'name' => 'BIAYA PENGIRIMAN',
             'full_name' => 'Beban Ekspedisi & Armada Truk Pengiriman Botol ke Customer',
-            'ratio_link' => 'OPEX & Logistik'
+            'ratio_link' => 'OPEX & Logistik',
+            'coa_range' => '6110xxxx (Delivery OPEX)',
+            'odoo_accounts' => '61100510 - Beban Ekspedisi & Pengiriman Armada',
         ],
         [
             'code' => 'PA11',
             'name' => 'MESIN & BANGUNAN',
             'full_name' => 'Aset Tetap Pabrik, Mesin Injection/Blow, & Bangunan Pabrik',
-            'ratio_link' => 'ROA & TATO'
+            'ratio_link' => 'ROA & TATO',
+            'coa_range' => '1210xxxx (Fixed Asset)',
+            'odoo_accounts' => '12110010 - Mesin Pabrik, 12110020 - Bangunan & Moulding Cetak',
         ],
         [
             'code' => 'PA12',
             'name' => 'BEBAN UMUM (GA)',
             'full_name' => 'Beban Administrasi, Legalitas, IT, Keamanan, & Umum',
-            'ratio_link' => 'NPM & EBIT Margin'
+            'ratio_link' => 'NPM & EBIT Margin',
+            'coa_range' => '6110xxxx (General Admin)',
+            'odoo_accounts' => '61100410 - Beban Kantor & Legalitas, 61100330 - Pajak & Retribusi',
         ],
     ];
 
