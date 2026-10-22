@@ -128,15 +128,9 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ route('apex-consolidation', ['tab' => 'input']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && (request('tab') === 'input' || !request('tab')) ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-edit text-info"></i>
-                            <p>Input Realisasi Revenue</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('apex-consolidation', ['tab' => 'weights']) }}" class="nav-link {{ request()->routeIs('apex-consolidation') && request('tab') === 'weights' ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-layer-group text-primary"></i>
-                            <p>Matriks Kontribusi 5 Pilar</p>
+                        <a href="{{ route('apex-consolidation') }}" class="nav-link {{ request()->routeIs('apex-consolidation') && (request('tab') === 'input' || !request('tab')) ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-crown text-warning"></i>
+                            <p>Konsolidasi Revenue & Pilar</p>
                         </a>
                     </li>
                     @endcan
