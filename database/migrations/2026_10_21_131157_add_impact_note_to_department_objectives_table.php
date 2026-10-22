@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('department_objectives', function (Blueprint $table) {
-            $table->text('impact_note')->nullable()->after('odoo_account_code');
+            if (!Schema::hasColumn('department_objectives', 'impact_note')) {
+                $table->text('impact_note')->nullable()->after('odoo_account_code');
+            }
         });
     }
 
