@@ -320,7 +320,7 @@
                                     <i class="fas fa-layer-group mr-1"></i> Wiring Rasio (Makro)
                                 </button>
                                 <button type="button" wire:click="switchTab('cascade')" class="btn {{ $activeTab === 'cascade' ? 'btn-teal font-weight-bold' : 'btn-outline-secondary' }}">
-                                    <i class="fas fa-list-check mr-1"></i> Wiring Sasaran Mutu (64 KPI)
+                                    <i class="fas fa-list-check mr-1"></i> Wiring Sasaran Mutu ({{ $objectives->count() }} KPI)
                                 </button>
                             </div>
                         </div>
@@ -393,7 +393,7 @@
                             <!-- COLUMN 2: 6 PERSPECTIVES -->
                             <div class="d-flex flex-column justify-content-between h-100 py-2" id="perspectivesCol" style="min-height: 740px;">
                                 @foreach($perspectives as $index => $p)
-                                    <div class="wiring-node-card perspective-node-item" data-index="{{ $index }}" data-color="{{ $p['color'] }}" style="border-color: {{ $p['border'] }}; margin-bottom: 0;">
+                                    <div class="wiring-node-card perspective-node-item" data-index="{{ $index }}" data-id="{{ $p['id'] }}" data-color="{{ $p['color'] }}" style="border-color: {{ $p['border'] }}; margin-bottom: 0;">
                                         <div class="node-dot-left dot-p-left" style="background-color: {{ $p['color'] }};"></div>
                                         <div class="node-dot-right dot-p-right" style="background-color: {{ $p['color'] }};"></div>
                                         <div class="d-flex justify-content-between align-items-center">
@@ -410,7 +410,7 @@
                             <!-- COLUMN 3: DEPARTMENTS -->
                             <div class="d-flex flex-column justify-content-between h-100 py-2" id="departmentsCol" style="min-height: 740px;">
                                 @foreach($filteredDepartments as $index => $dept)
-                                    <div class="wiring-node-card dept-node-item d-flex justify-content-between align-items-center" data-index="{{ $index }}" style="margin-bottom: 0;">
+                                    <div class="wiring-node-card dept-node-item d-flex justify-content-between align-items-center" data-index="{{ $index }}" data-code="{{ $dept['code'] }}" style="margin-bottom: 0;">
                                         <div class="node-dot-left dot-d-left bg-secondary"></div>
                                         <div>
                                             <h6 class="font-weight-bold mb-0" :class="darkTheme ? 'text-white' : 'text-dark'" style="font-size: 13px;">{{ $dept['name'] }}</h6>
@@ -473,14 +473,28 @@
                                     const px = pRect.left + pRect.width/2 - cRect.left;
                                     const py = pRect.top + pRect.height/2 - cRect.top;
 
-                                    dNodes.forEach((dItem, dIdx) => {
-                                        if ((pIdx === 0 && [0,1,2].includes(dIdx)) ||
-                                            (pIdx === 1 && [0,1,2,6,10].includes(dIdx)) ||
-                                            (pIdx === 2 && [0,2,3,5,7,10].includes(dIdx)) ||
-                                            (pIdx === 3 && [2,3,6,9].includes(dIdx)) ||
-                                            (pIdx === 4 && [6,9].includes(dIdx)) ||
-                                            (pIdx === 5 && [7,8,9].includes(dIdx))) {
+                                    const pId = pItem.getAttribute('data-id');
+                                    // Mapping transmission links based on BSC strategic relations
+                                    // profit: FAT, PRD, PROC, SALES
+                                    // revenue: SALES, MKT, PPIC
+                                    // activity: PPIC, PROC, PRD, FAT
+                                    // productivity: PRD, ENG, IT, HR
+                                    // liquidity: FAT, PROC, SALES
+                                    // solvency: FAT, ENG, PROC
+                                    const transmissionMap = {
+                                        'profitability': ['FAT', 'PRD', 'PROC', 'SALES', 'ENG'],
+                                        'revenue': ['SALES', 'MKT', 'PPIC', 'PRD'],
+                                        'activity': ['PPIC', 'PROC', 'PRD', 'FAT', 'QC'],
+                                        'productivity': ['PRD', 'ENG', 'IT', 'HR', 'QC'],
+                                        'liquidity': ['FAT', 'PROC', 'SALES', 'PPIC'],
+                                        'solvency': ['FAT', 'ENG', 'PROC', 'IT']
+                                    };
 
+                                    const targetDepts = transmissionMap[pId] || [];
+
+                                    dNodes.forEach((dItem) => {
+                                        const dCode = dItem.getAttribute('data-code');
+                                        if (targetDepts.includes(dCode)) {
                                             const dDot = dItem.querySelector('.dot-d-left');
                                             if (!dDot) return;
                                             const dRect = dDot.getBoundingClientRect();

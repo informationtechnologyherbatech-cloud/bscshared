@@ -71,27 +71,27 @@ class BscWiring extends Component
         // Group objectives by department
         $objectivesByDept = $objectives->groupBy('dept_code');
 
-        // Dynamic perspective calculation from DB ratios
+        // Dynamic perspective calculation from DB ratios (15 Rasio Botol Plastik & 5 Pilar BSC)
         $perspectiveDefinitions = [
             [
                 'id' => 'profitability',
                 'name' => 'Profitabilitas',
                 'cat' => 'Profitabilitas',
-                'ratios' => ['Return on Equity / ROE (%)', 'Net Profit Margin (%)', 'ROE', 'NPM'],
+                'ratios' => ['GROSS PROFIT MARGIN', 'EBIT', 'NET PROFIT MARGIN', 'RETURN ON ASSET', 'RETURN ON EQUITY', 'Return on Equity / ROE (%)', 'Net Profit Margin (%)', 'ROE', 'NPM'],
                 'color' => '#10b981', 'bg' => '#ecfdf5', 'border' => '#a7f3d0',
             ],
             [
                 'id' => 'revenue',
                 'name' => 'Revenue / Pertumbuhan',
                 'cat' => 'Profitabilitas',
-                'ratios' => ['Sales Growth', 'Gross Profit Margin'],
+                'ratios' => ['GROSS PROFIT MARGIN', 'EBIT', 'NET PROFIT MARGIN', 'Sales Growth'],
                 'color' => '#10b981', 'bg' => '#ecfdf5', 'border' => '#a7f3d0',
             ],
             [
                 'id' => 'activity',
                 'name' => 'Aktivitas',
                 'cat' => 'Aktivitas',
-                'ratios' => ['Inventory Turnover', 'Asset Turnover'],
+                'ratios' => ['INVENTORY TURN OVER', 'AR TURN OVER', 'DAYS SALES OUTSANDING', 'DAYS INVENTORY OUTSTANDING', 'DAYS PAYABLE OUTSTANDING', 'ASSET TURN OVER', 'Inventory Turnover'],
                 'color' => '#f59e0b', 'bg' => '#fffbeb', 'border' => '#fde68a',
             ],
             [
@@ -105,14 +105,14 @@ class BscWiring extends Component
                 'id' => 'liquidity',
                 'name' => 'Likuiditas',
                 'cat' => 'Likuiditas',
-                'ratios' => ['Current Ratio', 'Quick Ratio'],
+                'ratios' => ['CURRENT RATIO', 'QUICK RATIO', 'Current Ratio', 'Quick Ratio'],
                 'color' => '#0d9488', 'bg' => '#f0fdf4', 'border' => '#99f6e4',
             ],
             [
                 'id' => 'solvency',
                 'name' => 'Solvabilitas',
                 'cat' => 'Solvabilitas',
-                'ratios' => ['Debt to Equity Ratio'],
+                'ratios' => ['DEBT TO EQUITY RATIO', 'DEBT TO TOTAL ASSET RATIO', 'Debt to Equity Ratio'],
                 'color' => '#8b5cf6', 'bg' => '#f5f3ff', 'border' => '#ddd6fe',
             ],
         ];
@@ -120,10 +120,27 @@ class BscWiring extends Component
         $perspectives = [];
         foreach ($perspectiveDefinitions as $def) {
             $catRatios = $ratios->filter(function($r) use ($def) {
-                return $r->category === $def['cat'] || in_array($r->ratio_name, $def['ratios']);
+                $rNameUpper = strtoupper(trim($r->ratio_name));
+                $rCatLower = strtolower(trim($r->category));
+                $targetCatLower = strtolower(trim($def['cat']));
+
+                if ($def['id'] === 'revenue') {
+                    return in_array($rNameUpper, ['GROSS PROFIT MARGIN', 'EBIT', 'NET PROFIT MARGIN', 'SALES GROWTH']);
+                }
+
+                if ($rCatLower === $targetCatLower) {
+                    return true;
+                }
+
+                foreach ($def['ratios'] as $expected) {
+                    if (strtoupper(trim($expected)) === $rNameUpper) {
+                        return true;
+                    }
+                }
+                return false;
             });
+
             $avgPct = $catRatios->count() > 0 ? $catRatios->avg('achievement_pct') : 100.0;
-            $unitCount = $objectives->count();
             $scoreFormatted = number_format($avgPct / 100, 3, ',', '.');
             
             $perspectives[] = [
@@ -178,12 +195,14 @@ class BscWiring extends Component
             $cardKpis = [];
             if ($deptObjs->count() > 0) {
                 foreach ($deptObjs as $o) {
+                    $unitStr = $o->unit ?: '%';
+                    $valStr = is_numeric($o->actual) ? number_format((float)$o->actual, 1, ',', '.') : $o->actual;
                     $cardKpis[] = [
                         'code' => $o->kpi_code,
                         'name' => $o->kpi_name,
                         'elasticity' => $o->polarity === 'Turun' ? 'e 0,30' : 'e 1,00',
                         'elasticity_type' => $o->status === 'Tercapai' ? 'green' : ($o->status === 'Waspada' ? 'yellow' : 'red'),
-                        'result' => number_format($o->actual, 1) . ' %',
+                        'result' => $valStr . ' ' . $unitStr,
                         'result_highlight' => $o->achievement_pct >= 100,
                         'left_accent' => $o->status === 'Tercapai' ? '#10b981' : ($o->status === 'Waspada' ? '#f59e0b' : '#e11d48'),
                     ];
