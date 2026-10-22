@@ -75,17 +75,25 @@ class FinancialRatios extends Component
         $month = isset($parts[1]) ? (int)$parts[1] : (int)date('m');
 
         try {
-            // Panggil langsung FinancialRatioController Finance App secara dinamis 100% tanpa hardcoding
+            // Panggil langsung FinancialRatioController Finance App secara dinamis
             $bridgePath = app_path('Services/FinanceRatioBridge.php');
-            $output = [];
-            $returnVar = 0;
-            exec("php {$bridgePath} {$month} 2>&1", $output, $returnVar);
+            $jsonStr = '';
 
-            $jsonStr = implode('', $output);
+            if (function_exists('exec')) {
+                $output = [];
+                $returnVar = 0;
+                @exec("php {$bridgePath} {$month} 2>&1", $output, $returnVar);
+                $jsonStr = implode('', $output);
+            } elseif (function_exists('shell_exec')) {
+                $jsonStr = @shell_exec("php {$bridgePath} {$month} 2>&1") ?: '';
+            } else {
+                throw new \Exception("Fungsi shell/exec dinonaktifkan di konfigurasi PHP server hosting (disable_functions). Silakan gunakan form Tambah/Ubah Rasio secara manual atau hubungi administrator untuk mengizinkan sinkronisasi background.");
+            }
+
             $ratioGroups = json_decode($jsonStr, true);
 
             if (!is_array($ratioGroups) || empty($ratioGroups)) {
-                throw new \Exception("Gagal mengambil data dari Controller Finance: " . substr($jsonStr, 0, 200));
+                throw new \Exception("Gagal mengambil data dari Controller Finance: " . substr($jsonStr ?: 'Tidak ada respon dari proses background.', 0, 200));
             }
 
             $syncedCount = 0;
